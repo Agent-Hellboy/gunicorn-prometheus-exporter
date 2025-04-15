@@ -41,11 +41,14 @@ jobs:
       - name: Run tests with tox
         run: tox -e ${{ matrix.toxenv }}
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          file: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
           fail_ci_if_error: true
+          flags: unittests
+          name: codecov-coverage
 
   lint:
     runs-on: ubuntu-latest
