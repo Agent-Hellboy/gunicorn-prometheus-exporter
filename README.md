@@ -1,7 +1,9 @@
 # Gunicorn Prometheus Exporter
 
 [![CI](https://github.com/agent-hellboy/gunicorn-prometheus-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/agent-hellboy/gunicorn-prometheus-exporter/actions/workflows/ci.yml)
+
 [![codecov](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter/graph/badge.svg?token=NE7JS4FZHC)](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter)
+
 A Gunicorn worker plugin that exports Prometheus metrics for monitoring worker performance.
 
 ## Architecture
