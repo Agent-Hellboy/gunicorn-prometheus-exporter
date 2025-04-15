@@ -6,8 +6,8 @@ This module provides a worker plugin for Gunicorn that exports Prometheus
 metrics. It includes functionality to update worker metrics and handle
 request durations.
 
-It simply patch into the request flow cycle of webserver and application server 
-and gather info as a middleware/wrapper refer to the test_worker.py for more details 
+It simply patch into the request flow cycle of webserver and application server
+and gather info as a middleware/wrapper refer to the test_worker.py for more details
 
 """
 
