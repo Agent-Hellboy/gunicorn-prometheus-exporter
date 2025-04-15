@@ -16,7 +16,6 @@ import os
 import time
 
 import psutil
-
 from gunicorn.workers.sync import SyncWorker
 
 from .metrics import (
