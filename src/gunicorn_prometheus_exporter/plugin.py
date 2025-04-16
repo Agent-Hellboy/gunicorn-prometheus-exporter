@@ -25,6 +25,7 @@ from .metrics import (
     WORKER_REQUEST_DURATION,
     WORKER_REQUESTS,
     WORKER_UPTIME,
+    WORKER_ERROR_HANDLING,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -44,6 +45,7 @@ class PrometheusWorker(SyncWorker):
     def init_process(self):
         """Initialize the worker process."""
         logger.info("Initializing worker process")
+
         super().init_process()
         logger.info("Worker process initialized")
 
@@ -80,6 +82,12 @@ class PrometheusWorker(SyncWorker):
             WORKER_FAILED_REQUESTS.labels(worker_id=self.worker_id).inc()
             logger.error(f"Error handling request: {e}")
             raise
+
+    def handle_error(self, req, client, addr, einfo):
+        """Handle error."""
+        WORKER_ERROR_HANDLING.labels(worker_id=self.worker_id).inc()
+        logger.info("Handling error")
+        super().handle_error(req, client, addr, einfo)
 
     def handle_quit(self, sig, frame):
         """Handle quit signal."""
