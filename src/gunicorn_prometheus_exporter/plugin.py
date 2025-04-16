@@ -110,24 +110,3 @@ class PrometheusWorker(SyncWorker):
             worker_id=self.worker_id, state="abort", timestamp=str(time.time())
         ).set(1)
         super().handle_abort(sig, frame)
-
-
-class PrometheusMaster(Arbiter):
-    """Gunicorn master (Arbiter) that exports Prometheus metrics."""
-
-    def __init__(self, app, options):
-        super().__init__(app, options)
-        self.start_time = time.time()
-        logger.info("PrometheusMaster initialized")
-
-    def child_exit(self, pid, status):
-        """Track when a child worker exits."""
-        logger.info(f"Worker {pid} exited with status {status}")
-        MASTER_WORKER_RESTARTS.labels(reason="exit").inc()
-        super().child_exit(pid, status)
-
-    def nworkers_changed(self):
-        """Track change in the number of workers."""
-        logger.info("Gunicorn worker count changed")
-
-        super().nworkers_changed()
