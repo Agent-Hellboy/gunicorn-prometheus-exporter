@@ -7,9 +7,11 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+from gunicorn.http.errors import InvalidRequestLine
 
 from gunicorn_prometheus_exporter.metrics import (
     WORKER_CPU,
+    WORKER_ERROR_HANDLING,
     WORKER_FAILED_REQUESTS,
     WORKER_MEMORY,
     WORKER_REQUEST_DURATION,
@@ -27,7 +29,7 @@ def worker():
     sockets = [MagicMock()]
     app = MagicMock()
     timeout = MagicMock()
-    cfg = MagicMock()
+    cfg = MagicMock()  # Gunicorn Arbiter (manager )
     cfg.max_requests = 0  # Set max_requests to 0 for testing
     cfg.max_requests_jitter = 0
     cfg.worker_tmp_dir = None  # Don't use a tmp dir for testing
@@ -141,3 +143,26 @@ def test_request_duration(worker):
     samples = list(WORKER_REQUEST_DURATION._samples())
     assert len(samples) > 0
     assert samples[0].value > 0
+
+
+def test_handle_error(worker):
+    """Test that handle_error updates worker metrics correctly."""
+    req = MagicMock()
+    client = MagicMock()
+    addr = ("127.0.0.1", 12345)
+    exc = InvalidRequestLine("Malformed request")
+
+    with patch("gunicorn.workers.sync.SyncWorker.handle_error") as mock_handle:
+        worker.handle_error(req, client, addr, exc)
+        mock_handle.assert_called_once_with(req, client, addr, exc)
+
+        # Collect and assert on the WORKER_ERROR_HANDLING metric
+        samples = list(WORKER_ERROR_HANDLING.collect())[0].samples
+        matched = [
+            s
+            for s in samples
+            if s.labels.get("worker_id") == str(worker.worker_id)
+            and s.labels.get("error_type") == "InvalidRequestLine"
+        ]
+        assert matched, "Expected error handling metric sample not found"
+        assert matched[0].value >= 1.0

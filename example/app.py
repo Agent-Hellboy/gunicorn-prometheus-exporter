@@ -7,8 +7,9 @@ This application includes multiple endpoints to demonstrate different metrics:
 - /error : Endpoint that raises an error
 """
 
-import time
 import random
+import time
+
 from flask import Flask, abort
 
 app = Flask(__name__)
