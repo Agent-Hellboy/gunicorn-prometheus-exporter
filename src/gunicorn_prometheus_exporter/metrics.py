@@ -82,3 +82,11 @@ WORKER_STATE = Gauge(
     ["worker_id", "state", "timestamp"],
     registry=registry,
 )
+
+
+MASTER_WORKER_RESTARTS = Counter(
+    "gunicorn_master_worker_restart_total",
+    "Total number of Gunicorn worker restarts",
+    ["reason"],
+    registry=registry,
+)

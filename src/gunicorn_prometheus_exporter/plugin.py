@@ -6,9 +6,12 @@ This module provides a worker plugin for Gunicorn that exports Prometheus
 metrics. It includes functionality to update worker metrics and handle
 request durations.
 
-It simply patch into the request flow cycle of webserver and application server
-and gather info as a middleware/wrapper refer to the test_worker.py for more details
+It patches into the request flow cycle of the Gunicorn web server and
+exposes internal telemetry (CPU, memory, request count, latency, errors)
+via Prometheus-compatible metrics.
 
+You can also subclass the Gunicorn Arbiter to capture master process events.
+Refer to `test_worker.py` and `test_metrics.py` for usage and test coverage.
 """
 
 import logging
@@ -16,9 +19,11 @@ import os
 import time
 
 import psutil
+from gunicorn.arbiter import Arbiter
 from gunicorn.workers.sync import SyncWorker
 
 from .metrics import (
+    MASTER_WORKER_RESTARTS,
     WORKER_CPU,
     WORKER_ERROR_HANDLING,
     WORKER_FAILED_REQUESTS,
@@ -46,7 +51,6 @@ class PrometheusWorker(SyncWorker):
     def init_process(self):
         """Initialize the worker process."""
         logger.info("Initializing worker process")
-
         super().init_process()
         logger.info("Worker process initialized")
 
@@ -67,14 +71,10 @@ class PrometheusWorker(SyncWorker):
         """Handle a request and update metrics."""
         start_time = time.time()
         try:
-            # Update worker metrics before handling request
             self.update_worker_metrics()
-
-            # Let parent class handle the request
             resp = super().handle_request(listener, req, client, addr)
             duration = time.time() - start_time
 
-            # Update request metrics
             WORKER_REQUESTS.labels(worker_id=self.worker_id).inc()
             WORKER_REQUEST_DURATION.labels(worker_id=self.worker_id).observe(duration)
 
@@ -99,7 +99,7 @@ class PrometheusWorker(SyncWorker):
         """Handle quit signal."""
         logger.info("Received quit signal")
         WORKER_STATE.labels(
-            worker_id=self.worker_id, state="quit", timestamp=time.time()
+            worker_id=self.worker_id, state="quit", timestamp=str(time.time())
         ).set(1)
         super().handle_quit(sig, frame)
 
@@ -107,6 +107,27 @@ class PrometheusWorker(SyncWorker):
         """Handle abort signal."""
         logger.info("Handling abort signal")
         WORKER_STATE.labels(
-            worker_id=self.worker_id, state="abort", timestamp=time.time()
+            worker_id=self.worker_id, state="abort", timestamp=str(time.time())
         ).set(1)
         super().handle_abort(sig, frame)
+
+
+class PrometheusMaster(Arbiter):
+    """Gunicorn master (Arbiter) that exports Prometheus metrics."""
+
+    def __init__(self, app, options):
+        super().__init__(app, options)
+        self.start_time = time.time()
+        logger.info("PrometheusMaster initialized")
+
+    def child_exit(self, pid, status):
+        """Track when a child worker exits."""
+        logger.info(f"Worker {pid} exited with status {status}")
+        MASTER_WORKER_RESTARTS.labels(reason="exit").inc()
+        super().child_exit(pid, status)
+
+    def nworkers_changed(self):
+        """Track change in the number of workers."""
+        logger.info("Gunicorn worker count changed")
+
+        super().nworkers_changed()
