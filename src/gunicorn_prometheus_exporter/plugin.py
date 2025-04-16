@@ -19,11 +19,9 @@ import os
 import time
 
 import psutil
-from gunicorn.arbiter import Arbiter
 from gunicorn.workers.sync import SyncWorker
 
 from .metrics import (
-    MASTER_WORKER_RESTARTS,
     WORKER_CPU,
     WORKER_ERROR_HANDLING,
     WORKER_FAILED_REQUESTS,
