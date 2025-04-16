@@ -175,23 +175,22 @@ def test_worker_state(worker):
         worker.handle_quit(None, None)
 
     samples = list(WORKER_STATE.collect())[0].samples
-    quit_sample = next(
-        (s for s in samples if s.labels["state"] == "quit"), None
-    )
+    quit_sample = next((s for s in samples if s.labels["state"] == "quit"), None)
     assert quit_sample is not None
     assert quit_sample.value == 1.0
     assert quit_sample.labels["worker_id"] == str(worker.worker_id)
-    assert float(quit_sample.labels["timestamp"]) == pytest.approx(time.time(), rel=1e-3)
+    assert float(quit_sample.labels["timestamp"]) == pytest.approx(
+        time.time(), rel=1e-3
+    )
 
     with patch("sys.exit") as mock_exit:
         worker.handle_abort(None, None)
 
     samples = list(WORKER_STATE.collect())[0].samples
-    abort_sample = next(
-        (s for s in samples if s.labels["state"] == "abort"), None
-    )
+    abort_sample = next((s for s in samples if s.labels["state"] == "abort"), None)
     assert abort_sample is not None
     assert abort_sample.value == 1.0
     assert abort_sample.labels["worker_id"] == str(worker.worker_id)
-    assert float(abort_sample.labels["timestamp"]) == pytest.approx(time.time(), rel=1e-3)
-
+    assert float(abort_sample.labels["timestamp"]) == pytest.approx(
+        time.time(), rel=1e-3
+    )
