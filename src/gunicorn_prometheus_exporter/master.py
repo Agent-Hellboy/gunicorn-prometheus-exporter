@@ -6,6 +6,8 @@ from gunicorn.arbiter import Arbiter
 from .metrics import MASTER_WORKER_RESTARTS
 
 logger = logging.getLogger(__name__)
+
+
 class PrometheusMaster(Arbiter):
     def __init__(self, app):
         super().__init__(app)
