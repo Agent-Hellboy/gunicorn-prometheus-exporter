@@ -69,10 +69,16 @@ WORKER_FAILED_REQUESTS = Counter(
     registry=registry,
 )
 
-
 WORKER_ERROR_HANDLING = Counter(
     "gunicorn_worker_error_handling",
     "Total number of Gunicorn-level errors",
     ["worker_id", "error_type"],
+    registry=registry,
+)
+
+WORKER_STATE = Gauge(
+    "gunicorn_worker_state",
+    "Current state of the worker exit start",
+    ["worker_id", "state", "timestamp"],
     registry=registry,
 )

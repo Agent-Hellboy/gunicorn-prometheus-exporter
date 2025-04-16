@@ -153,50 +153,12 @@ The exporter supports the following configuration options:
 - `PROMETHEUS_MULTIPROC_DIR`: Directory for multiprocess metrics (default: `/tmp/prometheus`)
 - `PROMETHEUS_METRICS_PORT`: Port for metrics endpoint (default: 8000)
 
-## Metrics
-
-The exporter provides the following metrics:
-
-### Worker Resource Metrics
-- `gunicorn_worker_memory_bytes`: Memory usage of worker process in bytes
-  - Labels: `worker_id`
-  - Type: Gauge
-  - Description: Current memory usage of the worker process
-
-- `gunicorn_worker_cpu_percent`: CPU usage of worker process
-  - Labels: `worker_id`
-  - Type: Gauge
-  - Description: Current CPU usage percentage of the worker process
-
-- `gunicorn_worker_uptime_seconds`: Uptime of worker process
-  - Labels: `worker_id`
-  - Type: Gauge
-  - Description: Number of seconds since the worker process started
-
-### Request Processing Metrics
-- `gunicorn_worker_requests_total`: Total number of requests handled
-  - Labels: `worker_id`
-  - Type: Counter
-  - Description: Total number of requests processed by the worker
-
-- `gunicorn_worker_request_duration_seconds`: Request duration
-  - Labels: `worker_id`
-  - Type: Histogram
-  - Description: Duration of requests in seconds
-  - Buckets: [0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0]
-
-- `gunicorn_worker_failed_requests_total`: Total number of failed requests
-  - Labels: `worker_id`
-  - Type: Counter
-  - Description: Total number of requests that failed to process
-
-All metrics include a `worker_id` label to distinguish between different workers.
 
 ## Development
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/gunicorn-prometheus-exporter.git
+git clone https://github.com/agent-hellboy/gunicorn-prometheus-exporter.git
 cd gunicorn-prometheus-exporter
 ```
 

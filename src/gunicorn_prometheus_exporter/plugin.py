@@ -25,6 +25,7 @@ from .metrics import (
     WORKER_MEMORY,
     WORKER_REQUEST_DURATION,
     WORKER_REQUESTS,
+    WORKER_STATE,
     WORKER_UPTIME,
 )
 
@@ -97,9 +98,15 @@ class PrometheusWorker(SyncWorker):
     def handle_quit(self, sig, frame):
         """Handle quit signal."""
         logger.info("Received quit signal")
+        WORKER_STATE.labels(
+            worker_id=self.worker_id, state="quit", timestamp=time.time()
+        ).set(1)
         super().handle_quit(sig, frame)
 
     def handle_abort(self, sig, frame):
         """Handle abort signal."""
         logger.info("Handling abort signal")
+        WORKER_STATE.labels(
+            worker_id=self.worker_id, state="abort", timestamp=time.time()
+        ).set(1)
         super().handle_abort(sig, frame)
