@@ -156,10 +156,13 @@ def test_handle_error(worker):
         worker.handle_error(req, client, addr, exc)
         mock_handle.assert_called_once_with(req, client, addr, exc)
 
-        # Collect and assert on the metric
-        samples = list(WORKER_FAILED_REQUESTS.collect())[0].samples
+        # Collect and assert on the WORKER_ERROR_HANDLING metric
+        samples = list(WORKER_ERROR_HANDLING.collect())[0].samples
         matched = [
-            s for s in samples if s.labels.get("worker_id") == str(worker.worker_id)
+            s
+            for s in samples
+            if s.labels.get("worker_id") == str(worker.worker_id)
+            and s.labels.get("error_type") == "InvalidRequestLine"
         ]
-        assert matched
+        assert matched, "Expected error handling metric sample not found"
         assert matched[0].value >= 1.0

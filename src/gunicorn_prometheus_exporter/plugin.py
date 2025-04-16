@@ -85,7 +85,12 @@ class PrometheusWorker(SyncWorker):
 
     def handle_error(self, req, client, addr, einfo):
         """Handle error."""
-        WORKER_ERROR_HANDLING.labels(worker_id=self.worker_id).inc()
+        error_type = (
+            type(einfo).__name__ if isinstance(einfo, BaseException) else str(einfo)
+        )
+        WORKER_ERROR_HANDLING.labels(
+            worker_id=self.worker_id, error_type=error_type
+        ).inc()
         logger.info("Handling error")
         super().handle_error(req, client, addr, einfo)
 

@@ -73,6 +73,6 @@ WORKER_FAILED_REQUESTS = Counter(
 WORKER_ERROR_HANDLING = Counter(
     "gunicorn_worker_error_handling",
     "Total number of Gunicorn-level errors",
-    ["worker_id"],
+    ["worker_id", "error_type"],
     registry=registry,
 )
