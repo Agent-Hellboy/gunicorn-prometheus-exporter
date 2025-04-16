@@ -20,12 +20,12 @@ from gunicorn.workers.sync import SyncWorker
 
 from .metrics import (
     WORKER_CPU,
+    WORKER_ERROR_HANDLING,
     WORKER_FAILED_REQUESTS,
     WORKER_MEMORY,
     WORKER_REQUEST_DURATION,
     WORKER_REQUESTS,
     WORKER_UPTIME,
-    WORKER_ERROR_HANDLING,
 )
 
 logging.basicConfig(level=logging.INFO)

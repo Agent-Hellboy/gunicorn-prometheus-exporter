@@ -8,9 +8,10 @@ This configuration:
 - Exports metrics on port 9090 at /metrics endpoint
 """
 
-from prometheus_client import start_http_server
-import os
 import logging
+import os
+
+from prometheus_client import start_http_server
 
 
 def when_ready(server):

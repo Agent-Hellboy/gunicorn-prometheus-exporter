@@ -7,18 +7,18 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+from gunicorn.http.errors import InvalidRequestLine
 
 from gunicorn_prometheus_exporter.metrics import (
     WORKER_CPU,
+    WORKER_ERROR_HANDLING,
     WORKER_FAILED_REQUESTS,
     WORKER_MEMORY,
     WORKER_REQUEST_DURATION,
     WORKER_REQUESTS,
     WORKER_UPTIME,
-    WORKER_ERROR_HANDLING,
 )
 from gunicorn_prometheus_exporter.plugin import PrometheusWorker
-from gunicorn.http.errors import InvalidRequestLine
 
 
 @pytest.fixture
