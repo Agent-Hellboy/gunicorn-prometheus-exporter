@@ -3,11 +3,9 @@ import time
 
 from gunicorn.arbiter import Arbiter
 
-logger = logging.getLogger(__name__)
-
 from .metrics import MASTER_WORKER_RESTARTS
 
-
+logger = logging.getLogger(__name__)
 class PrometheusMaster(Arbiter):
     def __init__(self, app):
         super().__init__(app)
