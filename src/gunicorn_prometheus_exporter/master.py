@@ -1,6 +1,7 @@
-from gunicorn.arbiter import Arbiter
-import time
 import logging
+import time
+
+from gunicorn.arbiter import Arbiter
 
 logger = logging.getLogger(__name__)
 

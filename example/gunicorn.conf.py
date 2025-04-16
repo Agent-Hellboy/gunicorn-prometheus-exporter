@@ -11,10 +11,11 @@ This configuration:
 import logging
 import os
 
+import gunicorn.arbiter
 from prometheus_client import start_http_server
+
 from gunicorn_prometheus_exporter.plugin import PrometheusMaster
 
-import gunicorn.arbiter
 gunicorn.arbiter.Arbiter = PrometheusMaster
 
 def when_ready(server):

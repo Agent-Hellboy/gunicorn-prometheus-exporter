@@ -1,8 +1,9 @@
-import pytest
 from unittest.mock import MagicMock, patch
 
-from gunicorn_prometheus_exporter.metrics import MASTER_WORKER_RESTARTS
+import pytest
+
 from gunicorn_prometheus_exporter.master import PrometheusMaster
+from gunicorn_prometheus_exporter.metrics import MASTER_WORKER_RESTARTS
 
 
 @pytest.fixture
