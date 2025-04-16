@@ -11,8 +11,12 @@ This configuration:
 import logging
 import os
 
+import gunicorn.arbiter
 from prometheus_client import start_http_server
 
+from gunicorn_prometheus_exporter.plugin import PrometheusMaster
+
+gunicorn.arbiter.Arbiter = PrometheusMaster
 
 def when_ready(server):
     if os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
@@ -20,7 +24,6 @@ def when_ready(server):
         logger = logging.getLogger(__name__)
         logger.info("Starting Prometheus metrics server on port 9090")
         start_http_server(9090)
-
 
 # Gunicorn configuration
 bind = "127.0.0.1:8080"

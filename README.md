@@ -4,108 +4,16 @@
 
 [![codecov](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter/graph/badge.svg?token=NE7JS4FZHC)](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter)
 
-A Gunicorn worker plugin that exports Prometheus metrics for monitoring worker performance.
-
-## Architecture
-
-### Gunicorn Worker Architecture with Metrics Collection
-
-```
-                          ┌────────────────────────────┐
-                          │        HTTP Client         │
-                          └────────────┬───────────────┘
-                                       │
-                                       ▼
-                          ┌────────────────────────────┐
-                          │     Gunicorn Master        │
-                          │ - Initializes config       │
-                          │ - Binds socket (listener)  │
-                          │ - Forks worker processes   │
-                          └────────────┬───────────────┘
-                                       │
-             ┌─────────────────────────┴─────────────────────────┐
-             ▼                         ▼                         ▼
-      ┌──────────────┐         ┌──────────────┐         ┌──────────────┐
-      │  Worker 1    │         │  Worker 2    │   ...   │  Worker N    │
-      │ (Sync/Gevent │         │ (Sync/Gevent │         │ (Sync/Gevent │
-      │  Worker)     │         │  Worker)     │         │  Worker)     │
-      └──────┬───────┘         └──────┬───────┘         └──────┬───────┘
-             │                        │                        │
-             ▼                        ▼                        ▼
-      ┌────────────────────────────────────────────────────────────────────┐
-      │                      Prometheus Metrics Layer                      │
-      │ ┌────────────────┐ ┌────────────────┐ ┌──────────────────────────┐ │
-      │ │ Worker Metrics │ │ Request Timing │ │ Error/Exception Counters │ │
-      │ └────────────────┘ └────────────────┘ └──────────────────────────┘ │
-      └────────────────────────────────────────────────────────────────────┘
-             │                         │                         │
-             ▼                         ▼                         ▼
-      ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐
-      │ Parse HTTP Request │   │ Parse HTTP Request │   │ Parse HTTP Request │
-      └──────────┬─────────┘   └──────────┬─────────┘   └──────────┬─────────┘
-                 ▼                        ▼                        ▼
-      ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐
-      │  WSGI App Adapter  │   │  WSGI App Adapter  │   │  WSGI App Adapter  │
-      └──────────┬─────────┘   └──────────┬─────────┘   └──────────┬─────────┘
-                 ▼                        ▼                        ▼
-      ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐
-      │ Flask/Django App   │   │ Flask/Django App   │   │ Flask/Django App   │
-      │   Business Logic   │   │   Business Logic   │   │   Business Logic   │
-      └──────────┬─────────┘   └──────────┬─────────┘   └──────────┬─────────┘
-                 ▼                        ▼                        ▼
-      ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐
-      │   Build Response   │   │   Build Response   │   │   Build Response   │
-      └──────────┬─────────┘   └──────────┬─────────┘   └──────────┬─────────┘
-                 ▼                        ▼                        ▼
-      ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐
-      │  Return to Worker  │   │  Return to Worker  │   │  Return to Worker  │
-      └──────────┬─────────┘   └──────────┬─────────┘   └──────────┬─────────┘
-                 ▼                        ▼                        ▼
-             ┌────────────────────────────────────────────────────────┐
-             │           Gunicorn Worker sends HTTP Response          │
-             └──────────────────────────┬─────────────────────────────┘
-                                        ▼
-                          ┌────────────────────────────┐
-                          │   Client receives Response │
-                          └────────────────────────────┘
-
-```
-
-### What Our Plugin Does
-
-1. **Worker Resource Monitoring**:
-   - Tracks memory usage of each worker
-   - Monitors CPU utilization
-   - Records worker uptime
-   - All metrics are labeled with worker ID
-
-2. **Request Processing Metrics**:
-   - Counts total requests handled by each worker
-   - Measures request duration
-   - Tracks failed requests
-   - Provides per-worker request statistics
-
-3. **Integration Points**:
-   - Extends Gunicorn's `SyncWorker` class
-   - Hooks into request handling pipeline
-   - Collects metrics before and after request processing
-   - Maintains worker-specific metrics
-
-4. **Metrics Exposed**:
-   - `gunicorn_worker_memory_bytes`: Worker memory usage
-   - `gunicorn_worker_cpu_percent`: Worker CPU usage
-   - `gunicorn_worker_uptime_seconds`: Worker uptime
-   - `gunicorn_worker_requests_total`: Total requests handled
-   - `gunicorn_worker_request_duration_seconds`: Request duration
-   - `gunicorn_worker_failed_requests_total`: Failed requests
+A Gunicorn plugin that exports Prometheus metrics for monitoring worker performance.
 
 ## Features
 
-- Request metrics (count, latency)
-- Worker metrics (memory, CPU, uptime)
-- Error tracking
-- Multiprocess support
-- Easy integration
+- Worker metrics:
+  - Request counts and durations
+  - Memory and CPU usage
+  - Uptime tracking
+  - Error tracking (failed requests and error handling)
+  - Worker state tracking (running/stopped)
 
 ## Installation
 
@@ -115,17 +23,41 @@ pip install gunicorn-prometheus-exporter
 
 ## Usage
 
-1. Install the package:
-```bash
-pip install gunicorn-prometheus-exporter
+Add to your Gunicorn config:
+
+```python
+# gunicorn.conf.py
+from gunicorn_prometheus_exporter import PrometheusWorker
+
+worker_class = PrometheusWorker
 ```
 
-2. Run Gunicorn with the Prometheus worker:
+Or use command line:
+
 ```bash
-gunicorn --worker-class gunicorn_prometheus_exporter.PrometheusWorker your_app:app
+gunicorn --worker-class gunicorn_prometheus_exporter.PrometheusWorker app:app
 ```
 
-3. Access metrics at `/metrics` endpoint.
+## Metrics
+
+- `gunicorn_worker_requests_total`: Total requests handled
+- `gunicorn_worker_request_duration_seconds`: Request duration
+- `gunicorn_worker_memory_bytes`: Memory usage
+- `gunicorn_worker_cpu_percent`: CPU usage
+- `gunicorn_worker_uptime_seconds`: Worker uptime
+- `gunicorn_worker_failed_requests_total`: Failed requests
+- `gunicorn_worker_error_handling_total`: Error handling counts
+- `gunicorn_worker_state`: Worker state (1=running, 0=stopped)
+
+## Development
+
+```bash
+# Install dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+```
 
 ## Configuration
 
@@ -152,25 +84,6 @@ The exporter supports the following configuration options:
 
 - `PROMETHEUS_MULTIPROC_DIR`: Directory for multiprocess metrics (default: `/tmp/prometheus`)
 - `PROMETHEUS_METRICS_PORT`: Port for metrics endpoint (default: 8000)
-
-
-## Development
-
-1. Clone the repository:
-```bash
-git clone https://github.com/agent-hellboy/gunicorn-prometheus-exporter.git
-cd gunicorn-prometheus-exporter
-```
-
-2. Install development dependencies:
-```bash
-pip install -e ".[dev]"
-```
-
-3. Run tests:
-```bash
-pytest
-```
 
 ## License
 

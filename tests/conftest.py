@@ -2,7 +2,6 @@
 
 import os
 import tempfile
-from unittest.mock import MagicMock
 
 import pytest
 from prometheus_client import CollectorRegistry
@@ -27,11 +26,3 @@ def prometheus_registry():
 def worker_id():
     """Return a test worker ID."""
     return "test_worker"
-
-
-@pytest.fixture
-def mock_worker(worker_id):
-    """Create a mock worker instance."""
-    worker = MagicMock()
-    worker.worker_id = worker_id
-    return worker

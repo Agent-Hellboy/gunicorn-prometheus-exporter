@@ -42,6 +42,12 @@ def worker():
     return worker
 
 
+def clear_metric(metric):
+    """Helper to clear Prometheus metric state between tests."""
+    for k in list(metric._metrics.keys()):
+        del metric._metrics[k]
+
+
 def test_worker_initialization(worker):
     """Test that worker initializes correctly."""
     assert worker.worker_id == os.getpid()
@@ -171,7 +177,7 @@ def test_handle_error(worker):
 
 def test_worker_state(worker):
     """Test that worker state is properly tracked."""
-    with patch("sys.exit") as mock_exit:
+    with patch("sys.exit") as _:
         worker.handle_quit(None, None)
 
     samples = list(WORKER_STATE.collect())[0].samples
@@ -183,7 +189,7 @@ def test_worker_state(worker):
         time.time(), rel=1e-3
     )
 
-    with patch("sys.exit") as mock_exit:
+    with patch("sys.exit") as _:
         worker.handle_abort(None, None)
 
     samples = list(WORKER_STATE.collect())[0].samples
