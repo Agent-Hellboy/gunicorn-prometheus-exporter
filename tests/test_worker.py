@@ -42,12 +42,6 @@ def worker():
     return worker
 
 
-def clear_metric(metric):
-    """Helper to clear Prometheus metric state between tests."""
-    for k in list(metric._metrics.keys()):
-        del metric._metrics[k]
-
-
 def test_worker_initialization(worker):
     """Test that worker initializes correctly."""
     assert worker.worker_id == os.getpid()
@@ -92,8 +86,13 @@ def test_worker_metrics_update(worker):
 
 def test_error_handling(worker):
     """Test that errors are properly tracked in worker metrics."""
+    # Clear any existing metrics
+    WORKER_FAILED_REQUESTS.clear()
+
     listener = MagicMock()
     req = MagicMock()
+    req.method = "GET"
+    req.path = "/test"
     client = MagicMock()
     addr = MagicMock()
 
@@ -108,8 +107,18 @@ def test_error_handling(worker):
         # Check that error was tracked in worker metrics
         samples = list(WORKER_FAILED_REQUESTS.collect())
         assert len(samples) == 1
-        assert samples[0].samples[0].value == 1.0
-        assert samples[0].samples[0].labels["worker_id"] == str(worker.worker_id)
+        assert len(samples[0].samples) > 0
+
+        # Find the sample with matching labels
+        sample = next(
+            s
+            for s in samples[0].samples
+            if s.labels.get("worker_id") == str(worker.worker_id)
+            and s.labels.get("method") == "GET"
+            and s.labels.get("endpoint") == "/test"
+            and s.labels.get("error_type") == "ValueError"
+        )
+        assert sample.value == 1.0
 
 
 def test_worker_uptime(worker):
@@ -154,7 +163,12 @@ def test_request_duration(worker):
 
 def test_handle_error(worker):
     """Test that handle_error updates worker metrics correctly."""
+    # Clear any existing metrics
+    WORKER_ERROR_HANDLING.clear()
+
     req = MagicMock()
+    req.method = "GET"
+    req.path = "/test"
     client = MagicMock()
     addr = ("127.0.0.1", 12345)
     exc = InvalidRequestLine("Malformed request")
@@ -164,39 +178,44 @@ def test_handle_error(worker):
         mock_handle.assert_called_once_with(req, client, addr, exc)
 
         # Collect and assert on the WORKER_ERROR_HANDLING metric
-        samples = list(WORKER_ERROR_HANDLING.collect())[0].samples
-        matched = [
+        samples = list(WORKER_ERROR_HANDLING.collect())
+        assert len(samples) == 1
+        assert len(samples[0].samples) > 0
+
+        # Find the sample with matching labels
+        sample = next(
             s
-            for s in samples
+            for s in samples[0].samples
             if s.labels.get("worker_id") == str(worker.worker_id)
+            and s.labels.get("method") == "GET"
+            and s.labels.get("endpoint") == "/test"
             and s.labels.get("error_type") == "InvalidRequestLine"
-        ]
-        assert matched, "Expected error handling metric sample not found"
-        assert matched[0].value >= 1.0
+        )
+        assert sample.value == 1.0
 
 
 def test_worker_state(worker):
     """Test that worker state is properly tracked."""
-    with patch("sys.exit") as _:
+    with patch("sys.exit"):
         worker.handle_quit(None, None)
 
-    samples = list(WORKER_STATE.collect())[0].samples
-    quit_sample = next((s for s in samples if s.labels["state"] == "quit"), None)
-    assert quit_sample is not None
-    assert quit_sample.value == 1.0
-    assert quit_sample.labels["worker_id"] == str(worker.worker_id)
-    assert float(quit_sample.labels["timestamp"]) == pytest.approx(
-        time.time(), rel=1e-3
-    )
+        samples = list(WORKER_STATE.collect())[0].samples
+        quit_sample = next((s for s in samples if s.labels["state"] == "quit"), None)
+        assert quit_sample is not None
+        assert quit_sample.value == 1.0
+        assert quit_sample.labels["worker_id"] == str(worker.worker_id)
+        assert float(quit_sample.labels["timestamp"]) == pytest.approx(
+            time.time(), rel=1e-3
+        )
 
-    with patch("sys.exit") as _:
+    with patch("sys.exit"):
         worker.handle_abort(None, None)
 
-    samples = list(WORKER_STATE.collect())[0].samples
-    abort_sample = next((s for s in samples if s.labels["state"] == "abort"), None)
-    assert abort_sample is not None
-    assert abort_sample.value == 1.0
-    assert abort_sample.labels["worker_id"] == str(worker.worker_id)
-    assert float(abort_sample.labels["timestamp"]) == pytest.approx(
-        time.time(), rel=1e-3
-    )
+        samples = list(WORKER_STATE.collect())[0].samples
+        abort_sample = next((s for s in samples if s.labels["state"] == "abort"), None)
+        assert abort_sample is not None
+        assert abort_sample.value == 1.0
+        assert abort_sample.labels["worker_id"] == str(worker.worker_id)
+        assert float(abort_sample.labels["timestamp"]) == pytest.approx(
+            time.time(), rel=1e-3
+        )

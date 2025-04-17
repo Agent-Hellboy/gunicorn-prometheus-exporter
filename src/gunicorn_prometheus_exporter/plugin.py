@@ -55,12 +55,17 @@ class PrometheusWorker(SyncWorker):
     def update_worker_metrics(self):
         """Update worker metrics."""
         try:
-            WORKER_MEMORY.labels(worker_id=self.worker_id).set(
-                self.process.memory_info().rss
+            WORKER_MEMORY.set(
+                self.process.memory_info().rss,
+                worker_id=self.worker_id,
             )
-            WORKER_CPU.labels(worker_id=self.worker_id).set(self.process.cpu_percent())
-            WORKER_UPTIME.labels(worker_id=self.worker_id).set(
-                time.time() - self.start_time
+            WORKER_CPU.set(
+                self.process.cpu_percent(),
+                worker_id=self.worker_id,
+            )
+            WORKER_UPTIME.set(
+                time.time() - self.start_time,
+                worker_id=self.worker_id,
             )
         except Exception as e:
             logger.error(f"Error updating worker metrics: {e}")
@@ -73,12 +78,17 @@ class PrometheusWorker(SyncWorker):
             resp = super().handle_request(listener, req, client, addr)
             duration = time.time() - start_time
 
-            WORKER_REQUESTS.labels(worker_id=self.worker_id).inc()
-            WORKER_REQUEST_DURATION.labels(worker_id=self.worker_id).observe(duration)
+            WORKER_REQUESTS.inc(worker_id=self.worker_id)
+            WORKER_REQUEST_DURATION.observe(duration, worker_id=self.worker_id)
 
             return resp
         except Exception as e:
-            WORKER_FAILED_REQUESTS.labels(worker_id=self.worker_id).inc()
+            WORKER_FAILED_REQUESTS.inc(
+                worker_id=self.worker_id,
+                method=req.method,
+                endpoint=req.path,
+                error_type=type(e).__name__,
+            )
             logger.error(f"Error handling request: {e}")
             raise
 
@@ -87,24 +97,33 @@ class PrometheusWorker(SyncWorker):
         error_type = (
             type(einfo).__name__ if isinstance(einfo, BaseException) else str(einfo)
         )
-        WORKER_ERROR_HANDLING.labels(
-            worker_id=self.worker_id, error_type=error_type
-        ).inc()
+        WORKER_ERROR_HANDLING.inc(
+            worker_id=self.worker_id,
+            method=req.method,
+            endpoint=req.path,
+            error_type=error_type,
+        )
         logger.info("Handling error")
         super().handle_error(req, client, addr, einfo)
 
     def handle_quit(self, sig, frame):
         """Handle quit signal."""
         logger.info("Received quit signal")
-        WORKER_STATE.labels(
-            worker_id=self.worker_id, state="quit", timestamp=str(time.time())
-        ).set(1)
+        WORKER_STATE.set(
+            1,
+            worker_id=self.worker_id,
+            state="quit",
+            timestamp=str(time.time()),
+        )
         super().handle_quit(sig, frame)
 
     def handle_abort(self, sig, frame):
         """Handle abort signal."""
         logger.info("Handling abort signal")
-        WORKER_STATE.labels(
-            worker_id=self.worker_id, state="abort", timestamp=str(time.time())
-        ).set(1)
+        WORKER_STATE.set(
+            1,
+            worker_id=self.worker_id,
+            state="abort",
+            timestamp=str(time.time()),
+        )
         super().handle_abort(sig, frame)

@@ -4,16 +4,17 @@
 
 [![codecov](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter/graph/badge.svg?token=NE7JS4FZHC)](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter)
 
-A Gunicorn plugin that exports Prometheus metrics for monitoring worker performance.
+A Gunicorn worker plugin that exports Prometheus metrics for monitoring worker performance, including memory usage, CPU usage, request durations, and error tracking.
 
 ## Features
 
-- Worker metrics:
-  - Request counts and durations
-  - Memory and CPU usage
-  - Uptime tracking
-  - Error tracking (failed requests and error handling)
-  - Worker state tracking (running/stopped)
+- Exports Prometheus metrics for Gunicorn workers
+- Tracks worker memory usage, CPU usage, and uptime
+- Monitors request durations and counts
+- Tracks failed requests and error handling
+- Supports worker state monitoring (running, quit, abort)
+- Master process metrics for worker management
+- Easy integration with existing Prometheus setups
 
 ## Installation
 
@@ -25,31 +26,44 @@ pip install .
 
 ## Usage
 
-Add to your Gunicorn config:
-
-```python
-# gunicorn.conf.py
-from gunicorn_prometheus_exporter import PrometheusWorker
-
-worker_class = PrometheusWorker
-```
-
-Or use command line:
+1. Install the package
+2. Configure Gunicorn to use the plugin:
 
 ```bash
-gunicorn --worker-class gunicorn_prometheus_exporter.PrometheusWorker app:app
+gunicorn --worker-class gunicorn_prometheus_exporter.PrometheusWorker your_app:app
 ```
 
-## Metrics
+## Available Metrics
 
-- `gunicorn_worker_requests_total`: Total requests handled
-- `gunicorn_worker_request_duration_seconds`: Request duration
-- `gunicorn_worker_memory_bytes`: Memory usage
-- `gunicorn_worker_cpu_percent`: CPU usage
-- `gunicorn_worker_uptime_seconds`: Worker uptime
-- `gunicorn_worker_failed_requests_total`: Failed requests
-- `gunicorn_worker_error_handling_total`: Error handling counts
-- `gunicorn_worker_state`: Worker state (1=running, 0=stopped)
+### Worker Metrics
+
+- `gunicorn_worker_requests`: Total number of requests handled by each worker
+- `gunicorn_worker_request_duration_seconds`: Request duration in seconds
+- `gunicorn_worker_memory_bytes`: Memory usage of each worker process
+- `gunicorn_worker_cpu_percent`: CPU usage of each worker process
+- `gunicorn_worker_uptime_seconds`: Uptime of each worker process
+- `gunicorn_worker_failed_requests`: Total number of failed requests with method, endpoint, and error type
+- `gunicorn_worker_error_handling`: Total number of errors handled with method, endpoint, and error type
+- `gunicorn_worker_state`: Current state of the worker (running, quit, abort)
+
+### Master Process Metrics
+
+- `gunicorn_master_worker_restart_total`: Total number of worker restarts with reason
+
+To enable master process metrics, use the PrometheusMaster class:
+
+```python
+# In your Gunicorn configuration
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+from gunicorn_prometheus_exporter.master import PrometheusMaster
+
+# You have to patch master , gunicron doesn't allow master worker plugin
+# This can change , it's an internal implemenation
+from gunicorn_prometheus_exporter.plugin import PrometheusMaster
+
+gunicorn.arbiter.Arbiter = PrometheusMaster
+```
+
 
 ## Development
 
@@ -87,6 +101,9 @@ The exporter supports the following configuration options:
 - `PROMETHEUS_MULTIPROC_DIR`: Directory for multiprocess metrics (default: `/tmp/prometheus`)
 - `PROMETHEUS_METRICS_PORT`: Port for metrics endpoint (default: 8000)
 
+
+
 ## License
 
 MIT License - Prince Roshan
+
