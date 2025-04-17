@@ -97,7 +97,7 @@ class BaseMetric(metaclass=MetricMeta):
 class WorkerRequests(BaseMetric, metric_type=Counter):
     """Total number of requests handled by this worker."""
 
-    name = "gunicorn_worker_requests_total"
+    name = "gunicorn_worker_requests"
     documentation = "Total number of requests handled by this worker"
     labelnames = ["worker_id"]
 
@@ -138,7 +138,7 @@ class WorkerUptime(BaseMetric, metric_type=Gauge):
 class WorkerFailedRequests(BaseMetric, metric_type=Counter):
     """Total number of failed requests handled by this worker."""
 
-    name = "gunicorn_worker_failed_requests_total"
+    name = "gunicorn_worker_failed_requests"
     documentation = "Total number of failed requests handled by this worker"
     labelnames = ["worker_id", "method", "endpoint", "error_type"]
 
@@ -146,7 +146,7 @@ class WorkerFailedRequests(BaseMetric, metric_type=Counter):
 class WorkerErrorHandling(BaseMetric, metric_type=Counter):
     """Total number of errors handled by this worker."""
 
-    name = "gunicorn_worker_error_handling_total"
+    name = "gunicorn_worker_error_handling"
     documentation = "Total number of errors handled by this worker"
     labelnames = ["worker_id", "method", "endpoint", "error_type"]
 
@@ -167,7 +167,7 @@ class WorkerState(BaseMetric, metric_type=Gauge):
 class MasterWorkerRestarts(BaseMetric, metric_type=Counter):
     """Total number of Gunicorn worker restarts."""
 
-    name = "gunicorn_master_worker_restart_total"
+    name = "gunicorn_master_worker_restart"
     documentation = "Total number of Gunicorn worker restarts"
     labelnames = ["reason"]
 
