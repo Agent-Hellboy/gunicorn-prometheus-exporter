@@ -7,15 +7,15 @@ import os
 from prometheus_client import CollectorRegistry
 
 from gunicorn_prometheus_exporter.metrics import (
+    MASTER_WORKER_RESTARTS,
     WORKER_CPU,
+    WORKER_ERROR_HANDLING,
     WORKER_FAILED_REQUESTS,
     WORKER_MEMORY,
     WORKER_REQUEST_DURATION,
     WORKER_REQUESTS,
-    WORKER_UPTIME,
-    WORKER_ERROR_HANDLING,
     WORKER_STATE,
-    MASTER_WORKER_RESTARTS,
+    WORKER_UPTIME,
     registry,
 )
 
