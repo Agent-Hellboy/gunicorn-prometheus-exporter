@@ -43,11 +43,18 @@ class MetricMeta(ABCMeta):
         cls = super().__new__(mcs, name, bases, namespace)
 
         if metric_type is not None:
+            extra_ctor_args = {}
+            # Forward well‑known optional attributes
+            for opt in ("buckets", "unit", "namespace", "subsystem"):
+                if opt in namespace:
+                    extra_ctor_args[opt] = namespace[opt]
+
             metric = metric_type(
                 name=namespace.get("name", name.lower()),
                 documentation=namespace.get("documentation", ""),
                 labelnames=namespace.get("labelnames", []),
                 registry=registry,
+                **extra_ctor_args,
                 **kwargs,
             )
             cls._metric = metric
