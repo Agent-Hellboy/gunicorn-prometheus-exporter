@@ -17,5 +17,5 @@ class PrometheusMaster(Arbiter):
     def handle_hup(self):
         """Handle HUP signal."""
         logger.info("Gunicorn master HUP signal received")
-        MASTER_WORKER_RESTARTS.labels(reason="restart").inc()
+        MASTER_WORKER_RESTARTS.inc(reason="restart")
         super().handle_hup()

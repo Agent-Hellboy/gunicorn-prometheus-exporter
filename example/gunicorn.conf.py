@@ -14,7 +14,7 @@ import os
 import gunicorn.arbiter
 from prometheus_client import start_http_server
 
-from gunicorn_prometheus_exporter.plugin import PrometheusMaster
+from gunicorn_prometheus_exporter.master import PrometheusMaster
 
 gunicorn.arbiter.Arbiter = PrometheusMaster
 

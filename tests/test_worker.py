@@ -42,12 +42,6 @@ def worker():
     return worker
 
 
-def clear_metric(metric):
-    """Helper to clear Prometheus metric state between tests."""
-    if hasattr(metric, "_metric"):
-        metric._metric.clear()
-
-
 def test_worker_initialization(worker):
     """Test that worker initializes correctly."""
     assert worker.worker_id == os.getpid()
@@ -93,7 +87,7 @@ def test_worker_metrics_update(worker):
 def test_error_handling(worker):
     """Test that errors are properly tracked in worker metrics."""
     # Clear any existing metrics
-    clear_metric(WORKER_FAILED_REQUESTS)
+    WORKER_FAILED_REQUESTS.clear()
 
     listener = MagicMock()
     req = MagicMock()
@@ -170,7 +164,7 @@ def test_request_duration(worker):
 def test_handle_error(worker):
     """Test that handle_error updates worker metrics correctly."""
     # Clear any existing metrics
-    clear_metric(WORKER_ERROR_HANDLING)
+    WORKER_ERROR_HANDLING.clear()
 
     req = MagicMock()
     req.method = "GET"
@@ -202,7 +196,7 @@ def test_handle_error(worker):
 
 def test_worker_state(worker):
     """Test that worker state is properly tracked."""
-    with patch("sys.exit") as mock_exit:
+    with patch("sys.exit"):
         worker.handle_quit(None, None)
 
         samples = list(WORKER_STATE.collect())[0].samples
@@ -214,7 +208,7 @@ def test_worker_state(worker):
             time.time(), rel=1e-3
         )
 
-    with patch("sys.exit") as mock_exit:
+    with patch("sys.exit"):
         worker.handle_abort(None, None)
 
         samples = list(WORKER_STATE.collect())[0].samples

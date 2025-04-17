@@ -91,6 +91,35 @@ class BaseMetric(metaclass=MetricMeta):
         """Get metric label names."""
         return cls._metric._labelnames
 
+    @classmethod
+    def inc(cls, **labels):
+        return cls._metric.labels(**labels).inc()
+
+    @classmethod
+    def dec(cls, **labels):
+        return cls._metric.labels(**labels).dec()
+
+    @classmethod
+    def set(cls, value, **labels):
+        return cls._metric.labels(**labels).set(value)
+
+    @classmethod
+    def observe(cls, value, **labels):
+        return cls._metric.labels(**labels).observe(value)
+
+    @classmethod
+    def describe(cls):
+        return {
+            "name": cls._metric._name,
+            "documentation": cls._metric._documentation,
+            "type": type(cls._metric).__name__,
+            "labels": cls._metric._labelnames,
+        }
+
+    @classmethod
+    def clear(cls):
+        cls._metric._metrics.clear()
+
 
 # Worker metrics
 # ---------------------------------------------------------------------------------

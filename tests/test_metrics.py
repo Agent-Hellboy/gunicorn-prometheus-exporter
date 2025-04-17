@@ -13,6 +13,9 @@ from gunicorn_prometheus_exporter.metrics import (
     WORKER_REQUEST_DURATION,
     WORKER_REQUESTS,
     WORKER_UPTIME,
+    WORKER_ERROR_HANDLING,
+    WORKER_STATE,
+    MASTER_WORKER_RESTARTS,
     registry,
 )
 
@@ -20,7 +23,27 @@ from gunicorn_prometheus_exporter.metrics import (
 def test_registry_setup():
     """Test that the registry is properly configured."""
     assert isinstance(registry, CollectorRegistry)
-    assert registry._collector_to_names  # Should have collectors registered
+    assert registry._collector_to_names
+
+
+def test_master_worker_restarts_metric():
+    """Test MASTER_WORKER_RESTARTS metric configuration."""
+    assert MASTER_WORKER_RESTARTS._metric._name == "gunicorn_master_worker_restart"
+    assert (
+        MASTER_WORKER_RESTARTS._metric._documentation
+        == "Total number of Gunicorn worker restarts"
+    )
+    assert MASTER_WORKER_RESTARTS._metric._labelnames == ("reason",)
+
+
+def test_worker_state_metric():
+    """Test WORKER_STATE metric configuration."""
+    assert WORKER_STATE._metric._name == "gunicorn_worker_state"
+    assert (
+        WORKER_STATE._metric._documentation
+        == "Current state of the worker (1=running, 0=stopped)"
+    )
+    assert WORKER_STATE._metric._labelnames == ("worker_id", "state", "timestamp")
 
 
 def test_worker_requests_metric():
@@ -97,5 +120,8 @@ def test_metric_registration():
         WORKER_CPU,
         WORKER_UPTIME,
         WORKER_FAILED_REQUESTS,
+        WORKER_ERROR_HANDLING,
+        WORKER_STATE,
+        MASTER_WORKER_RESTARTS,
     ]
     assert all(metric._metric in collectors for metric in metric_classes)
