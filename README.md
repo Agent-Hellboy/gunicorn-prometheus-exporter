@@ -18,7 +18,9 @@ A Gunicorn plugin that exports Prometheus metrics for monitoring worker performa
 ## Installation
 
 ```bash
-pip install gunicorn-prometheus-exporter
+git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter
+cd gunicorn-prometheus-exporter
+pip install .
 ```
 
 ## Usage
