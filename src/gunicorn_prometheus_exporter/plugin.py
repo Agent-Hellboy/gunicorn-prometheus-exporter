@@ -78,7 +78,12 @@ class PrometheusWorker(SyncWorker):
 
             return resp
         except Exception as e:
-            WORKER_FAILED_REQUESTS.labels(worker_id=self.worker_id).inc()
+            WORKER_FAILED_REQUESTS.labels(
+                worker_id=self.worker_id,
+                method=req.method,
+                endpoint=req.path,
+                error_type=type(e).__name__,
+            ).inc()
             logger.error(f"Error handling request: {e}")
             raise
 
@@ -88,7 +93,10 @@ class PrometheusWorker(SyncWorker):
             type(einfo).__name__ if isinstance(einfo, BaseException) else str(einfo)
         )
         WORKER_ERROR_HANDLING.labels(
-            worker_id=self.worker_id, error_type=error_type
+            worker_id=self.worker_id,
+            method=req.method,
+            endpoint=req.path,
+            error_type=error_type,
         ).inc()
         logger.info("Handling error")
         super().handle_error(req, client, addr, einfo)

@@ -59,5 +59,4 @@ def test_master_hup(master):
         assert matched
         assert matched[0].value >= 1.0
 
-        # Ensure sys.exit was not called (we're only simulating parent)
         exit_mock.assert_not_called()
