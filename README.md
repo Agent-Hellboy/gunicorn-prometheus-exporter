@@ -18,6 +18,12 @@ A Gunicorn worker plugin that exports Prometheus metrics for monitoring worker p
 
 ## Installation
 
+### Stable
+```bash 
+pip install gunicorn-prometheus-exporter==0.1.0
+```
+
+### Development
 ```bash
 git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter
 cd gunicorn-prometheus-exporter
