@@ -4,6 +4,8 @@
 
 [![codecov](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter/graph/badge.svg?token=NE7JS4FZHC)](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter)
 
+[![PyPI - Version](https://img.shields.io/pypi/v/gunicorn-prometheus-exporter.svg)](https://pypi.org/project/gunicorn-prometheus-exporter/)
+
 A Gunicorn worker plugin that exports Prometheus metrics for monitoring worker performance, including memory usage, CPU usage, request durations, and error tracking.
 
 ## Features
