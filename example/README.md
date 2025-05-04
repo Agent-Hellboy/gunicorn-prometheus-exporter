@@ -15,7 +15,17 @@ pip install gunicorn prometheus-client flask
 Start the example application with Gunicorn:
 
 ```bash
-gunicorn -c gunicorn.conf.py app:app --worker-class=gunicorn_prometheus_exporter.plugin.PrometheusWorker 
+# 1) Clean + create metrics dir
+rm -rf /tmp/metrics_test
+mkdir -p /tmp/metrics_test
+chmod 777 /tmp/metrics_test
+
+# 2) Set env vars
+export PROMETHEUS_MULTIPROC_DIR=/tmp/metrics_test
+export PROMETHEUS_METRICS_PORT=9090
+
+# 3) Start Gunicorn (uses your gunicorn.conf.py)
+gunicorn --config gunicorn.conf.py app:app 
 ```
 
 ## Testing
