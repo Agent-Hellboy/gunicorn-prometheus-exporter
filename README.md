@@ -38,7 +38,7 @@ pip install .
 2. Configure Gunicorn to use the plugin:
 
 ```bash
-gunicorn --worker-class gunicorn_prometheus_exporter.PrometheusWorker your_app:app
+gunicorn --config gunicorn.conf.py your_app:app
 ```
 
 ## Available Metrics
@@ -90,16 +90,32 @@ pytest
 Create a `gunicorn.conf.py` file with the following configuration:
 
 ```python
-from prometheus_client import start_http_server
-import os
-import logging
-
+# ———————————————————————————————————————————————————————————————————————————————————
+# Hook to start a multiprocess‐aware Prometheus metrics server when Gunicorn is ready
+# ———————————————————————————————————————————————————————————————————————————————————
 def when_ready(server):
-    if os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
-        logging.basicConfig(level=logging.INFO)
-        logger = logging.getLogger(__name__)
-        logger.info("Starting Prometheus metrics server on port 9090")
-        start_http_server(9090)
+    mp_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+    if not mp_dir:
+        logging.warning("PROMETHEUS_MULTIPROC_DIR not set; skipping metrics server")
+        return
+
+    # Build a fresh registry that merges all worker files in PROMETHEUS_MULTIPROC_DIR
+    registry = CollectorRegistry()
+    multiprocess.MultiProcessCollector(registry)
+
+    # Serve that registry on HTTP
+    start_http_server(port, registry=registry)
+
+
+# —————————————————————————————————————————————————————————————————————————————
+# Hook to mark dead workers so their metric files get merged & cleaned up
+# —————————————————————————————————————————————————————————————————————————————
+def child_exit(server, worker):
+    try:
+        multiprocess.mark_process_dead(worker.pid)
+    except Exception:
+        logging.exception(f"Failed to mark process {worker.pid} dead in multiprocess collector")
+
 ```
 
 ### Environment Variables
