@@ -90,6 +90,8 @@ pytest
 Create a `gunicorn.conf.py` file with the following configuration:
 
 ```python
+from prometheus_client import start_http_server, CollectorRegistry, multiprocess
+
 # ———————————————————————————————————————————————————————————————————————————————————
 # Hook to start a multiprocess‐aware Prometheus metrics server when Gunicorn is ready
 # ———————————————————————————————————————————————————————————————————————————————————
