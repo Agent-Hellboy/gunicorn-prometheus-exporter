@@ -7,6 +7,7 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+from gunicorn.config import Config
 from gunicorn.http.errors import InvalidRequestLine
 
 from gunicorn_prometheus_exporter.metrics import (
@@ -19,7 +20,11 @@ from gunicorn_prometheus_exporter.metrics import (
     WORKER_STATE,
     WORKER_UPTIME,
 )
-from gunicorn_prometheus_exporter.plugin import PrometheusWorker
+from gunicorn_prometheus_exporter.workers import (
+    GEVENT_AVAILABLE,
+    PrometheusGeventWorker,
+    PrometheusSyncWorker,
+)
 
 
 @pytest.fixture
@@ -38,7 +43,25 @@ def worker():
     cfg.uid = os.getuid()  # Current user ID
     cfg.gid = os.getgid()  # Current group ID
     log = MagicMock()
-    worker = PrometheusWorker(age, ppid, sockets, app, timeout, cfg, log)
+    worker = PrometheusSyncWorker(age, ppid, sockets, app, timeout, cfg, log)
+    return worker
+
+
+@pytest.fixture
+def gevent_worker():
+    """Create a PrometheusGeventWorker instance for testing."""
+    if not GEVENT_AVAILABLE:
+        pytest.skip("GeventWorker not available")
+    age = 0
+    ppid = 1
+    sockets = []
+    app = MagicMock()
+    timeout = 30
+    cfg = Config()
+    cfg.uid = os.getuid()  # Current user ID
+    cfg.gid = os.getgid()  # Current group ID
+    log = MagicMock()
+    worker = PrometheusGeventWorker(age, ppid, sockets, app, timeout, cfg, log)
     return worker
 
 
@@ -57,7 +80,7 @@ def test_handle_request(worker):
     addr = MagicMock()
 
     with patch(
-        "gunicorn_prometheus_exporter.plugin.SyncWorker.handle_request"
+        "gunicorn_prometheus_exporter.workers.sync.SyncWorker.handle_request"
     ) as mock_handle:
         mock_handle.return_value = ["response"]
         response = worker.handle_request(listener, req, client, addr)
@@ -97,7 +120,7 @@ def test_error_handling(worker):
     addr = MagicMock()
 
     with patch(
-        "gunicorn_prometheus_exporter.plugin.SyncWorker.handle_request"
+        "gunicorn_prometheus_exporter.workers.sync.SyncWorker.handle_request"
     ) as mock_handle:
         mock_handle.side_effect = ValueError("Test error")
 
@@ -219,3 +242,100 @@ def test_worker_state(worker):
         assert float(abort_sample.labels["timestamp"]) == pytest.approx(
             time.time(), rel=1e-3
         )
+
+
+@pytest.mark.skipif(not GEVENT_AVAILABLE, reason="GeventWorker not available")
+def test_gevent_worker_handle_request(gevent_worker):
+    """Test that handle_request updates worker metrics correctly for GeventWorker."""
+    listener = MagicMock()
+    req = MagicMock()
+    req.path = "/test"
+    client = MagicMock()
+    addr = MagicMock()
+
+    with patch(
+        "gunicorn_prometheus_exporter.workers.gevent.GeventWorker.handle_request"
+    ) as mock_handle:
+        mock_handle.return_value = ["response"]
+        response = gevent_worker.handle_request(listener, req, client, addr)
+
+        assert response == ["response"]
+        mock_handle.assert_called_once_with(listener, req, client, addr)
+
+        # Check that worker metrics were updated
+        samples = list(WORKER_REQUESTS.collect())
+        assert len(samples) == 1
+        assert samples[0].samples[0].value == 1.0
+        assert samples[0].samples[0].labels["worker_id"] == str(gevent_worker.worker_id)
+
+
+@pytest.mark.skipif(not GEVENT_AVAILABLE, reason="GeventWorker not available")
+def test_gevent_worker_error_handling(gevent_worker):
+    """Test that errors are properly tracked in worker metrics for GeventWorker."""
+    # Clear any existing metrics
+    WORKER_FAILED_REQUESTS.clear()
+
+    listener = MagicMock()
+    req = MagicMock()
+    req.method = "GET"
+    req.path = "/test"
+    client = MagicMock()
+    addr = MagicMock()
+
+    with patch(
+        "gunicorn_prometheus_exporter.workers.gevent.GeventWorker.handle_request"
+    ) as mock_handle:
+        mock_handle.side_effect = ValueError("Test error")
+
+        with pytest.raises(ValueError):
+            gevent_worker.handle_request(listener, req, client, addr)
+
+        # Check that error was tracked in worker metrics
+        samples = list(WORKER_FAILED_REQUESTS.collect())
+        assert len(samples) == 1
+        assert len(samples[0].samples) > 0
+
+        # Find the sample with matching labels
+        sample = next(
+            s
+            for s in samples[0].samples
+            if s.labels.get("worker_id") == str(gevent_worker.worker_id)
+            and s.labels.get("method") == "GET"
+            and s.labels.get("endpoint") == "/test"
+            and s.labels.get("error_type") == "ValueError"
+        )
+        assert sample.value == 1.0
+
+
+@pytest.mark.skipif(not GEVENT_AVAILABLE, reason="GeventWorker not available")
+def test_gevent_worker_handle_error(gevent_worker):
+    """Test that handle_error updates worker metrics correctly for GeventWorker."""
+    # Clear any existing metrics
+    WORKER_ERROR_HANDLING.clear()
+
+    req = MagicMock()
+    req.method = "GET"
+    req.path = "/test"
+    client = MagicMock()
+    addr = ("127.0.0.1", 12345)
+    exc = InvalidRequestLine("Malformed request")
+
+    with patch("gunicorn.workers.gevent.GeventWorker.handle_error") as mock_handle:
+        gevent_worker.handle_error(req, client, addr, exc)
+        mock_handle.assert_called_once_with(req, client, addr, exc)
+
+        # Collect and assert on the WORKER_ERROR_HANDLING metric
+        samples = list(WORKER_ERROR_HANDLING.collect())
+        assert len(samples) == 1
+        assert len(samples[0].samples) > 0
+
+        # Find the sample with matching labels
+        sample = next(
+            s
+            for s in samples[0].samples
+            if s.labels.get("worker_id") == str(gevent_worker.worker_id)
+            and s.labels.get("method") == "GET"
+            and s.labels.get("endpoint") == "/test"
+            and s.labels.get("error_type") == "InvalidRequestLine"
+        )
+        assert sample.value == 1.0

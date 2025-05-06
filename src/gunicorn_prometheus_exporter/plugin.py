@@ -15,115 +15,46 @@ Refer to `test_worker.py` and `test_metrics.py` for usage and test coverage.
 """
 
 import logging
-import os
-import time
 
-import psutil
-from gunicorn.workers.sync import SyncWorker
-
-from .metrics import (
-    WORKER_CPU,
-    WORKER_ERROR_HANDLING,
-    WORKER_FAILED_REQUESTS,
-    WORKER_MEMORY,
-    WORKER_REQUEST_DURATION,
-    WORKER_REQUESTS,
-    WORKER_STATE,
-    WORKER_UPTIME,
-)
+from .workers.registry import registry
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class PrometheusWorker(SyncWorker):
-    """Gunicorn worker that exports Prometheus metrics."""
+def worker_class(server):
+    """Return the appropriate worker class based on the server configuration."""
+    return registry.get_worker_class(server.cfg.worker_class)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.start_time = time.time()
-        self.worker_id = os.getpid()
-        self.process = psutil.Process()
-        logger.info("PrometheusWorker initialized")
 
-    def init_process(self):
-        """Initialize the worker process."""
-        logger.info("Initializing worker process")
-        super().init_process()
-        logger.info("Worker process initialized")
+# # Lifecycle hooks (no changes, but can be extended if needed)
+## TODO: Explore these hooks and see if we can use them to update metrics
+# def on_starting(server):
+#     pass
 
-    def update_worker_metrics(self):
-        """Update worker metrics."""
-        try:
-            WORKER_MEMORY.set(
-                self.process.memory_info().rss,
-                worker_id=self.worker_id,
-            )
-            WORKER_CPU.set(
-                self.process.cpu_percent(),
-                worker_id=self.worker_id,
-            )
-            WORKER_UPTIME.set(
-                time.time() - self.start_time,
-                worker_id=self.worker_id,
-            )
-        except Exception as e:
-            logger.error(f"Error updating worker metrics: {e}")
+# def post_fork(server, worker):
+#     pass
 
-    def handle_request(self, listener, req, client, addr):
-        """Handle a request and update metrics."""
-        start_time = time.time()
-        try:
-            self.update_worker_metrics()
-            resp = super().handle_request(listener, req, client, addr)
-            duration = time.time() - start_time
+# def worker_int(worker):
+#     pass
 
-            WORKER_REQUESTS.inc(worker_id=self.worker_id)
-            WORKER_REQUEST_DURATION.observe(duration, worker_id=self.worker_id)
+# def worker_abort(worker):
+#     pass
 
-            return resp
-        except Exception as e:
-            WORKER_FAILED_REQUESTS.inc(
-                worker_id=self.worker_id,
-                method=req.method,
-                endpoint=req.path,
-                error_type=type(e).__name__,
-            )
-            logger.error(f"Error handling request: {e}")
-            raise
+# def post_worker_init(worker):
+#     pass
 
-    def handle_error(self, req, client, addr, einfo):
-        """Handle error."""
-        error_type = (
-            type(einfo).__name__ if isinstance(einfo, BaseException) else str(einfo)
-        )
-        WORKER_ERROR_HANDLING.inc(
-            worker_id=self.worker_id,
-            method=req.method,
-            endpoint=req.path,
-            error_type=error_type,
-        )
-        logger.info("Handling error")
-        super().handle_error(req, client, addr, einfo)
+# def pre_request(worker, req):
+#     pass
 
-    def handle_quit(self, sig, frame):
-        """Handle quit signal."""
-        logger.info("Received quit signal")
-        WORKER_STATE.set(
-            1,
-            worker_id=self.worker_id,
-            state="quit",
-            timestamp=str(time.time()),
-        )
-        super().handle_quit(sig, frame)
+# def post_request(worker, req, environ, resp):
+#     pass
 
-    def handle_abort(self, sig, frame):
-        """Handle abort signal."""
-        logger.info("Handling abort signal")
-        WORKER_STATE.set(
-            1,
-            worker_id=self.worker_id,
-            state="abort",
-            timestamp=str(time.time()),
-        )
-        super().handle_abort(sig, frame)
+# def when_ready(server):
+#     pass
+
+# def worker_exit(server, worker):
+#     pass
+
+# def on_exit(server):
+#     pass
