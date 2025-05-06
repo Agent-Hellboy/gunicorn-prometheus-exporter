@@ -11,14 +11,13 @@ This configuration:
 import logging
 import os
 
-import gunicorn.arbiter
 from prometheus_client import CollectorRegistry, multiprocess, start_http_server
 
 
 # —————————————————————————————————————————————————————————————————————————————
 # Hook to start a multiprocess‐aware Prometheus metrics server when Gunicorn is ready
 # —————————————————————————————————————————————————————————————————————————————
-def when_ready(server):
+def when_ready(server):  # noqa: D103
     mp_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
     if not mp_dir:
         logging.warning("PROMETHEUS_MULTIPROC_DIR not set; skipping metrics server")
@@ -40,11 +39,13 @@ def when_ready(server):
 # —————————————————————————————————————————————————————————————————————————————
 # Hook to mark dead workers so their metric files get merged & cleaned up
 # —————————————————————————————————————————————————————————————————————————————
-def child_exit(server, worker):
+def child_exit(server, worker):  # noqa: D103
     try:
         multiprocess.mark_process_dead(worker.pid)
     except Exception:
-        logging.exception(f"Failed to mark process {worker.pid} dead in multiprocess collector")
+        logging.exception(
+            f"Failed to mark process {worker.pid} dead in multiprocess collector"
+        )
 
 
 # —————————————————————————————————————————————————————————————————————————————
