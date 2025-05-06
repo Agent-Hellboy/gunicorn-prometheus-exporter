@@ -1,7 +1,7 @@
 [project]
 name = "gunicorn-prometheus-exporter"
-version = "0.1.0"
-description = "A Prometheus metrics exporter for Gunicorn"
+version = "0.1.1"
+description = "A Gunicorn worker plugin that exports Prometheus metrics"
 readme = "README.md"
 authors = [
     {name = "Prince Roshan", email = "princekrroshan01@gmail.com"}
@@ -11,19 +11,18 @@ license-files = ["LICENSE"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    # License classifier removed per Flit requirements
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Monitoring",
 ]
 requires-python = ">=3.8"
 dependencies = [
-    "prometheus-client>=0.20.0",
-    "psutil>=5.9.8",
+    "prometheus-client>=0.17.0",
+    "psutil>=5.9.0",
     "gunicorn>=21.2.0",
 ]
 
@@ -41,10 +40,13 @@ dev = [
     "isort>=5.0.0",
     "flake8>=4.0.0",
 ]
+gevent = ["gevent>=23.7.0"]
+eventlet = ["eventlet>=0.33.3"]
+tornado = ["tornado>=6.3.3"]
 
 [build-system]
-requires = ["flit_core>=3.7,<4", "wheel"]
-build-backend = "flit_core.buildapi"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
@@ -73,4 +75,7 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
 python_classes = "Test*"
-addopts = "--cov=gunicorn_prometheus_exporter --cov-report=term-missing"
+addopts = "-v --maxfail=5 --disable-warnings"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gunicorn_prometheus_exporter"]

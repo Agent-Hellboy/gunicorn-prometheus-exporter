@@ -8,8 +8,11 @@ from typing import Dict, Optional, Type
 
 from gunicorn.workers.sync import SyncWorker
 
+from .eventlet import EVENTLET_AVAILABLE, PrometheusEventletWorker
 from .gevent import GEVENT_AVAILABLE, PrometheusGeventWorker
 from .sync import PrometheusSyncWorker
+from .thread import THREAD_AVAILABLE, PrometheusThreadWorker
+from .tornado import TORNADO_AVAILABLE, PrometheusTornadoWorker
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +28,15 @@ class WorkerRegistry:
 
         if GEVENT_AVAILABLE:
             self._workers["gevent"] = PrometheusGeventWorker
+
+        if EVENTLET_AVAILABLE:
+            self._workers["eventlet"] = PrometheusEventletWorker
+
+        if THREAD_AVAILABLE:
+            self._workers["thread"] = PrometheusThreadWorker
+
+        if TORNADO_AVAILABLE:
+            self._workers["tornado"] = PrometheusTornadoWorker
 
     def get_worker_class(self, worker_class_name: str) -> Optional[Type[SyncWorker]]:
         """Get a worker class by name.
@@ -42,6 +54,21 @@ class WorkerRegistry:
                 logger.error(
                     "GeventWorker requested but gevent is not installed. "
                     "Please install gevent to use GeventWorker."
+                )
+            elif worker_class_name == "eventlet" and not EVENTLET_AVAILABLE:
+                logger.error(
+                    "EventletWorker requested but eventlet is not installed. "
+                    "Please install eventlet to use EventletWorker."
+                )
+            elif worker_class_name == "thread" and not THREAD_AVAILABLE:
+                logger.error(
+                    "ThreadWorker requested but threading is not available. "
+                    "Please check your Python installation."
+                )
+            elif worker_class_name == "tornado" and not TORNADO_AVAILABLE:
+                logger.error(
+                    "TornadoWorker requested but tornado is not installed. "
+                    "Please install tornado to use TornadoWorker."
                 )
             return PrometheusSyncWorker
         return worker_class

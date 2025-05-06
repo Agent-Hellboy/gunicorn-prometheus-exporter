@@ -1,6 +1,7 @@
 """
 Sync worker implementation for Gunicorn Prometheus Exporter.
-This module provides the sync worker implementation that inherits from the base worker.
+This module provides the sync worker implementation
+that inherits from the base worker.
 """
 
 from gunicorn.workers.sync import SyncWorker

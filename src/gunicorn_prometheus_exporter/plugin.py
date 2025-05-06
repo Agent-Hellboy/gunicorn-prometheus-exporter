@@ -27,8 +27,7 @@ def worker_class(server):
     return registry.get_worker_class(server.cfg.worker_class)
 
 
-# # Lifecycle hooks (no changes, but can be extended if needed)
-## TODO: Explore these hooks and see if we can use them to update metrics
+# TODO: Explore these hooks
 # def on_starting(server):
 #     pass
 

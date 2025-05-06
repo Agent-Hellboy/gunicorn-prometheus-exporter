@@ -1,0 +1,31 @@
+repos:
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (python)
+        args: ["--profile", "black", "--filter-files"]
+
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+        language_version: python3
+        args: ["--line-length", "88"]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-docstrings>=1.6.0
+          - flake8-import-order>=0.18.1
+          - flake8-quotes>=3.3.1
+        args:
+          # keep your 88-char limit and E203 ignore,
+          # then add the codes for docstring, quote, import-order, comment, etc.
+          - --max-line-length=88
+          - --extend-ignore=E203,D205,D400,Q000,I101,E266
+          # and if you prefer doubles instead of singles:
+          - --inline-quotes=double
+          - --multiline-quotes=double
