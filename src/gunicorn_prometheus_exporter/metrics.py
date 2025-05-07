@@ -1,9 +1,8 @@
-"""
-Prometheus metrics for Gunicorn Prometheus Exporter.
-"""
+"""Prometheus metrics for Gunicorn Prometheus Exporter."""
 
-import glob
+import logging
 import os
+import shutil
 from abc import ABCMeta
 from typing import Dict, List, Optional, Type, Union
 
@@ -17,11 +16,18 @@ if not os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
 
 # Create and clean directory
 try:
-    os.makedirs(DEFAULT_PROM_DIR, exist_ok=True)
-    for f in glob.glob(f"{DEFAULT_PROM_DIR}/*"):
-        os.remove(f)
+    # Only clean if we're the master process (pid == ppid)
+    if os.getpid() == os.getppid():
+        if os.path.exists(DEFAULT_PROM_DIR):
+            shutil.rmtree(DEFAULT_PROM_DIR)
+        # Create fresh directory
+        os.makedirs(DEFAULT_PROM_DIR, mode=0o755, exist_ok=True)
+    else:
+        # For worker processes, just ensure directory exists
+        os.makedirs(DEFAULT_PROM_DIR, mode=0o755, exist_ok=True)
 except Exception as e:
-    print(f"Warning: Failed to prepare PROMETHEUS_MULTIPROC_DIR: {e}")
+    logging.error("Failed to prepare PROMETHEUS_MULTIPROC_DIR: %s", e)
+    raise
 
 # Prometheus Registry
 registry = CollectorRegistry()
@@ -100,22 +106,27 @@ class BaseMetric(metaclass=MetricMeta):
 
     @classmethod
     def inc(cls, **labels):
+        """Increment the metric."""
         return cls._metric.labels(**labels).inc()
 
     @classmethod
     def dec(cls, **labels):
+        """Decrement the metric."""
         return cls._metric.labels(**labels).dec()
 
     @classmethod
     def set(cls, value, **labels):
+        """Set the metric value."""
         return cls._metric.labels(**labels).set(value)
 
     @classmethod
     def observe(cls, value, **labels):
+        """Observe a value for the metric."""
         return cls._metric.labels(**labels).observe(value)
 
     @classmethod
     def describe(cls):
+        """Describe the metric."""
         return {
             "name": cls._metric._name,
             "documentation": cls._metric._documentation,
@@ -125,6 +136,7 @@ class BaseMetric(metaclass=MetricMeta):
 
     @classmethod
     def clear(cls):
+        """Clear all metric values."""
         cls._metric._metrics.clear()
 
 
