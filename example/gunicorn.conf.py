@@ -56,8 +56,11 @@ workers = 2
 threads = 1
 timeout = 30
 keepalive = 2
+max_requests = 1000  # Restart worker after this many requests
+max_requests_jitter = 50  # Add randomness to max_requests
+worker_memory_limit = 512  # MB
 
-worker_class = "gunicorn_prometheus_exporter.plugin.PrometheusWorker"
+worker_class = "gunicorn_prometheus_exporter.workers.sync.PrometheusSyncWorker"
 
 # Logging
 accesslog = "-"
