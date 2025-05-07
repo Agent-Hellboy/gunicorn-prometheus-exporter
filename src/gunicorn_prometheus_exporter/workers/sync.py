@@ -10,6 +10,11 @@ from .base import PrometheusMetricsMixin
 
 
 class PrometheusSyncWorker(PrometheusMetricsMixin, SyncWorker):
-    """Sync worker implementation with Prometheus metrics support."""
+    """Sync worker implementation with Prometheus metrics support.
+
+    This class combines the Prometheus metrics collection with Gunicorn's sync worker.
+    The actual worker implementation is delegated to SyncWorker, while metrics
+    collection is handled by PrometheusMetricsMixin.
+    """
 
     pass

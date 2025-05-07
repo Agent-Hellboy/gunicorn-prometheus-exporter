@@ -25,7 +25,7 @@ repos:
           # keep your 88-char limit and E203 ignore,
           # then add the codes for docstring, quote, import-order, comment, etc.
           - --max-line-length=88
-          - --extend-ignore=E203,D205,D400,Q000,E266
+          - --extend-ignore=E203,D205,D400,Q000,E266,I100,I101,I201
           # and if you prefer doubles instead of singles:
           - --inline-quotes=double
           - --multiline-quotes=double
