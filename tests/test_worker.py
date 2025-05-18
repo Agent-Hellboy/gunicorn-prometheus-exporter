@@ -232,9 +232,8 @@ def test_clear_old_metrics(worker):
     WORKER_MEMORY.set(1000, worker_id=old_worker_id)
 
     # Add some new format metrics
-    new_worker_id = f"worker_{worker.age}_{int(worker.start_time)}"
-    WORKER_REQUESTS.inc(worker_id=new_worker_id)
-    WORKER_MEMORY.set(2000, worker_id=new_worker_id)
+    WORKER_REQUESTS.inc(worker_id=worker.worker_id)
+    WORKER_MEMORY.set(2000, worker_id=worker.worker_id)
 
     # Clear old metrics
     worker._clear_old_metrics()
@@ -242,8 +241,8 @@ def test_clear_old_metrics(worker):
     # Check that old metrics are gone but new ones remain
     samples = list(WORKER_REQUESTS.collect())
     assert len(samples) == 1
-    assert samples[0].samples[0].labels["worker_id"] == new_worker_id
+    assert samples[0].samples[0].labels["worker_id"] == str(worker.worker_id)
 
     samples = list(WORKER_MEMORY.collect())
     assert len(samples) == 1
-    assert samples[0].samples[0].labels["worker_id"] == new_worker_id
+    assert samples[0].samples[0].labels["worker_id"] == str(worker.worker_id)
