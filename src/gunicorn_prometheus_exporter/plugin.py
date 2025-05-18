@@ -40,10 +40,10 @@ class PrometheusWorker(SyncWorker):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.start_time = time.time()
+        self.start_time = int(time.time())
         # Create a unique worker ID using worker age and timestamp
         # Format: worker_<age>_<timestamp>
-        self.worker_id = f"worker_{self.age}_{int(self.start_time)}"
+        self.worker_id = f"worker_{self.age}_{self.start_time}"
         self.process = psutil.Process()
         logger.info(f"PrometheusWorker initialized with ID: {self.worker_id}")
 
