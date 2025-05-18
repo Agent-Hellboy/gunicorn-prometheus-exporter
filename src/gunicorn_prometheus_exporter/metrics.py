@@ -83,17 +83,17 @@ class BaseMetric(metaclass=MetricMeta):
         """Get metric samples."""
         return cls._metric._samples()
 
-    @property
+    @classmethod
     def _name(cls):
         """Get metric name."""
         return cls._metric._name
 
-    @property
+    @classmethod
     def _documentation(cls):
         """Get metric documentation."""
         return cls._metric._documentation
 
-    @property
+    @classmethod
     def _labelnames(cls):
         """Get metric label names."""
         return cls._metric._labelnames

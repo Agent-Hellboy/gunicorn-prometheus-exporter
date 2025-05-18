@@ -45,18 +45,65 @@ gunicorn --config gunicorn.conf.py your_app:app
 
 ### Worker Metrics
 
+Each worker is identified by a unique worker ID in the format `worker_<age>_<timestamp>`. This ensures:
+- Unique identification across worker restarts
+- Easy tracking of worker lifecycle
+- Consistent metrics across worker replacements
+
+Available worker metrics:
+
 - `gunicorn_worker_requests`: Total number of requests handled by each worker
+  - Labels: `worker_id` (format: `worker_<age>_<timestamp>`)
 - `gunicorn_worker_request_duration_seconds`: Request duration in seconds
+  - Labels: `worker_id`
+  - Buckets: 0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, +Inf
 - `gunicorn_worker_memory_bytes`: Memory usage of each worker process
+  - Labels: `worker_id`
 - `gunicorn_worker_cpu_percent`: CPU usage of each worker process
+  - Labels: `worker_id`
 - `gunicorn_worker_uptime_seconds`: Uptime of each worker process
-- `gunicorn_worker_failed_requests`: Total number of failed requests with method, endpoint, and error type
-- `gunicorn_worker_error_handling`: Total number of errors handled with method, endpoint, and error type
-- `gunicorn_worker_state`: Current state of the worker (running, quit, abort)
+  - Labels: `worker_id`
+- `gunicorn_worker_failed_requests`: Total number of failed requests
+  - Labels: `worker_id`, `method`, `endpoint`, `error_type`
+- `gunicorn_worker_error_handling`: Total number of errors handled
+  - Labels: `worker_id`, `method`, `endpoint`, `error_type`
+- `gunicorn_worker_state`: Current state of the worker
+  - Labels: `worker_id`, `state`, `timestamp`
+  - Values: 1 (running), 0 (stopped)
+
+### Example PromQL Queries
+
+Here are some useful PromQL queries for monitoring your Gunicorn workers:
+
+```promql
+# Current active workers and their uptime
+gunicorn_worker_uptime_seconds{worker_id=~"worker_.*"}
+
+# Worker memory usage (in MB)
+gunicorn_worker_memory_bytes{worker_id=~"worker_.*"} / 1024 / 1024
+
+# Request rate per worker (requests per second)
+rate(gunicorn_worker_requests{worker_id=~"worker_.*"}[5m])
+
+# Average request duration per worker
+rate(gunicorn_worker_request_duration_seconds_sum{worker_id=~"worker_.*"}[5m]) 
+/ 
+rate(gunicorn_worker_request_duration_seconds_count{worker_id=~"worker_.*"}[5m])
+
+# Error rate per worker
+rate(gunicorn_worker_failed_requests{worker_id=~"worker_.*"}[5m])
+
+# CPU usage per worker
+gunicorn_worker_cpu_percent{worker_id=~"worker_.*"}
+
+# Worker state changes
+changes(gunicorn_worker_state{worker_id=~"worker_.*"}[5m])
+```
 
 ### Master Process Metrics
 
-- `gunicorn_master_worker_restart_total`: Total number of worker restarts with reason
+- `gunicorn_master_worker_restart_total`: Total number of worker restarts
+  - Labels: `reason` (e.g., "restart", "timeout", "error")
 
 To enable master process metrics, use the PrometheusMaster class:
 
@@ -72,18 +119,39 @@ from gunicorn_prometheus_exporter.plugin import PrometheusMaster
 gunicorn.arbiter.Arbiter = PrometheusMaster
 ```
 
+## Configuration
 
-## Development
+### Prometheus UI Setup
 
-```bash
-# Install dependencies
-pip install -e ".[dev]"
+To visualize the metrics using Prometheus UI:
 
-# Run tests
-pytest
+1. Create a `prometheus.yml` configuration file:
+```yaml
+global:
+  scrape_interval: 15s
+
+# Scrape our example exporter
+scrape_configs:
+  - job_name: 'gunicorn-prometheus-exporter'         
+    metrics_path: '/metrics'       
+    static_configs:
+      - targets: ['127.0.0.1:9090'] # our example exporter
 ```
 
-## Configuration
+2. Run Prometheus using Docker:
+```bash
+docker run -d \
+  --name prometheus \
+  --network host \
+  -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
+  prom/prometheus
+```
+
+3. Access Prometheus UI at `http://localhost:9090` to:
+   - View metrics in the Graph interface
+   - Use PromQL queries to analyze worker performance
+   - Create graphs and dashboards
+   - Set up alerts based on metric thresholds
 
 ### Gunicorn Configuration
 
@@ -126,8 +194,6 @@ The exporter supports the following configuration options:
 
 - `PROMETHEUS_MULTIPROC_DIR`: Directory for multiprocess metrics (default: `/tmp/prometheus`)
 - `PROMETHEUS_METRICS_PORT`: Port for metrics endpoint (default: 8000)
-
-
 
 ## License
 

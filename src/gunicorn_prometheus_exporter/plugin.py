@@ -15,7 +15,6 @@ Refer to `test_worker.py` and `test_metrics.py` for usage and test coverage.
 """
 
 import logging
-import os
 import time
 
 import psutil
@@ -42,15 +41,41 @@ class PrometheusWorker(SyncWorker):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.start_time = time.time()
-        self.worker_id = os.getpid()
+        # Create a unique worker ID using worker age and timestamp
+        # Format: worker_<age>_<timestamp>
+        self.worker_id = f"worker_{self.age}_{int(self.start_time)}"
         self.process = psutil.Process()
-        logger.info("PrometheusWorker initialized")
+        logger.info(f"PrometheusWorker initialized with ID: {self.worker_id}")
 
-    def init_process(self):
-        """Initialize the worker process."""
-        logger.info("Initializing worker process")
-        super().init_process()
-        logger.info("Worker process initialized")
+    def _clear_old_metrics(self):
+        """Clear only the old PID‐based worker samples."""
+        for MetricClass in [
+            WORKER_REQUESTS,
+            WORKER_REQUEST_DURATION,
+            WORKER_MEMORY,
+            WORKER_CPU,
+            WORKER_UPTIME,
+            WORKER_FAILED_REQUESTS,
+            WORKER_ERROR_HANDLING,
+            WORKER_STATE,
+        ]:
+            metric = MetricClass._metric
+            labelnames = list(metric._labelnames)
+
+            # 1) Collect the old label‐tuples to delete
+            to_delete = []
+            for label_values in list(metric._metrics.keys()):
+                try:
+                    wid = label_values[labelnames.index("worker_id")]
+                except ValueError:
+                    continue
+
+                if not isinstance(wid, str) or not wid.startswith("worker_"):
+                    to_delete.append(label_values)
+
+            # 2) Remove them from the internal store
+            for key in to_delete:
+                metric._metrics.pop(key, None)
 
     def update_worker_metrics(self):
         """Update worker metrics."""

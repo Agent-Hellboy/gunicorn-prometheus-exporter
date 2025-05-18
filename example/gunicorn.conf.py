@@ -8,11 +8,12 @@ This configuration:
 - Exports metrics on port 9090 at /metrics endpoint, aggregating across all workers
 """
 
-import os
 import logging
+import os
 
 import gunicorn.arbiter
-from prometheus_client import start_http_server, CollectorRegistry, multiprocess
+from prometheus_client import CollectorRegistry, multiprocess, start_http_server
+
 
 # —————————————————————————————————————————————————————————————————————————————
 # Hook to start a multiprocess‐aware Prometheus metrics server when Gunicorn is ready
@@ -23,7 +24,7 @@ def when_ready(server):
         logging.warning("PROMETHEUS_MULTIPROC_DIR not set; skipping metrics server")
         return
 
-    port = int(os.environ.get("PROMETHEUS_METRICS_PORT", 9090))
+    port = int(os.environ.get("PROMETHEUS_METRICS_PORT", 9091))
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     logger.info(f"Starting Prometheus multiprocess metrics server on :{port}")
