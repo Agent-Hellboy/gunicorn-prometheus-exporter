@@ -22,7 +22,7 @@ chmod 777 /tmp/metrics_test
 
 # 2) Set env vars
 export PROMETHEUS_MULTIPROC_DIR=/tmp/metrics_test
-export PROMETHEUS_METRICS_PORT=9090
+export PROMETHEUS_METRICS_PORT=9091
 
 # 3) Start Gunicorn (uses your gunicorn.conf.py)
 gunicorn --config gunicorn.conf.py app:app 
@@ -55,7 +55,7 @@ scrape_configs:
   - job_name: 'gunicorn-prometheus-exporter'         
     metrics_path: '/metrics'       
     static_configs:
-      - targets: ['127.0.0.1:9090'] # our example exporter
+      - targets: ['127.0.0.1:9091'] # our example exporter
 ```
 
 2. Run Prometheus using Docker:

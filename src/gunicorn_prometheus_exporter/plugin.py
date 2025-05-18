@@ -47,35 +47,35 @@ class PrometheusWorker(SyncWorker):
         self.process = psutil.Process()
         logger.info(f"PrometheusWorker initialized with ID: {self.worker_id}")
 
-    def init_process(self):
-        """Initialize the worker process."""
-        logger.info("Initializing worker process")
-        # Clear any old metrics with PID-based worker IDs
-        self._clear_old_metrics()
-        super().init_process()
-        logger.info("Worker process initialized")
-
     def _clear_old_metrics(self):
-        """Clear metrics with old PID-based worker IDs."""
-        try:
-            # Clear metrics for all workers that don't use the new format
-            for metric in [
-                WORKER_REQUESTS,
-                WORKER_REQUEST_DURATION,
-                WORKER_MEMORY,
-                WORKER_CPU,
-                WORKER_UPTIME,
-                WORKER_FAILED_REQUESTS,
-                WORKER_ERROR_HANDLING,
-                WORKER_STATE,
-            ]:
-                for sample in metric._samples():
-                    if not str(sample.labels.get("worker_id", "")).startswith(
-                        "worker_v2_"
-                    ):
-                        metric.remove(sample.labels)
-        except Exception as e:
-            logger.error(f"Error clearing old metrics: {e}")
+        """Clear only the old PID‐based worker samples."""
+        for MetricClass in [
+            WORKER_REQUESTS,
+            WORKER_REQUEST_DURATION,
+            WORKER_MEMORY,
+            WORKER_CPU,
+            WORKER_UPTIME,
+            WORKER_FAILED_REQUESTS,
+            WORKER_ERROR_HANDLING,
+            WORKER_STATE,
+        ]:
+            metric = MetricClass._metric
+            labelnames = list(metric._labelnames)
+
+            # 1) Collect the old label‐tuples to delete
+            to_delete = []
+            for label_values in list(metric._metrics.keys()):
+                try:
+                    wid = label_values[labelnames.index("worker_id")]
+                except ValueError:
+                    continue
+
+                if not isinstance(wid, str) or not wid.startswith("worker_"):
+                    to_delete.append(label_values)
+
+            # 2) Remove them from the internal store
+            for key in to_delete:
+                metric._metrics.pop(key, None)
 
     def update_worker_metrics(self):
         """Update worker metrics."""
