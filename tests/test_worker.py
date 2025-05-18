@@ -44,7 +44,10 @@ def worker():
 
 def test_worker_initialization(worker):
     """Test that worker initializes correctly."""
-    assert worker.worker_id == os.getpid()
+    assert worker.worker_id.startswith("worker_")
+    assert worker.worker_id.count("_") == 2  # Format: worker_<age>_<timestamp>
+    assert worker.worker_id.split("_")[1].isdigit()  # age is a number
+    assert worker.worker_id.split("_")[2].isdigit()  # timestamp is a number
     assert worker.process is not None
     assert worker.start_time > 0
 
@@ -219,3 +222,28 @@ def test_worker_state(worker):
         assert float(abort_sample.labels["timestamp"]) == pytest.approx(
             time.time(), rel=1e-3
         )
+
+
+def test_clear_old_metrics(worker):
+    """Test that old metrics are cleared properly."""
+    # Add some old format metrics
+    old_worker_id = "12345"
+    WORKER_REQUESTS.inc(worker_id=old_worker_id)
+    WORKER_MEMORY.set(1000, worker_id=old_worker_id)
+
+    # Add some new format metrics
+    new_worker_id = f"worker_{worker.age}_{int(worker.start_time)}"
+    WORKER_REQUESTS.inc(worker_id=new_worker_id)
+    WORKER_MEMORY.set(2000, worker_id=new_worker_id)
+
+    # Clear old metrics
+    worker._clear_old_metrics()
+
+    # Check that old metrics are gone but new ones remain
+    samples = list(WORKER_REQUESTS.collect())
+    assert len(samples) == 1
+    assert samples[0].samples[0].labels["worker_id"] == new_worker_id
+
+    samples = list(WORKER_MEMORY.collect())
+    assert len(samples) == 1
+    assert samples[0].samples[0].labels["worker_id"] == new_worker_id

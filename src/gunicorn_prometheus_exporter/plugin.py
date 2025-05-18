@@ -15,7 +15,6 @@ Refer to `test_worker.py` and `test_metrics.py` for usage and test coverage.
 """
 
 import logging
-import os
 import time
 
 import psutil
@@ -42,15 +41,41 @@ class PrometheusWorker(SyncWorker):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.start_time = time.time()
-        self.worker_id = os.getpid()
+        # Create a unique worker ID using worker age and timestamp
+        # Format: worker_<age>_<timestamp>
+        self.worker_id = f"worker_{self.age}_{int(self.start_time)}"
         self.process = psutil.Process()
-        logger.info("PrometheusWorker initialized")
+        logger.info(f"PrometheusWorker initialized with ID: {self.worker_id}")
 
     def init_process(self):
         """Initialize the worker process."""
         logger.info("Initializing worker process")
+        # Clear any old metrics with PID-based worker IDs
+        self._clear_old_metrics()
         super().init_process()
         logger.info("Worker process initialized")
+
+    def _clear_old_metrics(self):
+        """Clear metrics with old PID-based worker IDs."""
+        try:
+            # Clear metrics for all workers that don't use the new format
+            for metric in [
+                WORKER_REQUESTS,
+                WORKER_REQUEST_DURATION,
+                WORKER_MEMORY,
+                WORKER_CPU,
+                WORKER_UPTIME,
+                WORKER_FAILED_REQUESTS,
+                WORKER_ERROR_HANDLING,
+                WORKER_STATE,
+            ]:
+                for sample in metric._samples():
+                    if not str(sample.labels.get("worker_id", "")).startswith(
+                        "worker_v2_"
+                    ):
+                        metric.remove(sample.labels)
+        except Exception as e:
+            logger.error(f"Error clearing old metrics: {e}")
 
     def update_worker_metrics(self):
         """Update worker metrics."""

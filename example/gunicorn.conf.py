@@ -8,11 +8,12 @@ This configuration:
 - Exports metrics on port 9090 at /metrics endpoint, aggregating across all workers
 """
 
-import os
 import logging
+import os
 
 import gunicorn.arbiter
-from prometheus_client import start_http_server, CollectorRegistry, multiprocess
+from prometheus_client import CollectorRegistry, multiprocess, start_http_server
+
 
 # —————————————————————————————————————————————————————————————————————————————
 # Hook to start a multiprocess‐aware Prometheus metrics server when Gunicorn is ready
