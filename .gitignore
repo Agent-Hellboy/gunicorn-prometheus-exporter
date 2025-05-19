@@ -8,7 +8,7 @@ trace.json
 
 # C extensions
 *.so
-example*
+
 # Distribution / packaging
 .Python
 build/

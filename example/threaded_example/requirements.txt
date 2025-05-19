@@ -1,0 +1,4 @@
+flask>=2.0.0
+gunicorn>=20.1.0
+prometheus-client>=0.12.0
+-e ../../  # Install the local package in editable mode 
