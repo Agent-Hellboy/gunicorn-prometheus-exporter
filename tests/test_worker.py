@@ -112,7 +112,8 @@ def test_error_handling(worker):
 
         # Find the sample with matching labels
         sample = next(
-            s for s in samples[0].samples
+            s
+            for s in samples[0].samples
             if s.labels.get("method") == "GET"
             and s.labels.get("endpoint") == "/test"
             and s.labels.get("error_type") == "ValueError"
@@ -182,7 +183,8 @@ def test_handle_error(worker):
 
         # Find the sample with matching labels
         sample = next(
-            s for s in samples[0].samples
+            s
+            for s in samples[0].samples
             if s.labels.get("method") == "GET"
             and s.labels.get("endpoint") == "/test"
             and s.labels.get("error_type") == "InvalidRequestLine"
