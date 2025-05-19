@@ -224,7 +224,7 @@ def test_worker_state(worker):
         )
 
 
-## TODO: This is a bit of a hack, we should find a better way to test this.
+# TODO: This is a bit of a hack, we should find a better way to test this.
 def test_clear_old_metrics(worker):
     """Test that old metrics are cleared properly."""
     # Add some old format metrics
