@@ -55,7 +55,7 @@ def test_master_hup(master):
 
         # Metric check
         samples = list(MASTER_WORKER_RESTARTS.collect())[0].samples
-        matched = [s for s in samples if s.labels.get("reason") == "restart"]
+        matched = [s for s in samples if s.labels.get("reason") == "hup"]
         assert matched
         assert matched[0].value >= 1.0
 
