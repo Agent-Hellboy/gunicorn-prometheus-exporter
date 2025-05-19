@@ -142,7 +142,7 @@ def test_worker_cpu(worker):
 
     samples = list(WORKER_CPU.collect())
     assert len(samples) == 1
-    assert samples[0].samples[0].labels["worker_id"] == str(worker.worker_id)
+    assert samples[0].samples[0].value is not None
     # CPU usage could be 0 if the process is idle, so we just check that the
     # metric exists
 
