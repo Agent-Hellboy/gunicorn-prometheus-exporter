@@ -11,7 +11,6 @@ This configuration:
 import logging
 import os
 
-import gunicorn.arbiter
 from prometheus_client import CollectorRegistry, multiprocess, start_http_server
 
 
@@ -58,7 +57,7 @@ threads = 1
 timeout = 30
 keepalive = 2
 
-worker_class = "gunicorn_prometheus_exporter.plugin.PrometheusWorker"
+worker_class = "gunicorn_prometheus_exporter.plugin.PrometheusGeventWorker"
 
 # Logging
 accesslog = "-"

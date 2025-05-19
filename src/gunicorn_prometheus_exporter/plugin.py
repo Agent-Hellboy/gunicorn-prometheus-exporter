@@ -20,6 +20,11 @@ import time
 import psutil
 from gunicorn.workers.sync import SyncWorker
 
+try:
+    from gunicorn.workers.ggevent import GeventWorker
+except ImportError:
+    GeventWorker = None
+
 from .metrics import (
     WORKER_CPU,
     WORKER_ERROR_HANDLING,
@@ -152,3 +157,52 @@ class PrometheusWorker(SyncWorker):
             timestamp=str(time.time()),
         )
         super().handle_abort(sig, frame)
+
+
+class PrometheusGeventWorker(GeventWorker if GeventWorker else object):
+    """Gunicorn gevent worker that exports Prometheus metrics."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.start_time = time.time()
+        self.worker_id = f"worker_{self.age}_{int(self.start_time)}"
+        self.process = psutil.Process()
+        logger.info(f"PrometheusGeventWorker initialized with ID: {self.worker_id}")
+
+    def update_worker_metrics(self):
+        try:
+            WORKER_MEMORY.set(
+                self.process.memory_info().rss,
+                worker_id=self.worker_id,
+            )
+            WORKER_CPU.set(
+                self.process.cpu_percent(),
+                worker_id=self.worker_id,
+            )
+            WORKER_UPTIME.set(
+                time.time() - self.start_time,
+                worker_id=self.worker_id,
+            )
+        except Exception as e:
+            logger.error(f"Error updating worker metrics: {e}")
+
+    def handle_request(self, listener, req, client, addr):
+        start_time = time.time()
+        try:
+            self.update_worker_metrics()
+            resp = super().handle_request(listener, req, client, addr)
+            duration = time.time() - start_time
+
+            WORKER_REQUESTS.inc(worker_id=self.worker_id)
+            WORKER_REQUEST_DURATION.observe(duration, worker_id=self.worker_id)
+
+            return resp
+        except Exception as e:
+            WORKER_FAILED_REQUESTS.inc(
+                worker_id=self.worker_id,
+                method=getattr(req, "method", "UNKNOWN"),
+                endpoint=getattr(req, "path", "UNKNOWN"),
+                error_type=type(e).__name__,
+            )
+            logger.error(f"Error handling request: {e}")
+            raise
