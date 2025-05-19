@@ -242,12 +242,14 @@ def test_clear_old_metrics(worker):
     # Check that old metrics are gone but new ones remain
     samples = list(WORKER_REQUESTS.collect())
     assert len(samples) == 1
-    assert int(samples[0].samples[0].labels["worker_id"].split("_")[-1]) <= int(
-        worker.worker_id.split("_")[-1]
-    ) + 1
+    assert (
+        int(samples[0].samples[0].labels["worker_id"].split("_")[-1])
+        <= int(worker.worker_id.split("_")[-1]) + 1
+    )
 
     samples = list(WORKER_MEMORY.collect())
     assert len(samples) == 1
-    assert int(samples[0].samples[0].labels["worker_id"].split("_")[-1]) <= int(
-        worker.worker_id.split("_")[-1]
-    ) + 1
+    assert (
+        int(samples[0].samples[0].labels["worker_id"].split("_")[-1])
+        <= int(worker.worker_id.split("_")[-1]) + 1
+    )
