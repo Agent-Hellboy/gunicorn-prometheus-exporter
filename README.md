@@ -6,8 +6,7 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/gunicorn-prometheus-exporter.svg)](https://pypi.org/project/gunicorn-prometheus-exporter/)
 
-A Gunicorn worker plugin that exports Prometheus metrics for monitoring worker performance, including memory usage, CPU usage, request durations, and error tracking.
-
+A Gunicorn worker plugin that exports Prometheus metrics to monitor worker performance, including memory usage, CPU usage, request durations, and error tracking (try to replace https://docs.gunicorn.org/en/stable/instrumentation.html with extra info). It also aims to replace request-level tracking, such as the number of requests made to a particular endpoint, for any framework (e.g., Flask, Django, and others) that conforms to the WSGI specification.
 ## Features
 
 - Exports Prometheus metrics for Gunicorn workers
