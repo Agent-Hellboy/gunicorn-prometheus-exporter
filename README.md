@@ -157,7 +157,8 @@ docker run -d \
 Create a `gunicorn.conf.py` file with the following configuration:
 
 ```python
-from prometheus_client import start_http_server, CollectorRegistry, multiprocess
+from prometheus_client import start_http_server, multiprocess
+from gunicorn_prometheus_exporter.metrics import create_master_registry
 
 # ———————————————————————————————————————————————————————————————————————————————————
 # Hook to start a multiprocess‐aware Prometheus metrics server when Gunicorn is ready
@@ -168,12 +169,12 @@ def when_ready(server):
         logging.warning("PROMETHEUS_MULTIPROC_DIR not set; skipping metrics server")
         return
 
-    # Build a fresh registry that merges all worker files in PROMETHEUS_MULTIPROC_DIR
-    registry = CollectorRegistry()
-    multiprocess.MultiProcessCollector(registry)
+    # Use the master registry factory for reading and serving metrics
+    registry = create_master_registry()
 
     # Serve that registry on HTTP
     start_http_server(port, registry=registry)
+```
 
 
 # —————————————————————————————————————————————————————————————————————————————

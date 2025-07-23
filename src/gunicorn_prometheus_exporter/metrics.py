@@ -3,11 +3,16 @@ Prometheus metrics for Gunicorn Prometheus Exporter.
 """
 
 import glob
+import logging
 import os
 from abc import ABCMeta
 from typing import Dict, List, Optional, Type, Union
 
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, multiprocess
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # === Auto setup multiprocess mode ===
 DEFAULT_PROM_DIR = "/tmp/prometheus"
@@ -23,9 +28,38 @@ try:
 except Exception as e:
     print(f"Warning: Failed to prepare PROMETHEUS_MULTIPROC_DIR: {e}")
 
-# Prometheus Registry
-registry = CollectorRegistry()
-multiprocess.MultiProcessCollector(registry)
+def create_worker_registry():
+    """Create a registry for worker processes to write metrics to files.
+    
+    This registry is designed to be used by individual worker processes.
+    Each worker gets its own registry instance that writes metrics to
+    process-specific files in PROMETHEUS_MULTIPROC_DIR.
+    
+    Returns:
+        CollectorRegistry: A registry configured for multiprocess writing
+    """
+    registry = CollectorRegistry()
+    multiprocess.MultiProcessCollector(registry)
+    return registry
+
+
+def create_master_registry():
+    """Create a registry for master process to read and serve metrics.
+    
+    This registry is designed to be used by the master process only.
+    It reads and aggregates metrics from all worker files in
+    PROMETHEUS_MULTIPROC_DIR and serves them via HTTP.
+    
+    Returns:
+        CollectorRegistry: A registry configured for multiprocess reading
+    """
+    registry = CollectorRegistry()
+    multiprocess.MultiProcessCollector(registry)
+    return registry
+
+
+# Create the worker registry (used by worker processes)
+registry = create_worker_registry()
 
 
 class MetricMeta(ABCMeta):
