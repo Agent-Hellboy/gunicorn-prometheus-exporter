@@ -29,6 +29,7 @@ except Exception as e:
 # It will be created in the gunicorn config when needed
 registry = CollectorRegistry()
 
+
 class MetricMeta(ABCMeta):
     """Metaclass for automatically registering metrics with the registry."""
 
