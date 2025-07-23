@@ -34,20 +34,7 @@ pip install gunicorn-prometheus-exporter
 ### 2. Basic Usage
 
 Create a Gunicorn config file (`gunicorn.conf.py`):
-
-```python
-# Import the exporter early to patch Gunicorn
-import gunicorn_prometheus_exporter
-
-# Gunicorn configuration
-bind = "127.0.0.1:8080"
-workers = 2
-worker_class = "gunicorn_prometheus_exporter.plugin.PrometheusWorker"
-
-# Optional: Set metrics directory
-import os
-os.environ["PROMETHEUS_MULTIPROC_DIR"] = "/tmp/metrics"
-```
+See `./example/gunicorn.conf.py` for a complete working example.
 
 ### 3. Start Gunicorn
 
