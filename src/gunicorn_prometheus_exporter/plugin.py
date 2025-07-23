@@ -102,15 +102,15 @@ class PrometheusWorker(SyncWorker):
         start_time = time.time()
         try:
             # Only update metrics occasionally to avoid performance impact
-            if hasattr(self, '_request_count'):
+            if hasattr(self, "_request_count"):
                 self._request_count += 1
             else:
                 self._request_count = 1
-                
+
             # Update metrics every 10 requests
             if self._request_count % 10 == 0:
                 self.update_worker_metrics()
-                
+
             resp = super().handle_request(listener, req, client, addr)
             duration = time.time() - start_time
 
