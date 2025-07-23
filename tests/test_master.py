@@ -182,7 +182,6 @@ def test_signal_handler_super_calls(master):
         ) as mock_usr1, patch(
             "gunicorn.arbiter.Arbiter.handle_usr2"
         ) as mock_usr2:
-
             # Call all signal handlers
             master.handle_hup()
             master.handle_ttin()

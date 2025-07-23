@@ -14,10 +14,10 @@ class PrometheusMaster(Arbiter):
     def __init__(self, app):
         super().__init__(app)
         self.start_time = time.time()
-        
+
         # Set up multiprocess metrics for master process
         self._setup_master_metrics()
-        
+
         logger.info("PrometheusMaster initialized")
 
     def _setup_master_metrics(self):
@@ -30,9 +30,14 @@ class PrometheusMaster(Arbiter):
                 multiprocess.MultiProcessCollector._registry = None
                 multiprocess.MultiProcessCollector._pid = os.getpid()
                 multiprocess.MultiProcessCollector._mp_dir = mp_dir
-                logger.info(f"Master metrics configured for multiprocess directory: {mp_dir}")
+                logger.info(
+                    f"Master metrics configured for multiprocess directory: {mp_dir}"
+                )
             else:
-                logger.warning("PROMETHEUS_MULTIPROC_DIR not set, master metrics may not be exposed")
+                logger.warning(
+                    "PROMETHEUS_MULTIPROC_DIR not set, "
+                    "master metrics may not be exposed"
+                )
         except Exception as e:
             logger.error(f"Failed to set up master metrics: {e}")
 
