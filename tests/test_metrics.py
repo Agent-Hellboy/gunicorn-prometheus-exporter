@@ -106,8 +106,10 @@ def test_worker_failed_requests_metric():
 
 def test_multiprocess_dir_setup():
     """Test that PROMETHEUS_MULTIPROC_DIR is set."""
-    assert os.environ.get("PROMETHEUS_MULTIPROC_DIR") is not None
-    assert os.path.exists(os.environ["PROMETHEUS_MULTIPROC_DIR"])
+    from gunicorn_prometheus_exporter.config import config
+
+    assert config.prometheus_multiproc_dir is not None
+    assert os.path.exists(config.prometheus_multiproc_dir)
 
 
 def test_metric_registration():

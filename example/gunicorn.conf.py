@@ -29,8 +29,9 @@ def when_ready(server):
         logging.warning("PROMETHEUS_MULTIPROC_DIR not set; skipping metrics server")
         return
 
-    port = int(os.environ.get("PROMETHEUS_METRICS_PORT", 9091))
-    logging.basicConfig(level=logging.INFO)
+    # Use configuration for port and logging
+    port = config.prometheus_metrics_port
+    logging.basicConfig(level=getattr(logging, config.get_gunicorn_config().get('loglevel', 'INFO').upper()))
     logger = logging.getLogger(__name__)
     logger.info(f"Starting Prometheus multiprocess metrics server on :{port}")
 

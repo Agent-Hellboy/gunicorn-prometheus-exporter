@@ -6,12 +6,16 @@ import tempfile
 import pytest
 from prometheus_client import CollectorRegistry
 
+from gunicorn_prometheus_exporter.config import config
+
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_prometheus_multiproc_dir():
     """Set up the Prometheus multiprocess directory."""
     temp_dir = tempfile.mkdtemp()
     os.environ["PROMETHEUS_MULTIPROC_DIR"] = temp_dir
+    # Update config to use the test directory
+    config._setup_multiproc_dir()
     yield
     os.environ.pop("PROMETHEUS_MULTIPROC_DIR", None)
 

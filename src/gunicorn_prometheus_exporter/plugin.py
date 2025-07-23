@@ -20,6 +20,7 @@ import time
 import psutil
 from gunicorn.workers.sync import SyncWorker
 
+from .config import config
 from .metrics import (
     WORKER_CPU,
     WORKER_ERROR_HANDLING,
@@ -31,7 +32,14 @@ from .metrics import (
     WORKER_UPTIME,
 )
 
-logging.basicConfig(level=logging.INFO)
+# Use configuration for logging level - with fallback for testing
+try:
+    log_level = config.get_gunicorn_config().get("loglevel", "INFO").upper()
+    logging.basicConfig(level=getattr(logging, log_level))
+except Exception:
+    # Fallback for testing when config is not fully set up
+    logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 

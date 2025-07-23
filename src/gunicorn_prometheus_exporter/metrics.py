@@ -9,19 +9,18 @@ from typing import Dict, List, Optional, Type, Union
 
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
+# Import config early
+from .config import config
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # === Auto setup multiprocess mode ===
-DEFAULT_PROM_DIR = "/tmp/prometheus"
-
-if not os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
-    os.environ["PROMETHEUS_MULTIPROC_DIR"] = DEFAULT_PROM_DIR
 
 # Create and clean directory
 try:
-    os.makedirs(DEFAULT_PROM_DIR, exist_ok=True)
+    os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
 except Exception as e:
     print(f"Warning: Failed to prepare PROMETHEUS_MULTIPROC_DIR: {e}")
 

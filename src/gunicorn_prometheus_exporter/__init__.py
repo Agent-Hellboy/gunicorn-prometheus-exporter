@@ -74,6 +74,7 @@ THE SOLUTION:
 import gunicorn.app.base
 import gunicorn.arbiter
 
+from .config import config, get_config
 from .master import PrometheusMaster
 from .metrics import registry
 from .plugin import PrometheusWorker
@@ -123,4 +124,6 @@ __all__ = [
     "registry",
     "create_worker_registry",
     "create_master_registry",
+    "config",
+    "get_config",
 ]

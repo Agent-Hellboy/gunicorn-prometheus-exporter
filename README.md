@@ -212,6 +212,28 @@ gunicorn-prometheus-exporter/
 - Confirm `PrometheusMaster` is being used (check logs)
 - Verify signal handlers are properly overridden
 - Check that signals are being sent to master process
+### Configuration Management
+
+The exporter provides a centralized configuration system through `config.py`:
+
+```python
+from gunicorn_prometheus_exporter import config, get_config
+
+# Get configuration instance
+cfg = get_config()
+
+# Access configuration values
+print(f"Metrics port: {cfg.prometheus_metrics_port}")
+print(f"Workers: {cfg.gunicorn_workers}")
+print(f"Multiproc dir: {cfg.prometheus_multiproc_dir}")
+
+# Access configuration values directly
+print(f"Metrics port: {cfg.prometheus_metrics_port}")
+print(f"Workers: {cfg.gunicorn_workers}")
+print(f"Multiproc dir: {cfg.prometheus_multiproc_dir}")
+```
+
+### Environment Variables
 
 ### Debug Mode
 
@@ -220,6 +242,12 @@ gunicorn-prometheus-exporter/
 import logging
 logging.basicConfig(level=logging.DEBUG)
 ```
+- `PROMETHEUS_MULTIPROC_DIR`: Directory for multiprocess metrics (default: `/tmp/prometheus`)
+- `PROMETHEUS_METRICS_PORT`: Port for metrics endpoint (default: 9091)
+- `PROMETHEUS_BIND_ADDRESS`: Bind address for metrics server (default: `127.0.0.1`)
+- `GUNICORN_WORKERS`: Number of Gunicorn workers (default: 2)
+- `GUNICORN_TIMEOUT`: Worker timeout in seconds (default: 30)
+- `GUNICORN_KEEPALIVE`: Keepalive setting (default: 2)
 
 ## License
 
