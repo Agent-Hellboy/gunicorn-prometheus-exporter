@@ -18,7 +18,7 @@ from gunicorn_prometheus_exporter.utils import (
     ensure_multiprocess_dir,
     get_multiprocess_dir,
 )
-
+from gunicorn_prometheus_exporter.config import get_config
 
 # —————————————————————————————————————————————————————————————————————————————
 # Hook to start a multiprocess‐aware Prometheus metrics server when Gunicorn is ready
@@ -30,6 +30,7 @@ def when_ready(server):
         return
 
     # Use configuration for port and logging
+    config = get_config()
     port = config.prometheus_metrics_port
     logging.basicConfig(level=getattr(logging, config.get_gunicorn_config().get('loglevel', 'INFO').upper()))
     logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ def on_starting(server):
 # —————————————————————————————————————————————————————————————————————————————
 # Gunicorn configuration
 # —————————————————————————————————————————————————————————————————————————————
-bind = "127.0.0.1:8086"
+bind = "127.0.0.1:8087"
 workers = 2
 threads = 1
 timeout = 30
