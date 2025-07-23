@@ -13,6 +13,7 @@ import os
 
 import gunicorn.arbiter
 from prometheus_client import multiprocess, start_http_server
+
 from gunicorn_prometheus_exporter.metrics import create_master_registry
 
 
