@@ -96,7 +96,7 @@ def test_master_ttou(master):
 def test_master_chld(master):
     """Test that master CHLD is tracked."""
     with patch("os.fork", return_value=12345), patch("sys.exit") as exit_mock:
-        with patch('gunicorn.arbiter.Arbiter.handle_chld') as mock_super_chld:
+        with patch("gunicorn.arbiter.Arbiter.handle_chld") as mock_super_chld:
             master.handle_chld(17, None)  # 17 is SIGCHLD
 
             # Metric check
@@ -139,7 +139,7 @@ def test_master_usr2(master):
 
 def test_master_initialization(master):
     """Test that PrometheusMaster is properly initialized."""
-    assert hasattr(master, 'start_time')
+    assert hasattr(master, "start_time")
     assert master.start_time > 0
 
 
@@ -153,15 +153,15 @@ def test_multiple_signal_handlers(master):
 
         # Check that all metrics are incremented
         samples = list(MASTER_WORKER_RESTARTS.collect())[0].samples
-        
+
         hup_samples = [s for s in samples if s.labels.get("reason") == "hup"]
         usr1_samples = [s for s in samples if s.labels.get("reason") == "usr1"]
         usr2_samples = [s for s in samples if s.labels.get("reason") == "usr2"]
-        
+
         assert hup_samples
         assert usr1_samples
         assert usr2_samples
-        
+
         assert hup_samples[0].value >= 1.0
         assert usr1_samples[0].value >= 1.0
         assert usr2_samples[0].value >= 1.0
@@ -171,13 +171,18 @@ def test_signal_handler_super_calls(master):
     """Test that signal handlers call their parent class methods."""
     with patch("os.fork", return_value=12345), patch("sys.exit"):
         # Mock all parent class methods at once
-        with patch('gunicorn.arbiter.Arbiter.handle_hup') as mock_hup, \
-             patch('gunicorn.arbiter.Arbiter.handle_ttin') as mock_ttin, \
-             patch('gunicorn.arbiter.Arbiter.handle_ttou') as mock_ttou, \
-             patch('gunicorn.arbiter.Arbiter.handle_chld') as mock_chld, \
-             patch('gunicorn.arbiter.Arbiter.handle_usr1') as mock_usr1, \
-             patch('gunicorn.arbiter.Arbiter.handle_usr2') as mock_usr2:
-            
+        with patch("gunicorn.arbiter.Arbiter.handle_hup") as mock_hup, patch(
+            "gunicorn.arbiter.Arbiter.handle_ttin"
+        ) as mock_ttin, patch(
+            "gunicorn.arbiter.Arbiter.handle_ttou"
+        ) as mock_ttou, patch(
+            "gunicorn.arbiter.Arbiter.handle_chld"
+        ) as mock_chld, patch(
+            "gunicorn.arbiter.Arbiter.handle_usr1"
+        ) as mock_usr1, patch(
+            "gunicorn.arbiter.Arbiter.handle_usr2"
+        ) as mock_usr2:
+
             # Call all signal handlers
             master.handle_hup()
             master.handle_ttin()
@@ -185,7 +190,7 @@ def test_signal_handler_super_calls(master):
             master.handle_chld(17, None)
             master.handle_usr1()
             master.handle_usr2()
-            
+
             # Verify all parent methods were called
             mock_hup.assert_called_once()
             mock_ttin.assert_called_once()
