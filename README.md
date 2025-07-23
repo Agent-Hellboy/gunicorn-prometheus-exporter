@@ -177,9 +177,11 @@ def when_ready(server):
 ```
 
 
-# —————————————————————————————————————————————————————————————————————————————
-# Hook to mark dead workers so their metric files get merged & cleaned up
-# —————————————————————————————————————————————————————————————————————————————
+### —————————————————————————————————————————————————————————————————————————————
+###   Hook to mark dead workers so their metric files get merged & cleaned up
+### —————————————————————————————————————————————————————————————————————————————
+
+```py
 def child_exit(server, worker):
     try:
         multiprocess.mark_process_dead(worker.pid)
