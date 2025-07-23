@@ -12,7 +12,9 @@ import logging
 import os
 
 import gunicorn.arbiter
-from prometheus_client import CollectorRegistry, multiprocess, start_http_server
+from prometheus_client import multiprocess, start_http_server
+
+from gunicorn_prometheus_exporter.metrics import create_master_registry
 
 
 # —————————————————————————————————————————————————————————————————————————————
@@ -30,8 +32,7 @@ def when_ready(server):
     logger.info(f"Starting Prometheus multiprocess metrics server on :{port}")
 
     # Build a fresh registry that merges all worker files in PROMETHEUS_MULTIPROC_DIR
-    registry = CollectorRegistry()
-    multiprocess.MultiProcessCollector(registry)
+    registry = create_master_registry()
 
     # Serve that registry on HTTP
     start_http_server(port, registry=registry)
@@ -44,13 +45,15 @@ def child_exit(server, worker):
     try:
         multiprocess.mark_process_dead(worker.pid)
     except Exception:
-        logging.exception(f"Failed to mark process {worker.pid} dead in multiprocess collector")
+        logging.exception(
+            f"Failed to mark process {worker.pid} dead in multiprocess collector"
+        )
 
 
 # —————————————————————————————————————————————————————————————————————————————
 # Gunicorn configuration
 # —————————————————————————————————————————————————————————————————————————————
-bind = "127.0.0.1:8080"
+bind = "127.0.0.1:8084"
 workers = 2
 threads = 1
 timeout = 30
