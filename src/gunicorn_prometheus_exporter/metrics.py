@@ -2,13 +2,12 @@
 Prometheus metrics for Gunicorn Prometheus Exporter.
 """
 
-import glob
 import logging
 import os
 from abc import ABCMeta
 from typing import Dict, List, Optional, Type, Union
 
-from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, multiprocess
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -23,44 +22,12 @@ if not os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
 # Create and clean directory
 try:
     os.makedirs(DEFAULT_PROM_DIR, exist_ok=True)
-    for f in glob.glob(f"{DEFAULT_PROM_DIR}/*"):
-        os.remove(f)
 except Exception as e:
     print(f"Warning: Failed to prepare PROMETHEUS_MULTIPROC_DIR: {e}")
 
-
-def create_worker_registry():
-    """Create a registry for worker processes to write metrics to files.
-
-    This registry is designed to be used by individual worker processes.
-    Each worker gets its own registry instance that writes metrics to
-    process-specific files in PROMETHEUS_MULTIPROC_DIR.
-
-    Returns:
-        CollectorRegistry: A registry configured for multiprocess writing
-    """
-    registry = CollectorRegistry()
-    multiprocess.MultiProcessCollector(registry)
-    return registry
-
-
-def create_master_registry():
-    """Create a registry for master process to read and serve metrics.
-
-    This registry is designed to be used by the master process only.
-    It reads and aggregates metrics from all worker files in
-    PROMETHEUS_MULTIPROC_DIR and serves them via HTTP.
-
-    Returns:
-        CollectorRegistry: A registry configured for multiprocess reading
-    """
-    registry = CollectorRegistry()
-    multiprocess.MultiProcessCollector(registry)
-    return registry
-
-
-# Create the worker registry (used by worker processes)
-registry = create_worker_registry()
+# Prometheus Registry - Don't create MultiProcessCollector here
+# It will be created in the gunicorn config when needed
+registry = CollectorRegistry()
 
 
 class MetricMeta(ABCMeta):
@@ -238,7 +205,7 @@ class WorkerState(BaseMetric, metric_type=Gauge):
 class MasterWorkerRestarts(BaseMetric, metric_type=Counter):
     """Total number of Gunicorn worker restarts."""
 
-    name = "gunicorn_master_worker_restart"
+    name = "gunicorn_master_worker_restart_total"
     documentation = "Total number of Gunicorn worker restarts"
     labelnames = ["reason"]
 
@@ -254,3 +221,12 @@ WORKER_FAILED_REQUESTS = WorkerFailedRequests
 WORKER_ERROR_HANDLING = WorkerErrorHandling
 WORKER_STATE = WorkerState
 MASTER_WORKER_RESTARTS = MasterWorkerRestarts
+
+
+def get_shared_registry():
+    """Get the shared Prometheus registry."""
+    return registry
+
+
+# Dictionary for easy access to master metrics
+MASTER_METRICS = {"worker_restart_total": MASTER_WORKER_RESTARTS}

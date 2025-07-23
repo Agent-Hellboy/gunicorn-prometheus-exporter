@@ -9,13 +9,19 @@
 A Gunicorn worker plugin that exports Prometheus metrics to monitor worker performance, including memory usage, CPU usage, request durations, and error tracking (trying to replace https://docs.gunicorn.org/en/stable/instrumentation.html with extra info). It also aims to replace request-level tracking, such as the number of requests made to a particular endpoint, for any framework (e.g., Flask, Django, and others) that conforms to the WSGI specification.
 ## Features
 
-- Exports Prometheus metrics for Gunicorn workers
-- Tracks worker memory usage, CPU usage, and uptime
-- Monitors request durations and counts
-- Tracks failed requests and error handling
-- Supports worker state monitoring (running, quit, abort)
-- Master process metrics for worker management
-- Easy integration with existing Prometheus setups
+- **Worker Metrics**: Exports comprehensive Prometheus metrics for Gunicorn workers
+  - Memory usage, CPU usage, and uptime tracking
+  - Request durations and counts with histogram buckets
+  - Failed requests and error handling with detailed labels
+  - Worker state monitoring (running, quit, abort)
+- **Master Metrics**: Master process metrics for worker management and signal handling
+  - Worker restart tracking with signal-specific reasons
+  - Automatic capture of SIGHUP, SIGCHLD, SIGTTIN, SIGTTOU, SIGUSR1, SIGUSR2 signals
+  - Multiprocess metrics support for both worker and master processes
+- **Easy Integration**: Simple configuration with existing Prometheus setups
+  - Automatic metrics exposure through configuration
+  - No manual endpoint creation required
+  - Compatible with Prometheus multiprocess collectors
 
 ## Installation
 
@@ -101,21 +107,58 @@ changes(gunicorn_worker_state{worker_id=~"worker_.*"}[5m])
 
 ### Master Process Metrics
 
-- `gunicorn_master_worker_restart_total`: Total number of worker restarts
-  - Labels: `reason` (e.g., "restart", "timeout", "error")
+The exporter provides master-level metrics for monitoring Gunicorn's master process behavior and worker management:
 
-To enable master process metrics, use the PrometheusMaster class:
+- `gunicorn_master_worker_restart_total`: Total number of worker restarts triggered by various signals
+  - Labels: `reason` - The signal or reason that triggered the restart:
+    - `"hup"` - SIGHUP signal (configuration reload)
+    - `"chld"` - SIGCHLD signal (worker process died)
+    - `"ttin"` - SIGTTIN signal (increase number of workers)
+    - `"ttou"` - SIGTTOU signal (decrease number of workers)
+    - `"usr1"` - SIGUSR1 signal (reopen log files)
+    - `"usr2"` - SIGUSR2 signal (graceful restart)
+
+To enable master process metrics, use the PrometheusMaster class in your Gunicorn configuration:
 
 ```python
-# In your Gunicorn configuration
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+# In your gunicorn.conf.py
+import gunicorn.arbiter
 from gunicorn_prometheus_exporter.master import PrometheusMaster
 
-# You have to patch master , gunicron doesn't allow master worker plugin
-# This can change , it's an internal implemenation
-from gunicorn_prometheus_exporter.plugin import PrometheusMaster
-
+# Replace the default Gunicorn Arbiter with our PrometheusMaster
+# This allows us to capture master-level metrics like signal handling
 gunicorn.arbiter.Arbiter = PrometheusMaster
+
+# Use our custom worker class for worker metrics
+worker_class = "gunicorn_prometheus_exporter.plugin.PrometheusWorker"
+```
+
+#### Example Master Metrics Usage
+
+```bash
+# Check master metrics
+curl http://localhost:9090/metrics | grep gunicorn_master_worker_restart
+
+# Trigger signals to test master metrics
+kill -HUP <master_pid>    # Should increment hup metric
+kill -TTIN <master_pid>   # Should increment ttin metric  
+kill -TTOU <master_pid>   # Should increment ttou metric
+```
+
+#### Master Metrics PromQL Queries
+
+```promql
+# Total worker restarts by reason
+gunicorn_master_worker_restart_total
+
+# Worker restart rate by reason (restarts per minute)
+rate(gunicorn_master_worker_restart_total[5m]) * 60
+
+# Most common restart reasons
+topk(3, sum by (reason) (gunicorn_master_worker_restart_total))
+
+# Alert on high restart rate
+rate(gunicorn_master_worker_restart_total{reason="chld"}[5m]) > 0.1
 ```
 
 ## Configuration
@@ -157,25 +200,36 @@ docker run -d \
 Create a `gunicorn.conf.py` file with the following configuration:
 
 ```python
-from prometheus_client import start_http_server, multiprocess
-from gunicorn_prometheus_exporter.metrics import create_master_registry
+import logging
+import os
 
-# ———————————————————————————————————————————————————————————————————————————————————
+import gunicorn.arbiter
+from prometheus_client import start_http_server
+
+# Import our custom master to replace the default Gunicorn Arbiter
+from gunicorn_prometheus_exporter.master import PrometheusMaster
+
+# —————————————————————————————————————————————————————————————————————————————
 # Hook to start a multiprocess‐aware Prometheus metrics server when Gunicorn is ready
-# ———————————————————————————————————————————————————————————————————————————————————
+# —————————————————————————————————————————————————————————————————————————————
 def when_ready(server):
     mp_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
     if not mp_dir:
         logging.warning("PROMETHEUS_MULTIPROC_DIR not set; skipping metrics server")
         return
 
-    # Use the master registry factory for reading and serving metrics
-    registry = create_master_registry()
+    port = int(os.environ.get("PROMETHEUS_METRICS_PORT", 9090))
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    logger.info(f"Starting Prometheus multiprocess metrics server on :{port}")
 
+    # Use the existing registry from our metrics module
+    from gunicorn_prometheus_exporter.metrics import registry
+    
     # Serve that registry on HTTP
     start_http_server(port, registry=registry)
-```
-
+    
+    logger.info("Metrics server started successfully - includes both worker and master metrics")
 
 ### Hook to mark dead workers so their metric files get merged & cleaned up
 
@@ -183,10 +237,20 @@ def when_ready(server):
 ```py
 def child_exit(server, worker):
     try:
+        from prometheus_client import multiprocess
         multiprocess.mark_process_dead(worker.pid)
     except Exception:
         logging.exception(f"Failed to mark process {worker.pid} dead in multiprocess collector")
 
+# —————————————————————————————————————————————————————————————————————————————
+# Gunicorn configuration
+# —————————————————————————————————————————————————————————————————————————————
+bind = "127.0.0.1:8080"
+workers = 2
+worker_class = "gunicorn_prometheus_exporter.plugin.PrometheusWorker"
+
+# Replace the default Gunicorn Arbiter with our PrometheusMaster
+gunicorn.arbiter.Arbiter = PrometheusMaster
 ```
 
 ### Environment Variables
@@ -194,7 +258,37 @@ def child_exit(server, worker):
 The exporter supports the following configuration options:
 
 - `PROMETHEUS_MULTIPROC_DIR`: Directory for multiprocess metrics (default: `/tmp/prometheus`)
-- `PROMETHEUS_METRICS_PORT`: Port for metrics endpoint (default: 8000)
+- `PROMETHEUS_METRICS_PORT`: Port for metrics endpoint (default: 9090)
+
+### Testing Master Metrics
+
+To verify that master metrics are working correctly:
+
+1. Start Gunicorn with the configuration:
+```bash
+export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
+mkdir -p "$PROMETHEUS_MULTIPROC_DIR"
+gunicorn --config gunicorn.conf.py your_app:app
+```
+
+2. Check that master metrics are exposed:
+```bash
+curl http://localhost:9090/metrics | grep gunicorn_master
+```
+
+3. Test signal handling by sending signals to the master process:
+```bash
+# Find the master process ID
+ps aux | grep gunicorn | grep -v grep
+
+# Send SIGHUP to test configuration reload
+kill -HUP <master_pid>
+
+# Check that the metric was incremented
+curl http://localhost:9090/metrics | grep gunicorn_master_worker_restart
+```
+
+You should see the `gunicorn_master_worker_restart_total{reason="hup"}` metric increment after sending the signal.
 
 ## License
 
