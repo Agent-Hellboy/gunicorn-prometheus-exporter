@@ -79,6 +79,7 @@ from .master import PrometheusMaster
 from .metrics import registry
 from .plugin import PrometheusWorker
 
+
 # Force Arbiter replacement before gunicorn starts
 # This ensures that when Gunicorn's BaseApplication.run() calls
 # Arbiter(self).run(), it uses our PrometheusMaster instead of the original
