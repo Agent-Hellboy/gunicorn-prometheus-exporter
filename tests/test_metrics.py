@@ -28,7 +28,9 @@ def test_registry_setup():
 
 def test_master_worker_restarts_metric():
     """Test MASTER_WORKER_RESTARTS metric configuration."""
-    assert MASTER_WORKER_RESTARTS._metric._name == "gunicorn_master_worker_restart"
+    assert (
+        MASTER_WORKER_RESTARTS._metric._name == "gunicorn_master_worker_restart"
+    )
     assert (
         MASTER_WORKER_RESTARTS._metric._documentation
         == "Total number of Gunicorn worker restarts"

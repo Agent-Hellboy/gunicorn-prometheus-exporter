@@ -45,6 +45,7 @@ class PrometheusWorker(SyncWorker):
         # Format: worker_<age>_<timestamp>
         self.worker_id = f"worker_{self.age}_{int(self.start_time)}"
         self.process = psutil.Process()
+
         logger.info(f"PrometheusWorker initialized with ID: {self.worker_id}")
 
     def _clear_old_metrics(self):

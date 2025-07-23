@@ -17,8 +17,8 @@ import gc
 import os
 import random
 import sys
-import time
 import threading
+import time
 from array import array
 
 from flask import Flask, abort, request

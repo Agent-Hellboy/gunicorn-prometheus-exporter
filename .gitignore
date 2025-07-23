@@ -6,6 +6,12 @@ __pycache__/
 explore
 trace.json
 
+debug_guide.md
+example/client_python/
+example/gunicorn/
+explore.md
+system_test/
+
 # C extensions
 *.so
 # Distribution / packaging
