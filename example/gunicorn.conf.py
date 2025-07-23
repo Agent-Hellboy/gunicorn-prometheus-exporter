@@ -6,7 +6,7 @@ This configuration:
 - Uses 2 worker processes
 - Uses our PrometheusWorker class for worker metrics
 - Uses our PrometheusMaster class for master metrics
-- Exports metrics on port 9090 at /metri    cs endpoint, aggregating across all workers
+- Exports metrics on port 9090 at /metrics endpoint, aggregating across all workers
 """
 
 import logging
@@ -102,6 +102,9 @@ keepalive = 2
 
 # Use our custom worker class for worker metrics
 worker_class = "gunicorn_prometheus_exporter.plugin.PrometheusWorker"
+
+# Use our custom arbiter class for master metrics
+arbiter_class = "gunicorn_prometheus_exporter.master.PrometheusMaster"
 
 # Logging
 accesslog = "-"
