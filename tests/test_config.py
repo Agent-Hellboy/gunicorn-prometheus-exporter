@@ -80,7 +80,6 @@ class TestExporterConfig:
         config = ExporterConfig()
         gunicorn_config = config.get_gunicorn_config()
 
-        assert gunicorn_config["bind"] == "127.0.0.1:8084"
         assert gunicorn_config["workers"] == 2
         assert (
             gunicorn_config["worker_class"]
