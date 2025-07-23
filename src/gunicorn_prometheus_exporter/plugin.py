@@ -85,8 +85,9 @@ class PrometheusWorker(SyncWorker):
                 self.process.memory_info().rss,
                 worker_id=self.worker_id,
             )
+            # Use cpu_percent with interval=0 to avoid blocking
             WORKER_CPU.set(
-                self.process.cpu_percent(),
+                self.process.cpu_percent(interval=0),
                 worker_id=self.worker_id,
             )
             WORKER_UPTIME.set(
@@ -100,7 +101,16 @@ class PrometheusWorker(SyncWorker):
         """Handle a request and update metrics."""
         start_time = time.time()
         try:
-            self.update_worker_metrics()
+            # Only update metrics occasionally to avoid performance impact
+            if hasattr(self, '_request_count'):
+                self._request_count += 1
+            else:
+                self._request_count = 1
+                
+            # Update metrics every 10 requests
+            if self._request_count % 10 == 0:
+                self.update_worker_metrics()
+                
             resp = super().handle_request(listener, req, client, addr)
             duration = time.time() - start_time
 
