@@ -1,6 +1,4 @@
-"""
-Prometheus metrics for Gunicorn Prometheus Exporter.
-"""
+"""Prometheus metrics for Gunicorn workers and master."""
 
 import logging
 import os

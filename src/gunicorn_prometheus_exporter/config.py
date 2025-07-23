@@ -50,8 +50,11 @@ class ExporterConfig:
             self.ENV_PROMETHEUS_METRICS_PORT, self.PROMETHEUS_METRICS_PORT
         )
         if value is None:
-            # Default to 9091 for development/testing
-            return 9091
+            raise ValueError(
+                f"Environment variable {self.ENV_PROMETHEUS_METRICS_PORT} "
+                f"must be set in production. "
+                f"Example: export {self.ENV_PROMETHEUS_METRICS_PORT}=9091"
+            )
         return int(value)
 
     @property
@@ -61,8 +64,11 @@ class ExporterConfig:
             self.ENV_PROMETHEUS_BIND_ADDRESS, self.PROMETHEUS_BIND_ADDRESS
         )
         if value is None:
-            # Default to 127.0.0.1 for development/testing
-            return "127.0.0.1"
+            raise ValueError(
+                f"Environment variable {self.ENV_PROMETHEUS_BIND_ADDRESS} "
+                f"must be set in production. "
+                f"Example: export {self.ENV_PROMETHEUS_BIND_ADDRESS}=0.0.0.0"
+            )
         return value
 
     @property
@@ -70,8 +76,11 @@ class ExporterConfig:
         """Get the number of Gunicorn workers."""
         value = os.environ.get(self.ENV_GUNICORN_WORKERS, self.GUNICORN_WORKERS)
         if value is None:
-            # Default to 2 for development/testing
-            return 2
+            raise ValueError(
+                f"Environment variable {self.ENV_GUNICORN_WORKERS} "
+                f"must be set in production. "
+                f"Example: export {self.ENV_GUNICORN_WORKERS}=4"
+            )
         return int(value)
 
     @property
@@ -126,8 +135,7 @@ class ExporterConfig:
                 if not os.environ.get(var_name):
                     missing_vars.append(f"{var_name} ({description})")
 
-            # For testing/development, allow missing environment variables
-            if missing_vars and os.environ.get("ENVIRONMENT") == "production":
+            if missing_vars:
                 print("Required environment variables not set:")
                 for var in missing_vars:
                     print(f"   - {var}")

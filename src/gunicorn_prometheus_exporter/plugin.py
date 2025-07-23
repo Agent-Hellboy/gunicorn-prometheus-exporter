@@ -42,12 +42,24 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
+def _setup_logging():
+    """Setup logging with configuration."""
+    try:
+        log_level = config.get_gunicorn_config().get("loglevel", "INFO").upper()
+        logging.basicConfig(level=getattr(logging, log_level))
+    except Exception as e:
+        # Fallback to INFO level if config is not available
+        logging.basicConfig(level=logging.INFO)
+        logging.getLogger(__name__).warning(f"Could not setup logging from config: {e}")
+
 
 class PrometheusWorker(SyncWorker):
     """Gunicorn worker that exports Prometheus metrics."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Setup logging when worker is initialized
+        _setup_logging()
         self.start_time = time.time()
         # Create a unique worker ID using worker age and timestamp
         # Format: worker_<age>_<timestamp>

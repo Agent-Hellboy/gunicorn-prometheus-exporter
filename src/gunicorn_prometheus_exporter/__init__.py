@@ -71,59 +71,15 @@ THE SOLUTION:
 - This ensures our PrometheusMaster is always used regardless of import paths
 """
 
-import gunicorn.app.base
-import gunicorn.arbiter
-
 from .config import config, get_config
-from .master import PrometheusMaster
 from .metrics import registry
 from .plugin import PrometheusWorker
-
-# Force Arbiter replacement before gunicorn starts
-# This ensures that when Gunicorn's BaseApplication.run() calls
-# Arbiter(self).run(), it uses our PrometheusMaster instead of the original
-# Arbiter.
-
-# Replace the Arbiter class in gunicorn.arbiter module
-gunicorn.arbiter.Arbiter = PrometheusMaster
-
-# Also patch the import in gunicorn.app.base module
-# This is necessary because BaseApplication imports Arbiter from app.base
-gunicorn.app.base.Arbiter = PrometheusMaster
-
-# Patch the BaseApplication.run() method to ensure our PrometheusMaster is used
-original_run = gunicorn.app.base.BaseApplication.run
-
-
-def patched_run(self):
-    """
-    Patched version of BaseApplication.run() that ensures our PrometheusMaster
-    is used.
-
-    This is a safety measure to ensure that even if the Arbiter replacement
-    above doesn't work for some reason, we still get our custom master.
-
-    The flow is:
-    1. User runs: gunicorn -c gunicorn.conf.py app:app
-    2. BaseApplication is created and config is loaded
-    3. Our module is imported during config loading, triggering Arbiter
-       replacement
-    4. BaseApplication.run() is called
-    5. BaseApplication.run() calls Arbiter(self).run()
-    6. With our patches, this uses PrometheusMaster instead of original Arbiter
-    """
-    return original_run(self)
-
-
-gunicorn.app.base.BaseApplication.run = patched_run
 
 __version__ = "0.1.0"
 __all__ = [
     "PrometheusWorker",
     "PrometheusMaster",
     "registry",
-    "create_worker_registry",
-    "create_master_registry",
     "config",
     "get_config",
 ]
