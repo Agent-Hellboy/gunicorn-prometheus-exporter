@@ -32,11 +32,11 @@ class PrometheusMaster(Arbiter):
         MASTER_WORKER_RESTARTS.inc(reason="ttou")
         super().handle_ttou()
 
-    def handle_chld(self):
+    def handle_chld(self, sig, frame):
         """Handle CHLD signal."""
         logger.info("Gunicorn master CHLD signal received")
         MASTER_WORKER_RESTARTS.inc(reason="chld")
-        super().handle_chld()
+        super().handle_chld(sig, frame)
 
     def handle_usr1(self):
         """Handle USR1 signal."""
