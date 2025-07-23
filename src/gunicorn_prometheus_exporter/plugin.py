@@ -42,6 +42,7 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
+
 def _setup_logging():
     """Setup logging with configuration."""
     try:
