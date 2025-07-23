@@ -20,11 +20,6 @@ import time
 import psutil
 from gunicorn.workers.sync import SyncWorker
 
-try:
-    from gunicorn.workers.ggevent import GeventWorker
-except ImportError:
-    GeventWorker = None
-
 from .metrics import (
     WORKER_CPU,
     WORKER_ERROR_HANDLING,
