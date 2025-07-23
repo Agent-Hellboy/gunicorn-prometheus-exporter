@@ -2,11 +2,6 @@
 Prometheus metrics for Gunicorn Prometheus Exporter.
 """
 
-<<<<<<< HEAD
-import glob
-import logging
-=======
->>>>>>> final workign code
 import os
 from abc import ABCMeta
 from typing import Dict, List, Optional, Type, Union
