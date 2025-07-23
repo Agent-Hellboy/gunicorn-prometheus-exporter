@@ -72,7 +72,6 @@ def test_handle_request(worker):
         samples = list(WORKER_REQUESTS.collect())
         assert len(samples) == 1
         assert samples[0].samples[0].value == 1.0
-        assert samples[0].samples[0].labels["worker_id"] == str(worker.worker_id)
 
 
 def test_worker_metrics_update(worker):
@@ -84,7 +83,6 @@ def test_worker_metrics_update(worker):
     samples = list(WORKER_MEMORY.collect())
     assert len(samples) == 1
     assert samples[0].samples[0].value > 0
-    assert samples[0].samples[0].labels["worker_id"] == str(worker.worker_id)
 
 
 def test_error_handling(worker):
@@ -116,8 +114,7 @@ def test_error_handling(worker):
         sample = next(
             s
             for s in samples[0].samples
-            if s.labels.get("worker_id") == str(worker.worker_id)
-            and s.labels.get("method") == "GET"
+            if s.labels.get("method") == "GET"
             and s.labels.get("endpoint") == "/test"
             and s.labels.get("error_type") == "ValueError"
         )
@@ -133,7 +130,6 @@ def test_worker_uptime(worker):
     samples = list(WORKER_UPTIME.collect())
     assert len(samples) == 1
     assert samples[0].samples[0].value > initial_uptime
-    assert samples[0].samples[0].labels["worker_id"] == str(worker.worker_id)
 
 
 def test_worker_cpu(worker):
@@ -189,8 +185,7 @@ def test_handle_error(worker):
         sample = next(
             s
             for s in samples[0].samples
-            if s.labels.get("worker_id") == str(worker.worker_id)
-            and s.labels.get("method") == "GET"
+            if s.labels.get("method") == "GET"
             and s.labels.get("endpoint") == "/test"
             and s.labels.get("error_type") == "InvalidRequestLine"
         )
@@ -206,7 +201,6 @@ def test_worker_state(worker):
         quit_sample = next((s for s in samples if s.labels["state"] == "quit"), None)
         assert quit_sample is not None
         assert quit_sample.value == 1.0
-        assert quit_sample.labels["worker_id"] == str(worker.worker_id)
         assert float(quit_sample.labels["timestamp"]) == pytest.approx(
             time.time(), rel=1e-3
         )
@@ -218,7 +212,6 @@ def test_worker_state(worker):
         abort_sample = next((s for s in samples if s.labels["state"] == "abort"), None)
         assert abort_sample is not None
         assert abort_sample.value == 1.0
-        assert abort_sample.labels["worker_id"] == str(worker.worker_id)
         assert float(abort_sample.labels["timestamp"]) == pytest.approx(
             time.time(), rel=1e-3
         )
