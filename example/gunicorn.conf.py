@@ -2,8 +2,8 @@
 Gunicorn configuration file demonstrating Prometheus metrics exporter.
 
 This configuration:
-- Binds to localhost:8081 for the application
-- Uses 2 worker processes
+- Binds to localhost:8080 for the application
+- Uses 2 worker processe
 - Uses our PrometheusWorker class for worker metrics
 - Uses our PrometheusMaster class for master metrics
 - Exports metrics on port 9091 at /metrics endpoint, aggregating across all workers
@@ -75,7 +75,7 @@ def on_starting(server):
 # —————————————————————————————————————————————————————————————————————————————
 # Gunicorn configuration
 # —————————————————————————————————————————————————————————————————————————————
-bind = "127.0.0.1:8083"
+bind = "127.0.0.1:8080"
 workers = 2
 threads = 1
 timeout = 30
