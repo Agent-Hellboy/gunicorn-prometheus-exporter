@@ -77,6 +77,11 @@ def test_handle_request(worker):
 
 def test_worker_metrics_update(worker):
     """Test that worker metrics are updated correctly."""
+    # Clear any existing metrics first
+    WORKER_MEMORY.clear()
+    WORKER_CPU.clear()
+    WORKER_UPTIME.clear()
+
     # Call update_worker_metrics directly
     worker.update_worker_metrics()
 
@@ -84,7 +89,8 @@ def test_worker_metrics_update(worker):
     samples = list(WORKER_MEMORY.collect())
     assert len(samples) == 1
     assert samples[0].samples[0].value > 0
-    assert samples[0].samples[0].labels["worker_id"] == str(worker.worker_id)
+    # Use the actual worker ID instead of expecting a specific value
+    assert samples[0].samples[0].labels["worker_id"] == worker.worker_id
 
 
 def test_error_handling(worker):
@@ -126,6 +132,9 @@ def test_error_handling(worker):
 
 def test_worker_uptime(worker):
     """Test that worker uptime is tracked correctly."""
+    # Clear any existing metrics first
+    WORKER_UPTIME.clear()
+
     initial_uptime = time.time() - worker.start_time
     time.sleep(0.1)  # Wait a bit
     worker.update_worker_metrics()
@@ -133,7 +142,8 @@ def test_worker_uptime(worker):
     samples = list(WORKER_UPTIME.collect())
     assert len(samples) == 1
     assert samples[0].samples[0].value > initial_uptime
-    assert samples[0].samples[0].labels["worker_id"] == str(worker.worker_id)
+    # Use the actual worker ID instead of expecting a specific value
+    assert samples[0].samples[0].labels["worker_id"] == worker.worker_id
 
 
 def test_worker_cpu(worker):

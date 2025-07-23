@@ -6,7 +6,7 @@ This configuration:
 - Uses 2 worker processes
 - Uses our PrometheusWorker class for worker metrics
 - Uses our PrometheusMaster class for master metrics
-- Exports metrics on port 9090 at /metri    cs endpoint, aggregating across all workers
+- Exports metrics on port 9090 at /metrics endpoint, aggregating across all workers
 """
 
 import logging
@@ -18,7 +18,7 @@ from gunicorn_prometheus_exporter.utils import (
     ensure_multiprocess_dir,
     get_multiprocess_dir,
 )
-
+from gunicorn_prometheus_exporter.config import get_config
 
 # —————————————————————————————————————————————————————————————————————————————
 # Hook to start a multiprocess‐aware Prometheus metrics server when Gunicorn is ready
@@ -29,8 +29,10 @@ def when_ready(server):
         logging.warning("PROMETHEUS_MULTIPROC_DIR not set; skipping metrics server")
         return
 
-    port = int(os.environ.get("PROMETHEUS_METRICS_PORT", 9091))
-    logging.basicConfig(level=logging.INFO)
+    # Use configuration for port and logging
+    config = get_config()
+    port = config.prometheus_metrics_port
+    logging.basicConfig(level=getattr(logging, config.get_gunicorn_config().get('loglevel', 'INFO').upper()))
     logger = logging.getLogger(__name__)
     logger.info(f"Starting Prometheus multiprocess metrics server on :{port}")
 
@@ -92,7 +94,7 @@ def on_starting(server):
 # —————————————————————————————————————————————————————————————————————————————
 # Gunicorn configuration
 # —————————————————————————————————————————————————————————————————————————————
-bind = "127.0.0.1:8086"
+bind = "127.0.0.1:8087"
 workers = 2
 threads = 1
 timeout = 30
@@ -100,6 +102,9 @@ keepalive = 2
 
 # Use our custom worker class for worker metrics
 worker_class = "gunicorn_prometheus_exporter.plugin.PrometheusWorker"
+
+# Use our custom arbiter class for master metrics
+arbiter_class = "gunicorn_prometheus_exporter.master.PrometheusMaster"
 
 # Logging
 accesslog = "-"
