@@ -28,13 +28,14 @@ try:
 except Exception as e:
     print(f"Warning: Failed to prepare PROMETHEUS_MULTIPROC_DIR: {e}")
 
+
 def create_worker_registry():
     """Create a registry for worker processes to write metrics to files.
-    
+
     This registry is designed to be used by individual worker processes.
     Each worker gets its own registry instance that writes metrics to
     process-specific files in PROMETHEUS_MULTIPROC_DIR.
-    
+
     Returns:
         CollectorRegistry: A registry configured for multiprocess writing
     """
@@ -45,11 +46,11 @@ def create_worker_registry():
 
 def create_master_registry():
     """Create a registry for master process to read and serve metrics.
-    
+
     This registry is designed to be used by the master process only.
     It reads and aggregates metrics from all worker files in
     PROMETHEUS_MULTIPROC_DIR and serves them via HTTP.
-    
+
     Returns:
         CollectorRegistry: A registry configured for multiprocess reading
     """

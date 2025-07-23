@@ -152,4 +152,3 @@ class PrometheusWorker(SyncWorker):
             timestamp=str(time.time()),
         )
         super().handle_abort(sig, frame)
-
