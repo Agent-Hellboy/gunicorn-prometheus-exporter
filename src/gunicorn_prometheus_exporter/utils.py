@@ -5,6 +5,7 @@ Utility functions for gunicorn-prometheus-exporter.
 import logging
 import os
 
+
 logger = logging.getLogger(__name__)
 
 

@@ -4,9 +4,11 @@ Tests for Gunicorn Prometheus Exporter worker.
 
 import os
 import time
+
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from gunicorn.http.errors import InvalidRequestLine
 
 from gunicorn_prometheus_exporter.metrics import (

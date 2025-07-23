@@ -2,6 +2,7 @@
 
 import logging
 import os
+
 from abc import ABCMeta
 from typing import Dict, List, Optional, Type, Union
 
@@ -9,6 +10,7 @@ from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
 # Import config early
 from .config import config
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

@@ -35,9 +35,7 @@ Issues = "https://github.com/princekrroshan01/gunicorn-prometheus-exporter/issue
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "black>=22.0.0",
-    "isort>=5.0.0",
-    "flake8>=4.0.0",
+    "ruff>=0.1.0",
 ]
 
 [build-system]
@@ -51,24 +49,79 @@ package-dir = { "" = "src" }
 where = ["src"]
 include = ["gunicorn_prometheus_exporter*"]
 
-[tool.black]
+[tool.ruff]
+# Same as Black.
 line-length = 88
-target-version = ['py38', 'py39', 'py310', 'py311']
-include = '\.pyi?$'
+indent-width = 4
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 88
+# Assume Python 3.9
+target-version = "py39"
 
-[tool.flake8]
-max-line-length = 88
-extend-ignore = "E203"
-exclude = [".git", "__pycache__", "build", "dist"]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_functions = "test_*"
-python_classes = "Test*"
-addopts = "--cov=gunicorn_prometheus_exporter --cov-report=term-missing"
+[tool.ruff.lint]
+# Enable pycodestyle (`E`), Pyflakes (`F`), and isort (`I`) codes
+select = ["E", "F", "I"]
+ignore = [
+    "E203",  # whitespace before ':'
+    "E501",  # line too long, handled by formatter
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+# Like isort, sort imports using a single line after the import block.
+force-single-line = false
+
+# Like isort, use a consistent import sorting strategy.
+combine-as-imports = true
+
+# Like isort, use a consistent import sorting strategy.
+force-wrap-aliases = false
+
+# Like isort, use a consistent import sorting strategy.
+lines-after-imports = 2
+
+# Like isort, use a consistent import sorting strategy.
+lines-between-types = 1
+
+# Like isort, use a consistent import sorting strategy.
+known-first-party = ["gunicorn_prometheus_exporter"]

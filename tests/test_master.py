@@ -1,10 +1,12 @@
 import logging
+
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from gunicorn_prometheus_exporter.master import PrometheusMaster
 from gunicorn_prometheus_exporter.metrics import MASTER_WORKER_RESTARTS
+
 
 logger = logging.getLogger(__name__)
 
@@ -172,17 +174,14 @@ def test_signal_handler_super_calls(master):
     """Test that signal handlers call their parent class methods."""
     with patch("os.fork", return_value=12345), patch("sys.exit"):
         # Mock all parent class methods at once
-        with patch("gunicorn.arbiter.Arbiter.handle_hup") as mock_hup, patch(
-            "gunicorn.arbiter.Arbiter.handle_ttin"
-        ) as mock_ttin, patch(
-            "gunicorn.arbiter.Arbiter.handle_ttou"
-        ) as mock_ttou, patch(
-            "gunicorn.arbiter.Arbiter.handle_chld"
-        ) as mock_chld, patch(
-            "gunicorn.arbiter.Arbiter.handle_usr1"
-        ) as mock_usr1, patch(
-            "gunicorn.arbiter.Arbiter.handle_usr2"
-        ) as mock_usr2:
+        with (
+            patch("gunicorn.arbiter.Arbiter.handle_hup") as mock_hup,
+            patch("gunicorn.arbiter.Arbiter.handle_ttin") as mock_ttin,
+            patch("gunicorn.arbiter.Arbiter.handle_ttou") as mock_ttou,
+            patch("gunicorn.arbiter.Arbiter.handle_chld") as mock_chld,
+            patch("gunicorn.arbiter.Arbiter.handle_usr1") as mock_usr1,
+            patch("gunicorn.arbiter.Arbiter.handle_usr2") as mock_usr2,
+        ):
             # Call all signal handlers
             master.handle_hup()
             master.handle_ttin()

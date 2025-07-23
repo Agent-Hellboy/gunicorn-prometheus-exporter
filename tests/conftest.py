@@ -4,6 +4,7 @@ import os
 import tempfile
 
 import pytest
+
 from prometheus_client import CollectorRegistry
 
 from gunicorn_prometheus_exporter.config import config

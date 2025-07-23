@@ -6,6 +6,7 @@ from gunicorn.arbiter import Arbiter
 
 from .metrics import MasterWorkerRestarts
 
+
 # Use configuration for logging level
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

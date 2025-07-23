@@ -18,6 +18,7 @@ import logging
 import time
 
 import psutil
+
 from gunicorn.workers.sync import SyncWorker
 
 from .config import config
@@ -31,6 +32,7 @@ from .metrics import (
     WORKER_STATE,
     WORKER_UPTIME,
 )
+
 
 # Use configuration for logging level - with fallback for testing
 try:
