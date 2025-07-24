@@ -31,7 +31,8 @@ class TestExporterConfig:
 
         config = ExporterConfig()
 
-        assert config.prometheus_multiproc_dir == "/tmp/prometheus"
+        expected_default = os.path.join(os.path.expanduser("~"), ".gunicorn_prometheus")
+        assert config.prometheus_multiproc_dir == expected_default
         # These should raise ValueError when not set
         with pytest.raises(ValueError):
             _ = config.prometheus_metrics_port
@@ -99,7 +100,8 @@ class TestExporterConfig:
 
         assert prometheus_config["bind_address"] == "127.0.0.1"
         assert prometheus_config["port"] == 9091
-        assert prometheus_config["multiproc_dir"] == "/tmp/prometheus"
+        expected_default = os.path.join(os.path.expanduser("~"), ".gunicorn_prometheus")
+        assert prometheus_config["multiproc_dir"] == expected_default
 
     def test_validation(self):
         """Test configuration validation."""

@@ -3,14 +3,13 @@ global:
 
 # Scrape our example exporter
 scrape_configs:
-  - job_name: 'gunicorn-prometheus-exporter'         
-    metrics_path: '/metrics'       
+  - job_name: "gunicorn-prometheus-exporter"
+    metrics_path: "/metrics"
     static_configs:
-      - targets: ['127.0.0.1:9091'] # our example exporter
+      - targets: ["127.0.0.1:9091"] # our example exporter
 
 # Point Prometheus at Alertmanager
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: ['localhost:9093'] # our example Alertmanager
-
+        - targets: ["localhost:9093"] # our example Alertmanager

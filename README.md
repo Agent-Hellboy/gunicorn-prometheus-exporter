@@ -6,7 +6,14 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/gunicorn-prometheus-exporter.svg)](https://pypi.org/project/gunicorn-prometheus-exporter/)
 
-A Gunicorn worker plugin that exports Prometheus metrics to monitor worker performance, including memory usage, CPU usage, request durations, and error tracking (trying to replace https://docs.gunicorn.org/en/stable/instrumentation.html with extra info). It also aims to replace request-level tracking, such as the number of requests made to a particular endpoint, for any framework (e.g., Flask, Django, and others) that conforms to the WSGI specification.
+A Gunicorn worker plugin that exports Prometheus metrics to monitor worker
+performance, including memory usage, CPU usage, request durations, and error
+tracking (trying to replace
+<https://docs.gunicorn.org/en/stable/instrumentation.html> with extra info).
+It also aims to replace request-level tracking, such as the number of requests
+made to a particular endpoint, for any framework (e.g., Flask, Django, and
+others) that conforms to the WSGI specification.
+
 ## Features
 
 - **Worker Metrics**: Exports comprehensive Prometheus metrics for Gunicorn workers
@@ -72,8 +79,9 @@ curl http://localhost:9091/metrics
 | `gunicorn_master_worker_restart_total` | Counter | Worker restarts by reason | `reason` |
 
 **Signal Reasons:**
+
 - `usr1`: USR1 signal received
-- `usr2`: USR2 signal received  
+- `usr2`: USR2 signal received
 - `hup`: HUP signal received
 - `chld`: CHLD signal (worker exit/restart)
 
@@ -118,7 +126,7 @@ The exporter automatically tracks Gunicorn master process signals:
 ```bash
 # Send signals to test
 kill -USR1 <master_pid>  # Graceful reload
-kill -USR2 <master_pid>  # Reload configuration  
+kill -USR2 <master_pid>  # Reload configuration
 kill -HUP <master_pid>   # Reload workers
 kill -TERM <worker_pid>  # Kill worker (triggers CHLD)
 ```
@@ -180,7 +188,7 @@ curl http://localhost:9091/metrics
 
 ### Project Structure
 
-```
+```text
 gunicorn-prometheus-exporter/
 ├── src/gunicorn_prometheus_exporter/
 │   ├── __init__.py          # Patching logic
@@ -199,19 +207,23 @@ gunicorn-prometheus-exporter/
 ### Common Issues
 
 **Metrics server not starting:**
+
 - Check if port 9091 is available
 - Verify `PROMETHEUS_MULTIPROC_DIR` is set and writable
 - Check Gunicorn logs for errors
 
 **No metrics appearing:**
+
 - Ensure `worker_class` is set to `PrometheusWorker`
 - Check that the exporter module is imported early
 - Verify multiprocess directory exists
 
 **Signal metrics not incrementing:**
+
 - Confirm `PrometheusMaster` is being used (check logs)
 - Verify signal handlers are properly overridden
 - Check that signals are being sent to master process
+
 ### Configuration Management
 
 The exporter provides a centralized configuration system through `config.py`:
@@ -233,8 +245,6 @@ print(f"Workers: {cfg.gunicorn_workers}")
 print(f"Multiproc dir: {cfg.prometheus_multiproc_dir}")
 ```
 
-### Environment Variables
-
 ### Debug Mode
 
 ```python
@@ -242,17 +252,21 @@ print(f"Multiproc dir: {cfg.prometheus_multiproc_dir}")
 import logging
 logging.basicConfig(level=logging.DEBUG)
 ```
+
 #### **Required (Production):**
+
 - `PROMETHEUS_BIND_ADDRESS`: Bind address for metrics server (e.g., `0.0.0.0`)
 - `PROMETHEUS_METRICS_PORT`: Port for metrics endpoint (e.g., `9091`)
 - `GUNICORN_WORKERS`: Number of Gunicorn workers (e.g., `4`)
 
 #### **Optional (with defaults):**
+
 - `PROMETHEUS_MULTIPROC_DIR`: Directory for multiprocess metrics (default: `/tmp/prometheus`)
 - `GUNICORN_TIMEOUT`: Worker timeout in seconds (default: 30)
 - `GUNICORN_KEEPALIVE`: Keepalive setting (default: 2)
 
 #### **Production Setup Example:**
+
 ```bash
 # Required variables
 export PROMETHEUS_BIND_ADDRESS=0.0.0.0
@@ -279,7 +293,7 @@ MIT License - see LICENSE file for details.
 ## Support
 
 For issues and questions:
+
 - Check the troubleshooting section
 - Review the example configuration
 - Open an issue on GitHub
-

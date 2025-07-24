@@ -29,7 +29,7 @@ class PrometheusMaster(Arbiter):
             mp_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
             if mp_dir:
                 logger.info(
-                    f"Master metrics configured for multiprocess directory: {mp_dir}"
+                    "Master metrics configured for multiprocess directory: %s", mp_dir
                 )
             else:
                 logger.warning(
@@ -37,7 +37,7 @@ class PrometheusMaster(Arbiter):
                     "master metrics may not be exposed"
                 )
         except Exception as e:
-            logger.error(f"Failed to set up master metrics: {e}")
+            logger.error("Failed to set up master metrics: %s", e)
 
     def handle_hup(self):
         """Handle HUP signal."""
@@ -80,7 +80,7 @@ class PrometheusMaster(Arbiter):
         super().init_signals()
         self.SIG_QUEUE = []
 
-    def signal(self, sig, frame):
+    def signal(self, sig, frame):  # pylint: disable=unused-argument
         """Override signal method to queue signals for processing."""
         if len(self.SIG_QUEUE) < 5:
             self.SIG_QUEUE.append(sig)

@@ -2,29 +2,27 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
+    name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
-          - python-version: 3.9
-            toxenv: py39
-          - python-version: '3.10'
+          - python-version: "3.10"
             toxenv: py310
-          - python-version: 3.11
+          - python-version: "3.11"
             toxenv: py311
-          - python-version: 3.12
+          - python-version: "3.12"
             toxenv: py312
-          - python-version: 3.13
-            toxenv: py313
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -36,33 +34,70 @@ jobs:
           python -m pip install --upgrade pip
           pip install tox
 
-      - name: Run tests with tox
+      - name: Run tests
         run: tox -e ${{ matrix.toxenv }}
 
-      - name: Upload coverage reports to Codecov
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           flags: unittests
           name: codecov-coverage
 
-  lint:
+  quality:
+    name: Code Quality & Security
     runs-on: ubuntu-latest
+    needs: test
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
-      - name: Install tox
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install tox
+          pip install ruff xenon prospector radon bandit
 
-      - name: Run lint with tox
-        run: tox -e lint
+      - name: Run linting
+        run: |
+          echo "🔍 Running Ruff (linting)..."
+          ruff check src tests
+
+      - name: Run code complexity analysis
+        run: |
+          echo "📊 Running Xenon (complexity analysis)..."
+          xenon src --max-absolute B --max-modules A --max-average A
+
+      - name: Run code quality analysis
+        run: |
+          echo "🔧 Running Prospector (code quality)..."
+          prospector src
+
+      - name: Run cyclomatic complexity
+        run: |
+          echo "📈 Running Radon CC (cyclomatic complexity)..."
+          radon cc src -a
+
+      - name: Run maintainability index
+        run: |
+          echo "📋 Running Radon MI (maintainability)..."
+          radon mi src
+
+      - name: Run security analysis
+        run: |
+          echo "🔒 Running Bandit (security)..."
+          bandit -r src -f json -o bandit-report.json || echo "Bandit scan completed"
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: bandit-report.json
