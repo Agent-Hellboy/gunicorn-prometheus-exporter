@@ -10,15 +10,15 @@ This configuration:
 """
 
 import logging
-import os
 
 from prometheus_client import multiprocess, start_http_server
 
+from gunicorn_prometheus_exporter.config import get_config
 from gunicorn_prometheus_exporter.utils import (
     ensure_multiprocess_dir,
     get_multiprocess_dir,
 )
-from gunicorn_prometheus_exporter.config import get_config
+
 
 # —————————————————————————————————————————————————————————————————————————————
 # Hook to start a multiprocess‐aware Prometheus metrics server when Gunicorn is ready
@@ -32,7 +32,11 @@ def when_ready(server):
     # Use configuration for port and logging
     config = get_config()
     port = config.prometheus_metrics_port
-    logging.basicConfig(level=getattr(logging, config.get_gunicorn_config().get('loglevel', 'INFO').upper()))
+    logging.basicConfig(
+        level=getattr(
+            logging, config.get_gunicorn_config().get("loglevel", "INFO").upper()
+        )
+    )
     logger = logging.getLogger(__name__)
     logger.info(f"Starting Prometheus multiprocess metrics server on :{port}")
 
@@ -46,23 +50,32 @@ def when_ready(server):
     except Exception as e:
         logger.error(f"Failed to initialize MultiProcessCollector: {e}")
         return
-    
+
     # Start HTTP server for metrics with retry logic for USR2 upgrades
     import time
+
     max_retries = 3
     for attempt in range(max_retries):
         try:
             start_http_server(port, registry=registry)
-            logger.info("Using PrometheusMaster for signal handling and worker restart tracking")
-            logger.info("Metrics server started successfully - includes both worker and master metrics")
+            logger.info(
+                "Using PrometheusMaster for signal handling and worker restart tracking"
+            )
+            logger.info(
+                "Metrics server started successfully - includes both worker and master metrics"
+            )
             break
         except OSError as e:
             if e.errno == 98 and attempt < max_retries - 1:  # Address already in use
-                logger.warning(f"Port {port} in use (attempt {attempt + 1}/{max_retries}), retrying in 1 second...")
+                logger.warning(
+                    f"Port {port} in use (attempt {attempt + 1}/{max_retries}), retrying in 1 second..."
+                )
                 time.sleep(1)
                 continue
             else:
-                logger.error(f"Failed to start metrics server after {max_retries} attempts: {e}")
+                logger.error(
+                    f"Failed to start metrics server after {max_retries} attempts: {e}"
+                )
                 break
         except Exception as e:
             logger.error(f"Failed to start metrics server: {e}")
@@ -75,19 +88,19 @@ def when_ready(server):
 def on_starting(server):
     mp_dir = get_multiprocess_dir()
     if not mp_dir:
-        logging.warning("PROMETHEUS_MULTIPROC_DIR not set; skipping master metrics initialization")
+        logging.warning(
+            "PROMETHEUS_MULTIPROC_DIR not set; skipping master metrics initialization"
+        )
         return
 
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     logger.info("Master starting - initializing PrometheusMaster metrics")
-    
 
-    
     # Ensure the multiprocess directory exists
     ensure_multiprocess_dir(mp_dir)
     logger.info(" Multiprocess directory ready: %s", mp_dir)
-    
+
     logger.info(" Master metrics initialized")
 
 

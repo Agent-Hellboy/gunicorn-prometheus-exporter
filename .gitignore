@@ -5,7 +5,10 @@ __pycache__/
 
 explore
 trace.json
-
+CI_STRUCTURE.md
+CODE_QUALITY_SUMMARY.md
+GUNICORN_FLOW_DEBUG.md
+SECURITY_CI_GUIDE.md
 debug_guide.md
 example/client_python/
 example/gunicorn/

@@ -7,8 +7,11 @@ class ExporterConfig:
     """Configuration class for Gunicorn Prometheus Exporter."""
 
     # Default values (only for development/testing)
+    _default_prometheus_dir = os.path.join(
+        os.path.expanduser("~"), ".gunicorn_prometheus"
+    )
     PROMETHEUS_MULTIPROC_DIR = os.environ.get(
-        "PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus"
+        "PROMETHEUS_MULTIPROC_DIR", _default_prometheus_dir
     )
     # Production settings - no defaults, must be set by user
     PROMETHEUS_METRICS_PORT = None  # Must be set by user in production
@@ -32,9 +35,9 @@ class ExporterConfig:
     def _setup_multiproc_dir(self):
         """Set up the Prometheus multiprocess directory."""
         if not os.environ.get(self.ENV_PROMETHEUS_MULTIPROC_DIR):
-            os.environ[self.ENV_PROMETHEUS_MULTIPROC_DIR] = (
-                self.PROMETHEUS_MULTIPROC_DIR
-            )
+            os.environ[
+                self.ENV_PROMETHEUS_MULTIPROC_DIR
+            ] = self.PROMETHEUS_MULTIPROC_DIR
 
     @property
     def prometheus_multiproc_dir(self) -> str:
