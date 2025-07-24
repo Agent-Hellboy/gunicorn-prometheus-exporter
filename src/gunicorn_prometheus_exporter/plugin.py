@@ -53,7 +53,9 @@ def _setup_logging():
     except Exception as e:
         # Fallback to INFO level if config is not available
         logging.basicConfig(level=logging.INFO)
-        logging.getLogger(__name__).warning(f"Could not setup logging from config: {e}")
+        logging.getLogger(__name__).warning(
+            "Could not setup logging from config: %s", e
+        )
 
 
 class PrometheusWorker(SyncWorker):
@@ -68,8 +70,10 @@ class PrometheusWorker(SyncWorker):
         # Format: worker_<age>_<timestamp>
         self.worker_id = f"worker_{self.age}_{int(self.start_time)}"
         self.process = psutil.Process()
+        # Initialize request counter
+        self._request_count = 0
 
-        logger.info(f"PrometheusWorker initialized with ID: {self.worker_id}")
+        logger.info("PrometheusWorker initialized with ID: %s", self.worker_id)
 
     def _clear_old_metrics(self):
         """Clear only the old PID‐based worker samples."""
@@ -83,12 +87,12 @@ class PrometheusWorker(SyncWorker):
             WORKER_ERROR_HANDLING,
             WORKER_STATE,
         ]:
-            metric = MetricClass._metric
-            labelnames = list(metric._labelnames)
+            metric = MetricClass._metric  # pylint: disable=protected-access
+            labelnames = list(metric._labelnames)  # pylint: disable=protected-access
 
             # 1) Collect the old label‐tuples to delete
             to_delete = []
-            for label_values in list(metric._metrics.keys()):
+            for label_values in list(metric._metrics.keys()):  # pylint: disable=protected-access
                 try:
                     wid = label_values[labelnames.index("worker_id")]
                 except ValueError:
@@ -99,7 +103,7 @@ class PrometheusWorker(SyncWorker):
 
             # 2) Remove them from the internal store
             for key in to_delete:
-                metric._metrics.pop(key, None)
+                metric._metrics.pop(key, None)  # pylint: disable=protected-access
 
     def update_worker_metrics(self):
         """Update worker metrics."""
@@ -118,7 +122,7 @@ class PrometheusWorker(SyncWorker):
                 worker_id=self.worker_id,
             )
         except Exception as e:
-            logger.error(f"Error updating worker metrics: {e}")
+            logger.error("Error updating worker metrics: %s", e)
 
     def handle_request(self, listener, req, client, addr):
         """Handle a request and update metrics."""
@@ -134,7 +138,7 @@ class PrometheusWorker(SyncWorker):
             if self._request_count % 10 == 0:
                 self.update_worker_metrics()
 
-            resp = super().handle_request(listener, req, client, addr)
+            resp = super().handle_request(listener, req, client, addr)  # pylint: disable=assignment-from-no-return
             duration = time.time() - start_time
 
             WORKER_REQUESTS.inc(worker_id=self.worker_id)
@@ -148,10 +152,10 @@ class PrometheusWorker(SyncWorker):
                 endpoint=req.path,
                 error_type=type(e).__name__,
             )
-            logger.error(f"Error handling request: {e}")
+            logger.error("Error handling request: %s", e)
             raise
 
-    def handle_error(self, req, client, addr, einfo):
+    def handle_error(self, req, client, addr, einfo):  # pylint: disable=arguments-renamed
         """Handle error."""
         error_type = (
             type(einfo).__name__ if isinstance(einfo, BaseException) else str(einfo)

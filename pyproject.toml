@@ -98,6 +98,24 @@ unfixable = []
 # Like Black, use double quotes for strings.
 quote-style = "double"
 
+[tool.pylint.messages_control]
+disable = [
+    "import-error",  # Disable import errors for optional dependencies
+    "logging-fstring-interpolation",  # We've fixed these
+    "protected-access",  # We've added disable comments
+    "unused-argument",  # We've added disable comments
+    "access-member-before-definition",  # We've fixed this
+    "django-not-configured",  # False positive, not a Django project
+    "assignment-from-no-return",  # We've added disable comments
+    "arguments-renamed",  # We've added disable comments
+]
+
+[tool.pylint.format]
+max-line-length = 88
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "Run", "_"]
+
 # Like Black, indent with spaces, rather than tabs.
 indent-style = "space"
 

@@ -82,22 +82,22 @@ class BaseMetric(metaclass=MetricMeta):
     @classmethod
     def _samples(cls):
         """Get metric samples."""
-        return cls._metric._samples()
+        return cls._metric._samples()  # pylint: disable=protected-access
 
     @classmethod
     def _name(cls):
         """Get metric name."""
-        return cls._metric._name
+        return cls._metric._name  # pylint: disable=protected-access
 
     @classmethod
     def _documentation(cls):
         """Get metric documentation."""
-        return cls._metric._documentation
+        return cls._metric._documentation  # pylint: disable=protected-access
 
     @classmethod
     def _labelnames(cls):
         """Get metric label names."""
-        return cls._metric._labelnames
+        return cls._metric._labelnames  # pylint: disable=protected-access
 
     @classmethod
     def inc(cls, **labels):
@@ -118,15 +118,15 @@ class BaseMetric(metaclass=MetricMeta):
     @classmethod
     def describe(cls):
         return {
-            "name": cls._metric._name,
-            "documentation": cls._metric._documentation,
+            "name": cls._metric._name,  # pylint: disable=protected-access
+            "documentation": cls._metric._documentation,  # pylint: disable=protected-access
             "type": type(cls._metric).__name__,
-            "labels": cls._metric._labelnames,
+            "labels": cls._metric._labelnames,  # pylint: disable=protected-access
         }
 
     @classmethod
     def clear(cls):
-        cls._metric._metrics.clear()
+        cls._metric._metrics.clear()  # pylint: disable=protected-access
 
 
 # Worker metrics
