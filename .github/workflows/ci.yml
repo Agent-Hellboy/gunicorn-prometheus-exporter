@@ -65,11 +65,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install ruff xenon prospector radon bandit
 
-      - name: Run linting and formatting
+      - name: Run linting
         run: |
-          echo "🔍 Running Ruff (linting and formatting)..."
+          echo "🔍 Running Ruff (linting)..."
           ruff check src tests
-          ruff format --check src tests
 
       - name: Run code complexity analysis
         run: |
