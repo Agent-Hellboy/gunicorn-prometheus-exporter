@@ -53,9 +53,13 @@ def when_ready(server):
     metrics_thread.start()
 
     print(f"Prometheus metrics server started on {metrics_bind}:{metrics_port}")
-    print(
-        f"Redis forwarder enabled (interval: {os.environ.get('REDIS_FORWARD_INTERVAL', '15')}s)"
-    )
-    print(
-        f"Redis connection: {os.environ.get('REDIS_HOST', 'localhost')}:{os.environ.get('REDIS_PORT', '6379')}"
-    )
+
+    # Start Redis forwarder if enabled
+    from gunicorn_prometheus_exporter import start_redis_forwarder
+
+    if start_redis_forwarder():
+        print(
+            f"Redis connection: {os.environ.get('REDIS_HOST', 'localhost')}:{os.environ.get('REDIS_PORT', '6379')}"
+        )
+    else:
+        print("Redis forwarder not started (disabled or failed)")

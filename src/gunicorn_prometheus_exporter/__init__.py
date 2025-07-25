@@ -119,8 +119,14 @@ def patched_run(self):
 
 gunicorn.app.base.BaseApplication.run = patched_run
 
-# Start Redis forwarder if enabled
-if config.redis_enabled:
+# Redis forwarder startup moved to gunicorn config when_ready hook
+
+
+def start_redis_forwarder():
+    """Start Redis forwarder if enabled. Call this from gunicorn when_ready hook."""
+    if not config.redis_enabled:
+        return False
+
     try:
         manager = get_forwarder_manager()
 
@@ -133,10 +139,14 @@ if config.redis_enabled:
             print(
                 f"Redis forwarder started (interval: {config.redis_forward_interval}s)"
             )
-        else:
-            print("Failed to start Redis forwarder")
+            return True
+
+        print("Failed to start Redis forwarder")
+        return False
     except Exception as e:
         print(f"Failed to start Redis forwarder: {e}")
+        return False
+
 
 __version__ = "0.1.0"
 __all__ = [
@@ -147,4 +157,5 @@ __all__ = [
     "get_config",
     "get_forwarder_manager",
     "RedisForwarder",
+    "start_redis_forwarder",
 ]
