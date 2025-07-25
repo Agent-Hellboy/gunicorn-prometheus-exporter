@@ -75,6 +75,7 @@ import gunicorn.app.base
 import gunicorn.arbiter
 
 from .config import config, get_config
+from .forwarder import RedisForwarder, get_forwarder_manager
 from .master import PrometheusMaster
 from .metrics import registry
 from .plugin import PrometheusWorker
@@ -118,6 +119,25 @@ def patched_run(self):
 
 gunicorn.app.base.BaseApplication.run = patched_run
 
+# Start Redis forwarder if enabled
+if config.redis_enabled:
+    try:
+        manager = get_forwarder_manager()
+
+        # Create Redis forwarder with config defaults
+        redis_forwarder = RedisForwarder()
+        manager.add_forwarder("redis", redis_forwarder)
+
+        # Start it
+        if manager.start_forwarder("redis"):
+            print(
+                f"Redis forwarder started (interval: {config.redis_forward_interval}s)"
+            )
+        else:
+            print("Failed to start Redis forwarder")
+    except Exception as e:
+        print(f"Failed to start Redis forwarder: {e}")
+
 __version__ = "0.1.0"
 __all__ = [
     "PrometheusWorker",
@@ -125,4 +145,6 @@ __all__ = [
     "registry",
     "config",
     "get_config",
+    "get_forwarder_manager",
+    "RedisForwarder",
 ]
