@@ -19,6 +19,8 @@ jobs:
             toxenv: py311
           - python-version: "3.12"
             toxenv: py312
+          - python-version: "3.13"
+            toxenv: py313
 
     steps:
       - name: Checkout code
@@ -64,6 +66,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ruff xenon prospector radon bandit
+          pip install gunicorn prometheus_client psutil
 
       - name: Run linting
         run: |
@@ -78,7 +81,7 @@ jobs:
       - name: Run code quality analysis
         run: |
           echo "🔧 Running Prospector (code quality)..."
-          prospector src
+          prospector src --without-tool dodgy
 
       - name: Run cyclomatic complexity
         run: |

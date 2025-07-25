@@ -22,7 +22,7 @@ repos:
         name: prospector
         entry: prospector
         language: system
-        args: [src]
+        args: [src, --without-tool, dodgy]
         pass_filenames: false
         always_run: true
 

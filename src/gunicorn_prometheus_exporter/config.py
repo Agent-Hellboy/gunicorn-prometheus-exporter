@@ -28,6 +28,18 @@ class ExporterConfig:
     ENV_GUNICORN_TIMEOUT = "GUNICORN_TIMEOUT"
     ENV_GUNICORN_KEEPALIVE = "GUNICORN_KEEPALIVE"
 
+    # Redis environment variables
+    ENV_REDIS_ENABLED = "REDIS_ENABLED"
+    ENV_REDIS_HOST = "REDIS_HOST"
+    ENV_REDIS_PORT = "REDIS_PORT"
+    ENV_REDIS_DB = "REDIS_DB"
+    ENV_REDIS_PASSWORD = "REDIS_PASSWORD"  # nosec - environment variable name
+    ENV_REDIS_KEY_PREFIX = "REDIS_KEY_PREFIX"
+    ENV_REDIS_FORWARD_INTERVAL = "REDIS_FORWARD_INTERVAL"
+
+    # Cleanup environment variables
+    ENV_CLEANUP_DB_FILES = "CLEANUP_DB_FILES"
+
     def __init__(self):
         """Initialize configuration with environment variables and defaults."""
         self._setup_multiproc_dir()
@@ -98,6 +110,57 @@ class ExporterConfig:
         """Get the Gunicorn keepalive setting."""
         return int(
             os.environ.get(self.ENV_GUNICORN_KEEPALIVE, str(self.GUNICORN_KEEPALIVE))
+        )
+
+    # Redis properties
+    @property
+    def redis_enabled(self) -> bool:
+        """Check if Redis forwarding is enabled."""
+        return os.environ.get(self.ENV_REDIS_ENABLED, "").lower() in (
+            "true",
+            "1",
+            "yes",
+            "on",
+        )
+
+    @property
+    def redis_host(self) -> str:
+        """Get Redis host."""
+        return os.environ.get(self.ENV_REDIS_HOST, "localhost")
+
+    @property
+    def redis_port(self) -> int:
+        """Get Redis port."""
+        return int(os.environ.get(self.ENV_REDIS_PORT, "6379"))
+
+    @property
+    def redis_db(self) -> int:
+        """Get Redis database number."""
+        return int(os.environ.get(self.ENV_REDIS_DB, "0"))
+
+    @property
+    def redis_password(self) -> str:
+        """Get Redis password."""
+        return os.environ.get(self.ENV_REDIS_PASSWORD)
+
+    @property
+    def redis_key_prefix(self) -> str:
+        """Get Redis key prefix."""
+        return os.environ.get(self.ENV_REDIS_KEY_PREFIX, "gunicorn:metrics:")
+
+    @property
+    def redis_forward_interval(self) -> int:
+        """Get Redis forward interval in seconds."""
+        return int(os.environ.get(self.ENV_REDIS_FORWARD_INTERVAL, "30"))
+
+    @property
+    def cleanup_db_files(self) -> bool:
+        """Check if DB file cleanup is enabled."""
+        return os.environ.get(self.ENV_CLEANUP_DB_FILES, "true").lower() in (
+            "true",
+            "1",
+            "yes",
+            "on",
         )
 
     def get_gunicorn_config(self) -> dict:

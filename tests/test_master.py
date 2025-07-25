@@ -173,14 +173,14 @@ def test_multiple_signal_handlers(master):
 def test_signal_handler_super_calls(master):
     """Test that signal handlers call their parent class methods."""
     with patch("os.fork", return_value=12345), patch("sys.exit"):
-        # Mock all parent class methods at once
+        # Mock all parent class methods using the correct import path
         with (
-            patch("gunicorn.arbiter.Arbiter.handle_hup") as mock_hup,
-            patch("gunicorn.arbiter.Arbiter.handle_ttin") as mock_ttin,
-            patch("gunicorn.arbiter.Arbiter.handle_ttou") as mock_ttou,
-            patch("gunicorn.arbiter.Arbiter.handle_chld") as mock_chld,
-            patch("gunicorn.arbiter.Arbiter.handle_usr1") as mock_usr1,
-            patch("gunicorn.arbiter.Arbiter.handle_usr2") as mock_usr2,
+            patch.object(master.__class__.__bases__[0], "handle_hup") as mock_hup,
+            patch.object(master.__class__.__bases__[0], "handle_ttin") as mock_ttin,
+            patch.object(master.__class__.__bases__[0], "handle_ttou") as mock_ttou,
+            patch.object(master.__class__.__bases__[0], "handle_chld") as mock_chld,
+            patch.object(master.__class__.__bases__[0], "handle_usr1") as mock_usr1,
+            patch.object(master.__class__.__bases__[0], "handle_usr2") as mock_usr2,
         ):
             # Call all signal handlers
             master.handle_hup()

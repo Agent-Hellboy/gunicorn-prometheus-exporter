@@ -1,0 +1,18 @@
+[MASTER]
+extension-pkg-whitelist=
+
+[MESSAGES CONTROL]
+disable=
+    import-outside-toplevel,
+    too-many-arguments,
+    too-many-positional-arguments,
+    unrecognized-option,
+    import-error,
+    django-not-configured,
+    django-not-available
+
+[FORMAT]
+max-line-length=88
+
+[BASIC]
+good-names=i,j,k,ex,Run,_

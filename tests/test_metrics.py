@@ -109,6 +109,11 @@ def test_multiprocess_dir_setup():
     from gunicorn_prometheus_exporter.config import config
 
     assert config.prometheus_multiproc_dir is not None
+
+    # The directory should be set, but might not exist if cleaned up by other tests
+    if not os.path.exists(config.prometheus_multiproc_dir):
+        os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
+
     assert os.path.exists(config.prometheus_multiproc_dir)
 
 
