@@ -46,8 +46,8 @@ class PrometheusMaster(Arbiter):
         super().handle_hup()
 
     def handle_ttin(self):
-        """Handle TTI signal."""
-        logger.info("Gunicorn master TTI signal received")
+        """Handle TTIN signal."""
+        logger.info("Gunicorn master TTIN signal received")
         MasterWorkerRestarts.labels(reason="ttin").inc()
         super().handle_ttin()
 
