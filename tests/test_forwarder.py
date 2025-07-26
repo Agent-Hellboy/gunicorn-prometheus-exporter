@@ -3,6 +3,7 @@
 import os
 import shutil
 import tempfile
+import time
 import unittest
 
 from unittest.mock import Mock, patch
@@ -203,6 +204,30 @@ class TestBaseForwarder(unittest.TestCase):
         # Test stop
         forwarder.stop()
         self.assertFalse(forwarder.is_running())
+
+    def test_forwarder_stats(self):
+        """Test forward count and last forward time are updated."""
+
+        class TestForwarder(BaseForwarder):
+            def _connect(self):
+                return True
+
+            def _forward_metrics(self, data):
+                return True
+
+            def _disconnect(self):
+                pass
+
+            def _generate_metrics(self):
+                return "data"
+
+        forwarder = TestForwarder(forward_interval=0.1)
+        forwarder.start()
+        time.sleep(0.2)
+        forwarder.stop()
+
+        self.assertGreaterEqual(forwarder._forward_count, 1)
+        self.assertIsNotNone(forwarder._last_forward_time)
 
     def test_forwarder_failed_connection(self):
         """Test forwarder with failed connection."""
@@ -484,7 +509,13 @@ class TestForwarderManager(unittest.TestCase):
     def test_get_status(self):
         """Test getting status of all forwarders."""
         mock_forwarder = Mock(spec=BaseForwarder)
-        mock_forwarder.get_status.return_value = {"running": True, "name": "test"}
+        mock_forwarder.is_running.return_value = True
+        mock_forwarder.get_status.return_value = {
+            "running": True,
+            "name": "test",
+            "forward_count": 3,
+            "last_forward_time": 1.0,
+        }
 
         self.manager.add_forwarder("test", mock_forwarder)
 
@@ -492,6 +523,9 @@ class TestForwarderManager(unittest.TestCase):
 
         self.assertIn("test", status)
         self.assertEqual(status["test"]["running"], True)
+        self.assertEqual(status["running_count"], 1)
+        self.assertEqual(status["total_forwards"], 3)
+        self.assertEqual(status["last_forward_time"], 1.0)
         mock_forwarder.get_status.assert_called_once()
 
     def test_get_running_forwarders(self):
