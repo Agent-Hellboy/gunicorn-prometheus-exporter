@@ -20,7 +20,7 @@ others) that conforms to the WSGI specification.
 - **Comprehensive Worker Metrics**: Real-time monitoring of Gunicorn worker performance
   - **Resource Monitoring**: Memory usage, CPU usage, and uptime tracking
   - **Request Analytics**: Request durations with histogram buckets and total counts
-  - **Error Tracking**: Failed requests and error handling with detailed labels (*Note: Currently not implemented - framework-level error tracking may be better handled by application-specific exporters*)
+  - **Error Tracking**: Failed requests and error handling with detailed labels (**Note: Currently not implemented - framework-level error tracking may be better handled by application-specific exporters**)
   - **State Management**: Worker state monitoring (running, quit, abort, error)
   - **Performance Insights**: Request throughput and latency analysis
 
