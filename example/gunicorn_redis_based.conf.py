@@ -1,6 +1,7 @@
-"""Gunicorn configuration with Redis forwarding enabled.
+"""Gunicorn configuration with Redis forwarding (formerly Redis-based).
 
 This example demonstrates Redis forwarding functionality.
+Note: Redis-based collection is not yet implemented.
 """
 
 import os
@@ -13,24 +14,22 @@ from gunicorn_prometheus_exporter.hooks import (
 )
 
 
-# Set up multiprocess directory for Prometheus
-os.environ["PROMETHEUS_MULTIPROC_DIR"] = "/tmp/prometheus_multiproc"  # nosec B108
-
 # Gunicorn settings
-bind = "0.0.0.0:8300"
+bind = "0.0.0.0:8000"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
+# Environment variables for configuration
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")  # nosec B108
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # nosec B104
+
 # Redis configuration
 os.environ.setdefault("REDIS_ENABLED", "true")
-os.environ.setdefault("REDIS_HOST", "127.0.0.1")
+os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("REDIS_PORT", "6379")
-os.environ.setdefault("REDIS_FORWARD_INTERVAL", "10")
+os.environ.setdefault("REDIS_FORWARD_INTERVAL", "5")
 os.environ.setdefault("CLEANUP_DB_FILES", "false")
-
-# Prometheus configuration
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # nosec B104
 
 # Use Redis-enabled hooks
 when_ready = redis_when_ready
