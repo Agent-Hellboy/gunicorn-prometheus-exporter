@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 try:
     os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
 except Exception as e:
-    print(f"Warning: Failed to prepare PROMETHEUS_MULTIPROC_DIR: {e}")
+    logger.warning("Failed to prepare PROMETHEUS_MULTIPROC_DIR: %s", e)
 
 # Prometheus Registry - Don't create MultiProcessCollector here
 # It will be created in the gunicorn config when needed
