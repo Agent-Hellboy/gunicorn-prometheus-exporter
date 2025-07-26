@@ -1,7 +1,7 @@
 """Gunicorn configuration with Redis forwarding (formerly Redis-based).
 
 This example demonstrates Redis forwarding functionality.
-Note: Redis-based collection is not yet implemented.
+Note: Redis-based metrics collection (i.e., reading aggregated metrics from Redis in a multiprocess setup) is not yet implemented; only forwarding to Redis is supported.
 """
 
 import os

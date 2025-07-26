@@ -53,6 +53,41 @@ def default_on_starting(_server: Any) -> None:
     logger.info(" Master metrics initialized")
 
 
+def _setup_prometheus_server(logger: logging.Logger) -> tuple[int, Any] | None:
+    """Set up Prometheus multiprocess metrics server.
+
+    This function:
+    1. Validates multiprocess directory configuration
+    2. Initializes MultiProcessCollector
+    3. Returns port and registry for server startup
+
+    Args:
+        logger: Logger instance for status messages
+
+    Returns:
+        Tuple of (port, registry) if successful, None if failed
+    """
+    from .metrics import registry
+    from .utils import get_multiprocess_dir
+
+    mp_dir = get_multiprocess_dir()
+    if not mp_dir:
+        logger.warning("PROMETHEUS_MULTIPROC_DIR not set; skipping metrics server")
+        return None
+
+    port = config.prometheus_metrics_port
+
+    # Initialize MultiProcessCollector
+    try:
+        MultiProcessCollector(registry)
+        logger.info("Successfully initialized MultiProcessCollector")
+    except Exception as e:
+        logger.error("Failed to initialize MultiProcessCollector: %s", e)
+        return None
+
+    return port, registry
+
+
 def default_when_ready(_server: Any) -> None:
     """Default when_ready hook with Prometheus metrics.
 
@@ -64,31 +99,20 @@ def default_when_ready(_server: Any) -> None:
     Args:
         _server: Gunicorn server instance (unused)
     """
-    from .metrics import registry
-    from .utils import get_multiprocess_dir
-
-    mp_dir = get_multiprocess_dir()
-    if not mp_dir:
-        logging.warning("PROMETHEUS_MULTIPROC_DIR not set; skipping metrics server")
-        return
-
     # Use configuration for port and logging
-    port = config.prometheus_metrics_port
     logging.basicConfig(
         level=getattr(
             logging, config.get_gunicorn_config().get("loglevel", "INFO").upper()
         )
     )
     logger = logging.getLogger(__name__)
-    logger.info("Starting Prometheus multiprocess metrics server on :%s", port)
 
-    # Initialize MultiProcessCollector
-    try:
-        MultiProcessCollector(registry)
-        logger.info("Successfully initialized MultiProcessCollector")
-    except Exception as e:
-        logger.error("Failed to initialize MultiProcessCollector: %s", e)
+    result = _setup_prometheus_server(logger)
+    if not result:
         return
+    port, registry = result
+
+    logger.info("Starting Prometheus multiprocess metrics server on :%s", port)
 
     # Start HTTP server for metrics with retry logic for USR2 upgrades
     max_retries = 3
@@ -147,7 +171,7 @@ def redis_when_ready(_server: Any) -> None:
 
     This function:
     1. Sets up Prometheus multiprocess metrics collection
-    2. Starts the Prometheus metrics HTTP server
+    2. Starts the Prometheus metrics HTTP server with retry logic
     3. Initializes Redis forwarding for metrics
     4. Logs status information
 
@@ -155,39 +179,46 @@ def redis_when_ready(_server: Any) -> None:
         _server: Gunicorn server instance (unused)
     """
     from . import start_redis_forwarder
-    from .metrics import registry
-    from .utils import get_multiprocess_dir
-
-    mp_dir = get_multiprocess_dir()
-    if not mp_dir:
-        logging.warning("PROMETHEUS_MULTIPROC_DIR not set; skipping metrics server")
-        return
 
     # Use configuration for port and logging
-    port = config.prometheus_metrics_port
     logging.basicConfig(
         level=getattr(
             logging, config.get_gunicorn_config().get("loglevel", "INFO").upper()
         )
     )
     logger = logging.getLogger(__name__)
+
+    result = _setup_prometheus_server(logger)
+    if not result:
+        return
+    port, registry = result
+
     logger.info("Starting Prometheus multiprocess metrics server on :%s", port)
 
-    # Initialize MultiProcessCollector
-    try:
-        MultiProcessCollector(registry)
-        logger.info("Successfully initialized MultiProcessCollector")
-    except Exception as e:
-        logger.error("Failed to initialize MultiProcessCollector: %s", e)
-        return
-
-    # Start HTTP server for metrics
-    try:
-        start_http_server(port, registry=registry)
-        logger.info("Metrics server started successfully")
-    except Exception as e:
-        logger.error("Failed to start metrics server: %s", e)
-        return
+    # Start HTTP server with same retry logic as default_when_ready
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            start_http_server(port, registry=registry)
+            logger.info("Metrics server started successfully")
+            break
+        except OSError as e:
+            if e.errno == 98 and attempt < max_retries - 1:
+                logger.warning(
+                    "Port %s in use (attempt %s/%s), retrying in 1 second...",
+                    port,
+                    attempt + 1,
+                    max_retries,
+                )
+                time.sleep(1)
+                continue
+            logger.error(
+                "Failed to start metrics server after %s attempts: %s", max_retries, e
+            )
+            return
+        except Exception as e:
+            logger.error("Failed to start metrics server: %s", e)
+            return
 
     # Start Redis forwarder if enabled
     if config.redis_enabled:
