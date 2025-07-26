@@ -1,14 +1,9 @@
-import logging
-
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from gunicorn_prometheus_exporter.master import PrometheusMaster
 from gunicorn_prometheus_exporter.metrics import MASTER_WORKER_RESTARTS
-
-
-logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -98,9 +93,12 @@ def test_master_ttou(master):
 # TODO: Fix this test
 # def test_master_chld(master):
 #     """Test that master CHLD is tracked."""
-#     with patch("os.fork", return_value=12345), patch("sys.exit") as exit_mock:
-#         with patch("gunicorn.arbiter.Arbiter.handle_chld") as mock_super_chld:
-#             master.handle_chld(17, None)  # 17 is SIGCHLD
+#     with (
+#         patch("os.fork", return_value=12345),
+#         patch("sys.exit") as exit_mock,
+#         patch("gunicorn.arbiter.Arbiter.handle_chld") as mock_super_chld,
+#     ):
+#         master.handle_chld(17, None)  # 17 is SIGCHLD
 
 #             # Metric check
 #             samples = list(MASTER_WORKER_RESTARTS.collect())[0].samples
@@ -172,28 +170,28 @@ def test_multiple_signal_handlers(master):
 
 def test_signal_handler_super_calls(master):
     """Test that signal handlers call their parent class methods."""
-    with patch("os.fork", return_value=12345), patch("sys.exit"):
-        # Mock all parent class methods using the correct import path
-        with (
-            patch.object(master.__class__.__bases__[0], "handle_hup") as mock_hup,
-            patch.object(master.__class__.__bases__[0], "handle_ttin") as mock_ttin,
-            patch.object(master.__class__.__bases__[0], "handle_ttou") as mock_ttou,
-            patch.object(master.__class__.__bases__[0], "handle_chld") as mock_chld,
-            patch.object(master.__class__.__bases__[0], "handle_usr1") as mock_usr1,
-            patch.object(master.__class__.__bases__[0], "handle_usr2") as mock_usr2,
-        ):
-            # Call all signal handlers
-            master.handle_hup()
-            master.handle_ttin()
-            master.handle_ttou()
-            master.handle_chld(17, None)
-            master.handle_usr1()
-            master.handle_usr2()
+    with (
+        patch("os.fork", return_value=12345),
+        patch("sys.exit"),
+        patch.object(master.__class__.__bases__[0], "handle_hup") as mock_hup,
+        patch.object(master.__class__.__bases__[0], "handle_ttin") as mock_ttin,
+        patch.object(master.__class__.__bases__[0], "handle_ttou") as mock_ttou,
+        patch.object(master.__class__.__bases__[0], "handle_chld") as mock_chld,
+        patch.object(master.__class__.__bases__[0], "handle_usr1") as mock_usr1,
+        patch.object(master.__class__.__bases__[0], "handle_usr2") as mock_usr2,
+    ):
+        # Call all signal handlers
+        master.handle_hup()
+        master.handle_ttin()
+        master.handle_ttou()
+        master.handle_chld(17, None)
+        master.handle_usr1()
+        master.handle_usr2()
 
-            # Verify all parent methods were called
-            mock_hup.assert_called_once()
-            mock_ttin.assert_called_once()
-            mock_ttou.assert_called_once()
-            mock_chld.assert_called_once_with(17, None)
-            mock_usr1.assert_called_once()
-            mock_usr2.assert_called_once()
+        # Verify all parent methods were called
+        mock_hup.assert_called_once()
+        mock_ttin.assert_called_once()
+        mock_ttou.assert_called_once()
+        mock_chld.assert_called_once_with(17, None)
+        mock_usr1.assert_called_once()
+        mock_usr2.assert_called_once()
