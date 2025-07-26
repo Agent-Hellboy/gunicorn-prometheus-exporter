@@ -56,6 +56,9 @@ def test_worker_initialization(worker):
 
 def test_handle_request(worker):
     """Test that handle_request updates worker metrics correctly."""
+    # Clear any existing metrics first
+    WORKER_REQUESTS.clear()
+
     listener = MagicMock()
     req = MagicMock()
     client = MagicMock()
