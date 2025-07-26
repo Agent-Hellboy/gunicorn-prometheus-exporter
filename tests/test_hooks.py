@@ -12,6 +12,9 @@ from gunicorn_prometheus_exporter import hooks
 def reset_env(monkeypatch):
     # ensure redis env var is cleared for tests
     monkeypatch.delenv("REDIS_ENABLED", raising=False)
+    # Set required environment variables for tests
+    monkeypatch.setenv("PROMETHEUS_METRICS_PORT", "9091")
+    monkeypatch.setenv("GUNICORN_WORKERS", "2")
 
 
 def test_setup_prometheus_server_success(monkeypatch):
@@ -134,7 +137,7 @@ def test_redis_when_ready_enabled(monkeypatch):
     )
     start_forwarder = MagicMock()
     monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.hooks.start_redis_forwarder", start_forwarder
+        "gunicorn_prometheus_exporter.start_redis_forwarder", start_forwarder
     )
 
     hooks.redis_when_ready(None)
@@ -152,7 +155,7 @@ def test_redis_when_ready_disabled(monkeypatch):
     )
     start_forwarder = MagicMock()
     monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.hooks.start_redis_forwarder", start_forwarder
+        "gunicorn_prometheus_exporter.start_redis_forwarder", start_forwarder
     )
 
     hooks.redis_when_ready(None)
