@@ -106,7 +106,8 @@ def leak():
 
     # Add memory to the leak
     leak_bytes = leak_size_mb * 1024 * 1024
-    leak_data = array("B", [random.randint(0, 255) for _ in range(leak_bytes)])  # nosec B311
+    # Use zero-filled array for faster allocation instead of random data
+    leak_data = array("B", [0] * leak_bytes)
     app.memory_leak.append(leak_data)
 
     current_leak_mb = len(app.memory_leak) * leak_size_mb
@@ -261,14 +262,16 @@ def stress():
         app.stress_leak = []
 
     leak_bytes = leak_mb * 1024 * 1024
-    leak_data = array("B", [random.randint(0, 255) for _ in range(leak_bytes)])  # nosec B311
+    # Use zero-filled array for faster allocation instead of random data
+    leak_data = array("B", [0] * leak_bytes)
     app.stress_leak.append(leak_data)
     results.append(f"Leak: {leak_mb}MB added")
 
     # 4. Clean up memory stress
     try:
         del large_array
-    except Exception:  # nosec B110
+    except NameError:  # noqa: E722 - Bare except is intentional for crash testing
+        # large_array may not exist if memory allocation failed
         pass
     gc.collect()
 
@@ -278,7 +281,10 @@ def stress():
 @app.route("/health")
 def health():
     """Health check endpoint that returns current memory usage."""
-    import psutil
+    try:
+        import psutil
+    except ImportError:
+        return {"status": "healthy", "error": "psutil not installed"}, 200
 
     process = psutil.Process()
     memory_info = process.memory_info()
