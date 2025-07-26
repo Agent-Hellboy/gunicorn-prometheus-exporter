@@ -80,7 +80,7 @@ pip install gunicorn-prometheus-exporter
 ### 2. Basic Usage
 
 Create a Gunicorn config file (`gunicorn.conf.py`):
-See `./example/gunicorn.conf.py` for a complete working example.
+See `./example/gunicorn_simple.conf.py` for a complete working example.
 
 ### 3. Start Gunicorn
 
