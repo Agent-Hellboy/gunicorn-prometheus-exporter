@@ -1,6 +1,6 @@
 [project]
 name = "gunicorn-prometheus-exporter"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Prometheus metrics exporter for Gunicorn"
 readme = "README.md"
 authors = [
@@ -13,6 +13,7 @@ classifiers = [
     "Intended Audience :: Developers",
     # License classifier removed per Flit requirements
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
