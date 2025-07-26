@@ -212,7 +212,7 @@ gunicorn_master_worker_restart_total{reason="chld"} 12.0
 
 ## Architecture
 
-### How It Works
+## How It Works
 
 1. **Import Patching**: When imported, the module patches Gunicorn's `Arbiter` class with `PrometheusMaster`
 2. **Worker Plugin**: Uses custom `PrometheusWorker` class to collect worker metrics
@@ -220,7 +220,7 @@ gunicorn_master_worker_restart_total{reason="chld"} 12.0
 4. **Multiprocess**: Uses Prometheus multiprocess mode for shared metrics collection
 5. **HTTP Server**: Starts metrics server in `when_ready` hook
 
-### Key Components
+## Key Components
 
 - **`PrometheusMaster`**: Extends Gunicorn's Arbiter for signal tracking
 - **`PrometheusWorker`**: Custom worker class for request/resource metrics
