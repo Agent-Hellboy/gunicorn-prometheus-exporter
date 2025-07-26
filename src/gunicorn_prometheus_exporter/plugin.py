@@ -70,6 +70,10 @@ class PrometheusWorker(SyncWorker):
         # Format: worker_<age>_<timestamp>
         self.worker_id = f"worker_{self.age}_{int(self.start_time)}"
         self.process = psutil.Process()
+        # Remove any lingering metrics from previous worker instances
+        # that used PID-based identifiers. This prevents metric bloat
+        # when workers are restarted (e.g. via TTIN/USR2).
+        self._clear_old_metrics()
         # Initialize request counter
         self._request_count = 0
 
