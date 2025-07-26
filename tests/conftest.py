@@ -22,6 +22,8 @@ def setup_test_environment():
     temp_dir = tempfile.mkdtemp()
     os.environ["PROMETHEUS_MULTIPROC_DIR"] = temp_dir
     # Update config to use the test directory
+    # Note: This calls the private method during test setup
+    # The config will be re-initialized with the new environment
     config._setup_multiproc_dir()
     yield
     os.environ.pop("PROMETHEUS_MULTIPROC_DIR", None)

@@ -45,15 +45,21 @@ class ExporterConfig:
     ENV_CLEANUP_DB_FILES = "CLEANUP_DB_FILES"
 
     def __init__(self):
-        """Initialize configuration with environment variables and defaults."""
+        """Initialize configuration with environment variables and defaults.
+
+        Note: This modifies os.environ during initialization to set up
+        the multiprocess directory if not already set. If you need to
+        set environment variables after importing this module, do so
+        before creating an ExporterConfig instance.
+        """
         self._setup_multiproc_dir()
 
     def _setup_multiproc_dir(self):
         """Set up the Prometheus multiprocess directory."""
         if not os.environ.get(self.ENV_PROMETHEUS_MULTIPROC_DIR):
-            os.environ[self.ENV_PROMETHEUS_MULTIPROC_DIR] = (
-                self.PROMETHEUS_MULTIPROC_DIR
-            )
+            os.environ[
+                self.ENV_PROMETHEUS_MULTIPROC_DIR
+            ] = self.PROMETHEUS_MULTIPROC_DIR
 
     @property
     def prometheus_multiproc_dir(self) -> str:
