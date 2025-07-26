@@ -1,6 +1,10 @@
 """Configuration management for Gunicorn Prometheus Exporter."""
 
+import logging
 import os
+
+
+logger = logging.getLogger(__name__)
 
 
 class ExporterConfig:
@@ -47,9 +51,9 @@ class ExporterConfig:
     def _setup_multiproc_dir(self):
         """Set up the Prometheus multiprocess directory."""
         if not os.environ.get(self.ENV_PROMETHEUS_MULTIPROC_DIR):
-            os.environ[
-                self.ENV_PROMETHEUS_MULTIPROC_DIR
-            ] = self.PROMETHEUS_MULTIPROC_DIR
+            os.environ[self.ENV_PROMETHEUS_MULTIPROC_DIR] = (
+                self.PROMETHEUS_MULTIPROC_DIR
+            )
 
     @property
     def prometheus_multiproc_dir(self) -> str:
@@ -202,13 +206,13 @@ class ExporterConfig:
                     missing_vars.append(f"{var_name} ({description})")
 
             if missing_vars:
-                print("Required environment variables not set:")
+                logger.error("Required environment variables not set:")
                 for var in missing_vars:
-                    print(f"   - {var}")
-                print("\n Set these variables before running in production:")
-                print(f"   export {self.ENV_PROMETHEUS_BIND_ADDRESS}=0.0.0.0")
-                print(f"   export {self.ENV_PROMETHEUS_METRICS_PORT}=9091")
-                print(f"   export {self.ENV_GUNICORN_WORKERS}=4")
+                    logger.error("   - %s", var)
+                logger.error("\n Set these variables before running in production:")
+                logger.error("   export %s=0.0.0.0", self.ENV_PROMETHEUS_BIND_ADDRESS)
+                logger.error("   export %s=9091", self.ENV_PROMETHEUS_METRICS_PORT)
+                logger.error("   export %s=4", self.ENV_GUNICORN_WORKERS)
                 return False
 
             # Validate multiprocess directory
@@ -237,20 +241,20 @@ class ExporterConfig:
             return True
 
         except Exception as e:
-            print(f"Configuration validation failed: {e}")
+            logger.error("Configuration validation failed: %s", e)
             return False
 
     def print_config(self):
-        """Print current configuration."""
-        print("Gunicorn Prometheus Exporter Configuration:")
-        print("=" * 50)
-        print(f"Prometheus Multiproc Dir: {self.prometheus_multiproc_dir}")
-        print(f"Prometheus Metrics Port: {self.prometheus_metrics_port}")
-        print(f"Prometheus Bind Address: {self.prometheus_bind_address}")
-        print(f"Gunicorn Workers: {self.gunicorn_workers}")
-        print(f"Gunicorn Timeout: {self.gunicorn_timeout}")
-        print(f"Gunicorn Keepalive: {self.gunicorn_keepalive}")
-        print("=" * 50)
+        """Log the current configuration."""
+        logger.info("Gunicorn Prometheus Exporter Configuration:")
+        logger.info("=" * 50)
+        logger.info("Prometheus Multiproc Dir: %s", self.prometheus_multiproc_dir)
+        logger.info("Prometheus Metrics Port: %s", self.prometheus_metrics_port)
+        logger.info("Prometheus Bind Address: %s", self.prometheus_bind_address)
+        logger.info("Gunicorn Workers: %s", self.gunicorn_workers)
+        logger.info("Gunicorn Timeout: %s", self.gunicorn_timeout)
+        logger.info("Gunicorn Keepalive: %s", self.gunicorn_keepalive)
+        logger.info("=" * 50)
 
 
 # Global configuration instance

@@ -71,6 +71,8 @@ THE SOLUTION:
 - This ensures our PrometheusMaster is always used regardless of import paths
 """
 
+import logging
+
 import gunicorn.app.base
 import gunicorn.arbiter
 
@@ -79,6 +81,9 @@ from .forwarder import RedisForwarder, get_forwarder_manager
 from .master import PrometheusMaster
 from .metrics import registry
 from .plugin import PrometheusWorker
+
+
+logger = logging.getLogger(__name__)
 
 
 # Force Arbiter replacement before gunicorn starts
@@ -136,15 +141,16 @@ def start_redis_forwarder():
 
         # Start it
         if manager.start_forwarder("redis"):
-            print(
-                f"Redis forwarder started (interval: {config.redis_forward_interval}s)"
+            logger.info(
+                "Redis forwarder started (interval: %ss)",
+                config.redis_forward_interval,
             )
             return True
 
-        print("Failed to start Redis forwarder")
+        logger.error("Failed to start Redis forwarder")
         return False
     except Exception as e:
-        print(f"Failed to start Redis forwarder: {e}")
+        logger.error("Failed to start Redis forwarder: %s", e)
         return False
 
 
