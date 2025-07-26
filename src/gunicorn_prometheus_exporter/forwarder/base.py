@@ -2,6 +2,7 @@
 
 import logging
 import threading
+import time
 
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
@@ -21,6 +22,10 @@ class BaseForwarder(ABC):
         """Initialize base forwarder."""
         self.forward_interval = forward_interval
         self.name = name or self.__class__.__name__
+
+        # Statistics
+        self._forward_count = 0
+        self._last_forward_time: Optional[float] = None
 
         # Threading
         self._thread: Optional[threading.Thread] = None
@@ -120,6 +125,8 @@ class BaseForwarder(ABC):
                     # Forward to backend
                     success = self._forward_metrics(metrics_data)
                     if success:
+                        self._forward_count += 1
+                        self._last_forward_time = time.time()
                         logger.debug(
                             "%s: Forwarded %d bytes", self.name, len(metrics_data)
                         )
@@ -194,4 +201,6 @@ class BaseForwarder(ABC):
             "running": self.is_running(),
             "forward_interval": self.forward_interval,
             "thread_alive": self._thread.is_alive() if self._thread else False,
+            "forward_count": self._forward_count,
+            "last_forward_time": self._last_forward_time,
         }

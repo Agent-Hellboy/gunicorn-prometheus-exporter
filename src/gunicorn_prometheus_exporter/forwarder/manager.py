@@ -103,9 +103,28 @@ class ForwarderManager:
 
     def get_status(self) -> Dict[str, dict]:
         """Get status of all forwarders."""
-        return {
+        status = {
             name: forwarder.get_status() for name, forwarder in self._forwarders.items()
         }
+
+        running_count = 0
+        total_forwards = 0
+        last_forward_time = None
+        for forwarder in self._forwarders.values():
+            if forwarder.is_running():
+                running_count += 1
+            fwd_status = forwarder.get_status()
+            total_forwards += fwd_status.get("forward_count", 0)
+            ts = fwd_status.get("last_forward_time")
+            if ts is not None and (last_forward_time is None or ts > last_forward_time):
+                last_forward_time = ts
+
+        status.update(
+            running_count=running_count,
+            total_forwards=total_forwards,
+            last_forward_time=last_forward_time,
+        )
+        return status
 
     def get_running_forwarders(self) -> List[str]:
         """Get list of currently running forwarder names."""

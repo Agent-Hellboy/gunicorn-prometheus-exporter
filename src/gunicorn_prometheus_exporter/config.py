@@ -36,6 +36,7 @@ class ExporterConfig:
     ENV_REDIS_PASSWORD = "REDIS_PASSWORD"  # nosec - environment variable name
     ENV_REDIS_KEY_PREFIX = "REDIS_KEY_PREFIX"
     ENV_REDIS_FORWARD_INTERVAL = "REDIS_FORWARD_INTERVAL"
+    ENV_REDIS_COLLECT_INTERVAL = "REDIS_COLLECT_INTERVAL"
 
     # Cleanup environment variables
     ENV_CLEANUP_DB_FILES = "CLEANUP_DB_FILES"
@@ -47,9 +48,9 @@ class ExporterConfig:
     def _setup_multiproc_dir(self):
         """Set up the Prometheus multiprocess directory."""
         if not os.environ.get(self.ENV_PROMETHEUS_MULTIPROC_DIR):
-            os.environ[
-                self.ENV_PROMETHEUS_MULTIPROC_DIR
-            ] = self.PROMETHEUS_MULTIPROC_DIR
+            os.environ[self.ENV_PROMETHEUS_MULTIPROC_DIR] = (
+                self.PROMETHEUS_MULTIPROC_DIR
+            )
 
     @property
     def prometheus_multiproc_dir(self) -> str:
@@ -152,6 +153,11 @@ class ExporterConfig:
     def redis_forward_interval(self) -> int:
         """Get Redis forward interval in seconds."""
         return int(os.environ.get(self.ENV_REDIS_FORWARD_INTERVAL, "30"))
+
+    @property
+    def redis_collect_interval(self) -> int:
+        """Get Redis collect interval in seconds."""
+        return int(os.environ.get(self.ENV_REDIS_COLLECT_INTERVAL, "1"))
 
     @property
     def cleanup_db_files(self) -> bool:
