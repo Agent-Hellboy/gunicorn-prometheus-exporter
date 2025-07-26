@@ -119,6 +119,52 @@ errorlog = "-"
 loglevel = "info"
 ```
 
+## Gunicorn Hooks Integration
+
+This exporter provides a set of hooks that can be used directly in your Gunicorn config files for advanced metrics and Redis forwarding support. Example usage:
+
+```python
+from gunicorn_prometheus_exporter.hooks import (
+    default_on_exit,
+    default_on_starting,
+    default_worker_int,
+    redis_when_ready,  # or default_when_ready for non-Redis
+)
+
+when_ready = redis_when_ready  # Enables Redis metrics forwarding
+on_starting = default_on_starting
+worker_int = default_worker_int
+on_exit = default_on_exit
+```
+
+See the `example/` directory for ready-to-use config files:
+- `gunicorn_simple.conf.py` (basic metrics)
+- `gunicorn_basic.conf.py` (custom hooks)
+- `gunicorn_redis.conf.py` (Redis forwarding)
+- `gunicorn_redis_based.conf.py` (Redis multiprocess)
+
+## Redis Metrics Forwarding & Custom Collector
+
+**Current status:**
+- The exporter can forward metrics to Redis for multi-process setups using the provided hooks.
+- **A custom Prometheus collector that reads metrics from Redis and exposes them at the `/metrics` endpoint will be implemented.**
+- This will include a custom server/collector that reads from Redis and merges with in-process metrics for complete Redis-based metrics functionality.
+
+**Important:**
+- When using Redis-based metrics forwarding, you **must** set:
+  ```
+  export CLEANUP_DB_FILES=false
+  ```
+  or in your config:
+  ```python
+  os.environ.setdefault("CLEANUP_DB_FILES", "false")
+  ```
+  This prevents the exporter from deleting the multiprocess DB files, which is necessary for correct operation in a multi-worker or Redis-forwarded setup.
+
+The custom collector implementation is planned and will provide seamless Redis-based metrics exposure.
+
+---
+
 ## Signal Handling
 
 The exporter automatically tracks Gunicorn master process signals:
