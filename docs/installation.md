@@ -77,10 +77,10 @@ gunicorn -c gunicorn.conf.py your_app:app
 
 ### Check Metrics Endpoint
 
-Visit `http://localhost:9091/metrics` to see your Prometheus metrics:
+Visit your configured metrics endpoint (default: `http://0.0.0.0:9091/metrics`) to see your Prometheus metrics:
 
 ```bash
-curl http://localhost:9091/metrics
+curl http://0.0.0.0:9091/metrics  # Or use your configured bind address
 ```
 
 You should see output like:
@@ -97,7 +97,7 @@ gunicorn_worker_request_duration_seconds_bucket{worker_id="worker_1_1234567890",
 
 ### Check Application Health
 
-Your main application should still be accessible at `http://localhost:8000`.
+Your main application should still be accessible at your configured bind address and port.
 
 ## 🐳 Docker Setup
 
@@ -169,7 +169,7 @@ raw_env = [
     "PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc",
     "GUNICORN_WORKERS=4",
     "REDIS_ENABLED=true",
-    "REDIS_HOST=localhost",
+    "REDIS_HOST=your-redis-host",  # Configure for your environment
     "REDIS_PORT=6379"
 ]
 

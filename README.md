@@ -56,10 +56,14 @@ gunicorn -c gunicorn.conf.py app:app
 
 ### Access Metrics
 
-Metrics are automatically exposed on `http://localhost:9091/metrics`:
+Metrics are automatically exposed on the configured bind address and port (default: `0.0.0.0:9091`):
 
 ```bash
-curl http://localhost:9091/metrics
+# Using default configuration
+curl http://0.0.0.0:9091/metrics
+
+# Or use your configured bind address
+curl http://YOUR_BIND_ADDRESS:9091/metrics
 ```
 
 ## Documentation
@@ -109,7 +113,7 @@ See the `example/` directory for complete working examples:
 | `GUNICORN_WORKERS` | `1` | Number of workers |
 | `PROMETHEUS_MULTIPROC_DIR` | Auto-generated | Multiprocess directory |
 | `REDIS_ENABLED` | `false` | Enable Redis forwarding |
-| `REDIS_URL` | `redis://localhost:6379` | Redis connection URL |
+| `REDIS_URL` | `redis://127.0.0.1:6379` | Redis connection URL (configure for your environment) |
 
 ### Gunicorn Hooks
 

@@ -26,7 +26,7 @@ Complete reference for all configuration options available in the Gunicorn Prome
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `REDIS_ENABLED` | `false` | Enable Redis metrics forwarding |
-| `REDIS_HOST` | `localhost` | Redis server hostname |
+| `REDIS_HOST` | `127.0.0.1` | Redis server hostname (configure for your environment) |
 | `REDIS_PORT` | `6379` | Redis server port |
 | `REDIS_DB` | `0` | Redis database number |
 | `REDIS_PASSWORD` | - | Redis authentication password |

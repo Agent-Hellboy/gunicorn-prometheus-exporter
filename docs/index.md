@@ -56,7 +56,7 @@ gunicorn -c gunicorn.conf.py your_app:app
 
 ### 4. Access Metrics
 
-Visit `http://localhost:9091/metrics` to see your Prometheus metrics!
+Visit your configured metrics endpoint to see your Prometheus metrics!
 
 ## Available Metrics
 

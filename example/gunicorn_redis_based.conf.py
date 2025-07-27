@@ -26,7 +26,7 @@ os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # nosec B104
 
 # Redis configuration
 os.environ.setdefault("REDIS_ENABLED", "true")
-os.environ.setdefault("REDIS_HOST", "localhost")
+os.environ.setdefault("REDIS_HOST", "127.0.0.1")  # Configure for your environment
 os.environ.setdefault("REDIS_PORT", "6379")
 os.environ.setdefault("REDIS_FORWARD_INTERVAL", "5")
 os.environ.setdefault("CLEANUP_DB_FILES", "false")

@@ -82,7 +82,7 @@ raw_env = [
 **Diagnosis**:
 ```bash
 # Check if metrics server is running
-curl http://localhost:9091/metrics
+curl http://YOUR_BIND_ADDRESS:9091/metrics  # Replace with your configured address
 
 # Check Gunicorn logs
 tail -f gunicorn.log
@@ -141,7 +141,7 @@ docker run -d -p 6379:6379 redis:alpine
 # gunicorn.conf.py
 raw_env = [
     "REDIS_ENABLED=true",
-    "REDIS_HOST=localhost",
+    "REDIS_HOST=your-redis-host",  # Configure for your environment
     "REDIS_PORT=6379",
     "REDIS_PASSWORD=your_password",  # if needed
 ]
@@ -314,7 +314,7 @@ def check_metrics_endpoint():
     """Check if metrics endpoint is accessible."""
     try:
         port = os.environ.get('PROMETHEUS_METRICS_PORT', '9091')
-        response = requests.get(f'http://localhost:{port}/metrics', timeout=5)
+        response = requests.get(f'http://YOUR_BIND_ADDRESS:{port}/metrics', timeout=5)  # Replace with your configured address
         if response.status_code == 200:
             print(f"✅ Metrics endpoint accessible on port {port}")
             return True
