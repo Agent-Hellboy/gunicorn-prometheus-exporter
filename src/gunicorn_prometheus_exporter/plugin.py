@@ -14,6 +14,7 @@ You can also subclass the Gunicorn Arbiter to capture master process events.
 Refer to `test_worker.py` and `test_metrics.py` for usage and test coverage.
 """
 
+import importlib.util
 import logging
 import time
 
@@ -39,9 +40,11 @@ from .metrics import (
 EventletWorker = None
 GeventWorker = None
 TornadoWorker = None
-EVENTLET_AVAILABLE = False
-GEVENT_AVAILABLE = False
-TORNADO_AVAILABLE = False
+
+
+EVENTLET_AVAILABLE = importlib.util.find_spec("eventlet") is not None
+GEVENT_AVAILABLE = importlib.util.find_spec("gevent") is not None
+TORNADO_AVAILABLE = importlib.util.find_spec("tornado") is not None
 
 
 # Use configuration for logging level - with fallback for testing
