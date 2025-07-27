@@ -56,9 +56,9 @@ jobs:
         id: preview
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "url=https://${{ github.repository_owner }}.github.io/${{ github.repository }}/" >> $GITHUB_OUTPUT
+            echo "url=https://${{ github.repository_owner }}.github.io/gunicorn-prometheus-exporter/" >> $GITHUB_OUTPUT
           else
-            echo "url=https://${{ github.repository_owner }}.github.io/${{ github.repository }}/" >> $GITHUB_OUTPUT
+            echo "url=https://${{ github.repository_owner }}.github.io/gunicorn-prometheus-exporter/" >> $GITHUB_OUTPUT
           fi
 
   # PR Comment job
