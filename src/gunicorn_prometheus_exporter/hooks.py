@@ -14,7 +14,7 @@ Available hooks:
 import logging
 import time
 
-from typing import Any
+from typing import Any, Union
 
 from prometheus_client import start_http_server
 from prometheus_client.multiprocess import MultiProcessCollector
@@ -53,7 +53,7 @@ def default_on_starting(_server: Any) -> None:
     logger.info(" Master metrics initialized")
 
 
-def _setup_prometheus_server(logger: logging.Logger) -> tuple[int, Any] | None:
+def _setup_prometheus_server(logger: logging.Logger) -> Union[tuple[int, Any], None]:
     """Set up Prometheus multiprocess metrics server.
 
     This function:
