@@ -26,8 +26,30 @@ others) that conforms to the WSGI specification.
 
 ### Installation
 
+**Basic installation (sync and thread workers only):**
 ```bash
 pip install gunicorn-prometheus-exporter
+```
+
+**With async worker support:**
+```bash
+# Install with all async worker types
+pip install gunicorn-prometheus-exporter[async]
+
+# Or install specific worker types
+pip install gunicorn-prometheus-exporter[eventlet]  # For eventlet workers
+pip install gunicorn-prometheus-exporter[gevent]    # For gevent workers
+pip install gunicorn-prometheus-exporter[tornado]   # For tornado workers
+```
+
+**With Redis forwarding:**
+```bash
+pip install gunicorn-prometheus-exporter[redis]
+```
+
+**Complete installation (all features):**
+```bash
+pip install gunicorn-prometheus-exporter[all]
 ```
 
 ### Basic Usage
@@ -39,7 +61,7 @@ Create a Gunicorn config file (`gunicorn.conf.py`):
 bind = "0.0.0.0:8000"
 workers = 2
 
-# Prometheus exporter
+# Prometheus exporter (sync worker)
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
 # Optional: Custom hooks for advanced setup
@@ -47,6 +69,18 @@ def when_ready(server):
     from gunicorn_prometheus_exporter.hooks import default_when_ready
     default_when_ready(server)
 ```
+
+### Supported Worker Types
+
+The exporter supports all major Gunicorn worker types:
+
+| Worker Class | Concurrency Model | Use Case | Installation |
+|--------------|-------------------|----------|--------------|
+| `PrometheusWorker` | Pre-fork (sync) | Simple, reliable, 1 request per worker | `pip install gunicorn-prometheus-exporter` |
+| `PrometheusThreadWorker` | Threads | I/O-bound apps, better concurrency | `pip install gunicorn-prometheus-exporter` |
+| `PrometheusEventletWorker` | Greenlets | Async I/O with eventlet | `pip install gunicorn-prometheus-exporter[eventlet]` |
+| `PrometheusGeventWorker` | Greenlets | Async I/O with gevent | `pip install gunicorn-prometheus-exporter[gevent]` |
+| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based async | `pip install gunicorn-prometheus-exporter[tornado]` |
 
 ### Start Gunicorn
 
@@ -97,10 +131,44 @@ The documentation includes:
 
 ## Examples
 
-See the `example/` directory for complete working examples:
-- `gunicorn_simple.conf.py`: Basic setup
+See the `example/` directory for complete working examples with all worker types:
+
+### Basic Examples
+- `gunicorn_simple.conf.py`: Basic sync worker setup
+- `gunicorn_thread_worker.conf.py`: Threaded workers for I/O-bound apps
 - `gunicorn_redis_based.conf.py`: Redis forwarding setup
-- `gunicorn_basic.conf.py`: Standard configuration
+
+### Async Worker Examples
+- `gunicorn_eventlet_async.conf.py`: Eventlet workers with async app
+- `gunicorn_gevent_async.conf.py`: Gevent workers with async app
+- `gunicorn_tornado_async.conf.py`: Tornado workers with async app
+
+### Test Applications
+- `app.py`: Simple Flask app for sync/thread workers
+- `async_app.py`: Async-compatible Flask app for async workers
+
+Run any example with:
+```bash
+cd example
+gunicorn --config gunicorn_simple.conf.py app:app
+```
+
+## Testing Status
+
+All worker types have been thoroughly tested and are production-ready:
+
+| Worker Type | Status | Metrics | Master Signals | Load Distribution |
+|-------------|--------|---------|----------------|-------------------|
+| **Sync Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Thread Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Eventlet Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Gevent Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Tornado Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+
+All async workers require their respective dependencies:
+- Eventlet: `pip install eventlet`
+- Gevent: `pip install gevent`
+- Tornado: `pip install tornado`
 
 ## Configuration
 

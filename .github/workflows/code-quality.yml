@@ -1,0 +1,21 @@
+# .github/workflows/code-quality.yml
+name: Code Quality
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: pip install radon xenon prospector
+      - name: Run Code Quality Checks
+        run: |
+          radon cc . -a
+          radon mi .
+          prospector .

@@ -1,114 +1,114 @@
-# Gunicorn Prometheus Exporter Example
+# Gunicorn Prometheus Exporter Examples
 
-This example demonstrates how to use the Gunicorn Prometheus Exporter with a
-simple Flask application.
+This directory contains practical examples demonstrating how to use the `gunicorn-prometheus-exporter` with different worker types and configurations.
 
-## Setup
+## Quick Start
 
-1. Install the required packages:
+1. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-```bash
-pip install gunicorn prometheus-client flask
-```
+2. **Run a basic example:**
+   ```bash
+   gunicorn --config gunicorn_simple.conf.py app:app
+   ```
 
-## Running the Example
+3. **Access metrics:**
+   ```bash
+   curl http://localhost:9090/metrics
+   ```
 
-Start the example application with Gunicorn:
+## Available Examples
 
-```bash
-# 1) Clean + create metrics dir
-rm -rf /tmp/metrics_test
-mkdir -p /tmp/metrics_test
-chmod 777 /tmp/metrics_test
+### Basic Configuration
+- **`gunicorn_simple.conf.py`** - Basic sync worker with Prometheus metrics
+  ```bash
+  gunicorn --config gunicorn_simple.conf.py app:app
+  ```
 
-# 2) Set env vars
-export PROMETHEUS_MULTIPROC_DIR=/tmp/metrics_test
-export PROMETHEUS_METRICS_PORT=9091
+### Worker Type Examples
+- **`gunicorn_thread_worker.conf.py`** - Thread-based workers
+  ```bash
+  gunicorn --config gunicorn_thread_worker.conf.py app:app
+  ```
 
-# 3) Start Gunicorn (uses your gunicorn.conf.py)
-gunicorn --config gunicorn.conf.py app:app
-```
+- **`gunicorn_eventlet_async.conf.py`** - Eventlet workers with async app
+  ```bash
+  gunicorn --config gunicorn_eventlet_async.conf.py async_app:app
+  ```
+
+- **`gunicorn_gevent_async.conf.py`** - Gevent workers with async app
+  ```bash
+  gunicorn --config gunicorn_gevent_async.conf.py async_app:app
+  ```
+
+- **`gunicorn_tornado_async.conf.py`** - Tornado workers with async app
+  ```bash
+  gunicorn --config gunicorn_tornado_async.conf.py async_app:app
+  ```
+
+### Advanced Configuration
+- **`gunicorn_redis_based.conf.py`** - Redis forwarding enabled
+  ```bash
+  gunicorn --config gunicorn_redis_based.conf.py app:app
+  ```
+
+## Applications
+
+- **`app.py`** - Standard Flask application for sync/thread workers
+- **`async_app.py`** - Async-compatible Flask application for eventlet/gevent/tornado workers
+
+## Configuration
+
+- **`prometheus.yml`** - Prometheus server configuration for scraping metrics
+- **`requirements.txt`** - Python dependencies for the examples
+
+## Metrics Endpoints
+
+Each configuration exposes Prometheus metrics on different ports:
+
+| Configuration | App Port | Metrics Port | Worker Type |
+|---------------|----------|--------------|-------------|
+| `gunicorn_simple.conf.py` | 8200 | 9090 | Sync |
+| `gunicorn_thread_worker.conf.py` | 8001 | 9091 | Thread |
+| `gunicorn_eventlet_async.conf.py` | 8005 | 9095 | Eventlet |
+| `gunicorn_gevent_async.conf.py` | 8006 | 9096 | Gevent |
+| `gunicorn_tornado_async.conf.py` | 8007 | 9097 | Tornado |
+| `gunicorn_redis_based.conf.py` | 8008 | 9098 | Sync + Redis |
 
 ## Testing
 
-1. The application will be available at `http://localhost:8080`
-2. The metrics will be available at `http://localhost:9091/metrics`
+1. **Start a server:**
+   ```bash
+   gunicorn --config gunicorn_simple.conf.py app:app
+   ```
 
-Try these endpoints:
+2. **Generate traffic:**
+   ```bash
+   curl http://localhost:8200/
+   ```
 
-- `http://localhost:8080/` - Returns "Hello, World!"
-- `http://localhost:8080/slow` - Simulates a slow request
-- `http://localhost:9091/metrics` - View Prometheus metrics
+3. **Check metrics:**
+   ```bash
+   curl http://localhost:9090/metrics | grep gunicorn
+   ```
 
-```bash
-curl -s http://localhost:9091/metrics | grep gunicorn_worker_
-# Example metrics output...
-```
+## Worker Types Supported
 
-## Setting up Prometheus UI
+| Worker Class | Concurrency Model | Use Case |
+|--------------|-------------------|----------|
+| `PrometheusWorker` | Pre-fork | Simple, reliable, 1 request per worker |
+| `PrometheusThreadWorker` | Threads | Multi-threaded, good for I/O-bound apps |
+| `PrometheusEventletWorker` | Greenlets | Async, cooperative I/O |
+| `PrometheusGeventWorker` | Greenlets | Async, cooperative I/O |
+| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based async workers |
 
-1. Create a `prometheus.yml` configuration file:
+## Features Demonstrated
 
-```yaml
-global:
-  scrape_interval: 15s
-
-# Scrape our example exporter
-scrape_configs:
-  - job_name: 'gunicorn-prometheus-exporter'
-    metrics_path: '/metrics'
-    static_configs:
-      - targets: ['127.0.0.1:9091'] # our example exporter
-```
-
-1. Run Prometheus using Docker:
-
-```bash
-docker run -d \
-  --name prometheus \
-  --network host \
-  -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
-  prom/prometheus
-```
-
-1. Access Prometheus UI at `http://localhost:9090` to:
-   - View metrics in the Graph interface
-   - Use PromQL queries to analyze worker performance
-   - Create graphs and dashboards
-   - Set up alerts based on metric thresholds
-
-Example PromQL queries:
-
-```promql
-# Current active workers and their uptime
-gunicorn_worker_uptime_seconds{worker_id=~"worker_.*"}
-
-# Worker memory usage (in MB)
-gunicorn_worker_memory_bytes{worker_id=~"worker_.*"} / 1024 / 1024
-
-# Request rate per worker (requests per second)
-rate(gunicorn_worker_requests_total{worker_id=~"worker_.*"}[5m])
-
-# Average request duration per worker
-rate(gunicorn_worker_request_duration_seconds_sum{worker_id=~"worker_.*"}[5m])
-/
-rate(gunicorn_worker_request_duration_seconds_count{worker_id=~"worker_.*"}[5m])
-```
-
-## Available Metrics
-
-The example will generate the following metrics:
-
-- `gunicorn_worker_requests_total`: Total number of requests handled by each worker
-- `gunicorn_worker_request_duration_seconds`: Request duration histogram
-- `gunicorn_worker_memory_bytes`: Worker memory usage
-- `gunicorn_worker_cpu_percent`: Worker CPU usage
-- `gunicorn_worker_uptime_seconds`: Worker uptime
-- `gunicorn_worker_failed_requests`: Failed request counts (if any)
-
-## Notes
-
-- The metrics server runs on port 9091 by default
-- The application runs on port 8080
-- The multiprocess directory is required for proper metric collection
-- Make sure the multiprocess directory is writable by the Gunicorn process
+- ✅ **Worker Metrics:** Request counts, duration, memory, CPU, uptime
+- ✅ **Master Metrics:** Worker restart tracking, signal handling
+- ✅ **Multi-worker Support:** All Gunicorn worker types
+- ✅ **Redis Forwarding:** Metrics aggregation across processes
+- ✅ **Async Compatibility:** Works with async applications
+- ✅ **Production Ready:** Proper error handling and cleanup

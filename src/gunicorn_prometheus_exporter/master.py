@@ -85,3 +85,4 @@ class PrometheusMaster(Arbiter):
         if len(self.SIG_QUEUE) < 5:
             self.SIG_QUEUE.append(sig)
             self.wakeup()
+        # Don't call parent signal method to avoid double-queuing

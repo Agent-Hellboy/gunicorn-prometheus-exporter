@@ -146,14 +146,22 @@ def default_when_ready(_server: Any) -> None:
             break
 
 
-def default_worker_int(_worker: Any) -> None:
+def default_worker_int(worker: Any) -> None:
     """Default worker interrupt handler.
 
     Args:
-        _worker: Gunicorn worker instance (unused)
+        worker: Gunicorn worker instance
     """
     logger = logging.getLogger(__name__)
     logger.info("Worker received interrupt signal")
+
+    # Update worker metrics if the worker has the method
+    if hasattr(worker, "update_worker_metrics"):
+        try:
+            worker.update_worker_metrics()
+            logger.debug("Updated worker metrics for %s", worker.worker_id)
+        except Exception as e:
+            logger.error("Failed to update worker metrics: %s", e)
 
 
 def default_on_exit(_server: Any) -> None:

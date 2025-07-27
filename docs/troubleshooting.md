@@ -98,6 +98,55 @@ ls -la /tmp/prometheus_multiproc/
    from gunicorn_prometheus_exporter.config import ExporterConfig
 
    config = ExporterConfig()
+
+### 5. Async Worker Issues
+
+**Issue**: ImportError or TypeError with async workers (Eventlet, Gevent, Tornado)
+
+**Common Errors**:
+```bash
+# Missing dependencies
+ImportError: No module named 'eventlet'
+ImportError: No module named 'gevent'
+ImportError: No module named 'tornado'
+
+# Method signature issues
+TypeError: handle_request() missing required arguments
+```
+
+**Solutions**:
+
+1. **Install Required Dependencies**:
+   ```bash
+   # For Eventlet workers
+   pip install eventlet
+
+   # For Gevent workers
+   pip install gevent
+
+   # For Tornado workers
+   pip install tornado
+   ```
+
+2. **Verify Worker Class Configuration**:
+   ```python
+   # gunicorn.conf.py
+   worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"  # Eventlet
+   worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"    # Gevent
+   worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"   # Tornado
+   ```
+
+3. **Check Application Compatibility**:
+   ```python
+   # Ensure your app is WSGI-compatible
+   # For async workers, use async_app.py from examples
+   ```
+
+4. **Verify Metrics Collection**:
+   ```bash
+   # Test metrics endpoint
+   curl http://YOUR_BIND_ADDRESS:9091/metrics | grep worker_requests_total
+   ```
    if config.validate():
        print("Configuration is valid")
    else:

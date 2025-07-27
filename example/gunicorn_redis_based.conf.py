@@ -15,7 +15,7 @@ from gunicorn_prometheus_exporter.hooks import (
 
 
 # Gunicorn settings
-bind = "0.0.0.0:8000"
+bind = "0.0.0.0:8008"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
