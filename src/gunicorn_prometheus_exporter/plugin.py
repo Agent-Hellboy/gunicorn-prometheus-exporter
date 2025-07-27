@@ -44,39 +44,6 @@ GEVENT_AVAILABLE = False
 TORNADO_AVAILABLE = False
 
 
-def _import_async_workers():
-    """Import async worker classes if available."""
-    global EventletWorker, GeventWorker, TornadoWorker
-    global EVENTLET_AVAILABLE, GEVENT_AVAILABLE, TORNADO_AVAILABLE
-
-    # Import eventlet worker if available
-    try:
-        from gunicorn.workers.geventlet import EventletWorker as _EventletWorker
-
-        EventletWorker = _EventletWorker
-        EVENTLET_AVAILABLE = True
-    except ImportError:
-        pass
-
-    # Import gevent worker if available
-    try:
-        from gunicorn.workers.ggevent import GeventWorker as _GeventWorker
-
-        GeventWorker = _GeventWorker
-        GEVENT_AVAILABLE = True
-    except ImportError:
-        pass
-
-    # Import tornado worker if available
-    try:
-        from gunicorn.workers.gtornado import TornadoWorker as _TornadoWorker
-
-        TornadoWorker = _TornadoWorker
-        TORNADO_AVAILABLE = True
-    except ImportError:
-        pass
-
-
 # Use configuration for logging level - with fallback for testing
 try:
     log_level = config.get_gunicorn_config().get("loglevel", "INFO").upper()
@@ -374,97 +341,122 @@ class PrometheusThreadWorker(PrometheusMixin, ThreadWorker):
         return self._generic_handle_abort(sig, frame)
 
 
-# Import async workers at module load time
-_import_async_workers()
+# Initialize async worker classes as None
+PrometheusEventletWorker = None
+PrometheusGeventWorker = None
+PrometheusTornadoWorker = None
 
-# Simple conditional class definitions
-if EVENTLET_AVAILABLE:
 
-    class PrometheusEventletWorker(PrometheusMixin, EventletWorker):
-        """Eventlet worker with Prometheus metrics."""
+def _create_eventlet_worker():
+    """Create PrometheusEventletWorker class if available."""
+    global PrometheusEventletWorker
+    if EVENTLET_AVAILABLE:
+        try:
+            from gunicorn.workers.geventlet import EventletWorker
 
-        def handle_request(self, listener_name, req, sock, addr):
-            """Handle a request and update metrics."""
-            return self._generic_handle_request(
-                super().handle_request, listener_name, req, sock, addr
-            )
+            class PrometheusEventletWorker(PrometheusMixin, EventletWorker):  # pylint: disable=unused-variable
+                """Eventlet worker with Prometheus metrics."""
 
-        def handle_error(self, req, client, addr, e):  # pylint: disable=arguments-renamed
-            """Handle request errors and update error metrics."""
-            return self._generic_handle_error(req, client, addr, e)
+                def handle_request(self, listener_name, req, sock, addr):
+                    """Handle a request and update metrics."""
+                    return self._generic_handle_request(
+                        super().handle_request, listener_name, req, sock, addr
+                    )
 
-        def handle_quit(self, sig, frame):
-            """Handle quit signal and update worker state."""
-            return self._generic_handle_quit(sig, frame)
+                def handle_error(self, req, client, addr, e):  # pylint: disable=arguments-renamed
+                    """Handle request errors and update error metrics."""
+                    return self._generic_handle_error(req, client, addr, e)
 
-        def handle_abort(self, sig, frame):
-            """Handle abort signal and update worker state."""
-            return self._generic_handle_abort(sig, frame)
-else:
-    PrometheusEventletWorker = None
+                def handle_quit(self, sig, frame):
+                    """Handle quit signal and update worker state."""
+                    return self._generic_handle_quit(sig, frame)
 
-if GEVENT_AVAILABLE:
+                def handle_abort(self, sig, frame):
+                    """Handle abort signal and update worker state."""
+                    return self._generic_handle_abort(sig, frame)
+        except (ImportError, RuntimeError):
+            PrometheusEventletWorker = None
 
-    class PrometheusGeventWorker(PrometheusMixin, GeventWorker):
-        """Gevent worker with Prometheus metrics."""
 
-        def handle_request(self, listener_name, req, sock, addr):
-            """Handle a request and update metrics."""
-            return self._generic_handle_request(
-                super().handle_request, listener_name, req, sock, addr
-            )
+def _create_gevent_worker():
+    """Create PrometheusGeventWorker class if available."""
+    global PrometheusGeventWorker
+    if GEVENT_AVAILABLE:
+        try:
+            from gunicorn.workers.ggevent import GeventWorker
 
-        def handle_error(self, req, client, addr, e):  # pylint: disable=arguments-renamed
-            """Handle request errors and update error metrics."""
-            return self._generic_handle_error(req, client, addr, e)
+            class PrometheusGeventWorker(PrometheusMixin, GeventWorker):  # pylint: disable=unused-variable
+                """Gevent worker with Prometheus metrics."""
 
-        def handle_quit(self, sig, frame):
-            """Handle quit signal and update worker state."""
-            return self._generic_handle_quit(sig, frame)
+                def handle_request(self, listener_name, req, sock, addr):
+                    """Handle a request and update metrics."""
+                    return self._generic_handle_request(
+                        super().handle_request, listener_name, req, sock, addr
+                    )
 
-        def handle_abort(self, sig, frame):
-            """Handle abort signal and update worker state."""
-            return self._generic_handle_abort(sig, frame)
-else:
-    PrometheusGeventWorker = None
+                def handle_error(self, req, client, addr, e):  # pylint: disable=arguments-renamed
+                    """Handle request errors and update error metrics."""
+                    return self._generic_handle_error(req, client, addr, e)
 
-if TORNADO_AVAILABLE:
+                def handle_quit(self, sig, frame):
+                    """Handle quit signal and update worker state."""
+                    return self._generic_handle_quit(sig, frame)
 
-    class PrometheusTornadoWorker(PrometheusMixin, TornadoWorker):
-        """Tornado worker with Prometheus metrics."""
+                def handle_abort(self, sig, frame):
+                    """Handle abort signal and update worker state."""
+                    return self._generic_handle_abort(sig, frame)
+        except (ImportError, RuntimeError):
+            PrometheusGeventWorker = None
 
-        def handle_request(self):
-            """Handle a request and update metrics."""
-            start_time = time.time()
 
-            try:
-                # Update worker metrics on each request
-                self.update_worker_metrics()
+def _create_tornado_worker():
+    """Create PrometheusTornadoWorker class if available."""
+    global PrometheusTornadoWorker
+    if TORNADO_AVAILABLE:
+        try:
+            from gunicorn.workers.gtornado import TornadoWorker
 
-                # Call parent handle_request
-                super().handle_request()
+            class PrometheusTornadoWorker(PrometheusMixin, TornadoWorker):  # pylint: disable=unused-variable
+                """Tornado worker with Prometheus metrics."""
 
-                # Update request metrics after successful request
-                self._handle_request_metrics(start_time)
+                def handle_request(self):
+                    """Handle a request and update metrics."""
+                    start_time = time.time()
 
-            except Exception as e:
-                # Handle request error metrics (Tornado doesn't pass req object)
-                self._handle_request_error_metrics(None, e, start_time)
-                raise
+                    try:
+                        # Update worker metrics on each request
+                        self.update_worker_metrics()
 
-        def handle_error(self, req, client, addr, e):  # pylint: disable=arguments-renamed
-            """Handle request errors and update error metrics."""
-            return self._generic_handle_error(req, client, addr, e)
+                        # Call parent handle_request
+                        super().handle_request()
 
-        def handle_quit(self, sig, frame):
-            """Handle quit signal and update worker state."""
-            return self._generic_handle_quit(sig, frame)
+                        # Update request metrics after successful request
+                        self._handle_request_metrics(start_time)
 
-        def handle_abort(self, sig, frame):
-            """Handle abort signal and update worker state."""
-            return self._generic_handle_abort(sig, frame)
-else:
-    PrometheusTornadoWorker = None
+                    except Exception as e:
+                        # Handle request error metrics (Tornado doesn't pass req object)
+                        self._handle_request_error_metrics(None, e, start_time)
+                        raise
+
+                def handle_error(self, req, client, addr, e):  # pylint: disable=arguments-renamed
+                    """Handle request errors and update error metrics."""
+                    return self._generic_handle_error(req, client, addr, e)
+
+                def handle_quit(self, sig, frame):
+                    """Handle quit signal and update worker state."""
+                    return self._generic_handle_quit(sig, frame)
+
+                def handle_abort(self, sig, frame):
+                    """Handle abort signal and update worker state."""
+                    return self._generic_handle_abort(sig, frame)
+        except (ImportError, RuntimeError):
+            PrometheusTornadoWorker = None
+
+
+# Create async worker classes
+_create_eventlet_worker()
+_create_gevent_worker()
+_create_tornado_worker()
 
 
 def get_prometheus_eventlet_worker():
