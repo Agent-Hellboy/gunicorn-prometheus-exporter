@@ -1,0 +1,116 @@
+site_name: Gunicorn Prometheus Exporter
+site_description: Universal Gunicorn Monitoring - Works with Django, FastAPI, Flask, and any WSGI framework
+site_author: Prince Roshan
+site_url: https://agent-hellboy.github.io/gunicorn-prometheus-exporter
+
+repo_name: Agent-Hellboy/gunicorn-prometheus-exporter
+repo_url: https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter
+    - icon: fontawesome/brands/x-twitter
+      link: https://x.com/_agent_hellboy
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - codehilite:
+      guess_lang: false
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: pymdownx.slugs.slugify
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: installation.md
+      - Configuration: configuration.md
+      - Metrics: metrics.md
+  - Examples:
+      - Django Integration: examples/django-integration.md
+      - FastAPI Integration: examples/fastapi-integration.md
+      - Flask Integration: examples/flask-integration.md
+      - Pyramid Integration: examples/pyramid-integration.md
+      - Custom WSGI App: examples/custom-wsgi-app.md
+  - Reference:
+      - API Reference: api-reference.md
+      - Troubleshooting: troubleshooting.md
+  - Contributing: contributing.md
