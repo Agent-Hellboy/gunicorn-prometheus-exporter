@@ -94,6 +94,19 @@ Metrics are automatically exposed on `http://localhost:9091/metrics`:
 curl http://localhost:9091/metrics
 ```
 
+## Documentation
+
+📖 **Complete documentation is available at: [https://agent-hellboy.github.io/gunicorn-prometheus-exporter](https://agent-hellboy.github.io/gunicorn-prometheus-exporter)**
+
+The documentation includes:
+- 📋 Installation and configuration guides
+- 📊 Complete metrics reference
+- 🔧 Framework-specific examples (Django, FastAPI, Flask, Pyramid)
+- 🛠️ API reference and troubleshooting
+- 📝 Contributing guidelines
+
+The documentation is automatically built and deployed to GitHub Pages when changes are pushed to the main branch.
+
 ## Available Metrics
 
 ### Worker Metrics
