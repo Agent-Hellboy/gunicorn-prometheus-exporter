@@ -266,7 +266,7 @@ global:
 scrape_configs:
   - job_name: 'flask-gunicorn'
     static_configs:
-      - targets: ['localhost:9091']
+      - targets: ['your-app-host:9091']  # Replace with your application hostname
     metrics_path: /metrics
     scrape_interval: 5s
 ```

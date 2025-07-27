@@ -136,7 +136,9 @@ class ExporterConfig:
     @property
     def redis_host(self) -> str:
         """Get Redis host."""
-        return os.environ.get(self.ENV_REDIS_HOST, "localhost")
+        return os.environ.get(
+            self.ENV_REDIS_HOST, "127.0.0.1"
+        )  # Default for local development
 
     @property
     def redis_port(self) -> int:
