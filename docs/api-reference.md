@@ -82,13 +82,48 @@ prometheus_config = config.get_prometheus_config()
 
 ## Worker API
 
-### PrometheusWorker
+### Plugin Architecture
 
-Custom Gunicorn worker class that collects metrics.
+The exporter uses a mixin-based architecture to provide consistent metrics collection across all worker types:
+
+#### PrometheusMixin
+
+The `PrometheusMixin` class provides shared functionality for all worker types:
 
 ```python
-from gunicorn_prometheus_exporter.plugin import PrometheusWorker
+from gunicorn_prometheus_exporter.plugin import PrometheusMixin
 ```
+
+**Key Features:**
+- **Unified Metrics Collection**: All worker types use the same metrics collection logic
+- **Method Signature Handling**: Automatically handles different method signatures for each worker type
+- **Error Tracking**: Consistent error tracking with method and endpoint labels
+- **State Management**: Unified worker state tracking with timestamps
+
+**Core Methods:**
+- `_handle_request_metrics(start_time)`: Updates request count and duration metrics
+- `_handle_request_error_metrics(req, exc, start_time)`: Tracks failed requests with detailed labels
+- `_generic_handle_request(parent_method, *args, **kwargs)`: Generic request handler wrapper
+- `_generic_handle_error(parent_method, *args, **kwargs)`: Generic error handler wrapper
+- `update_worker_metrics()`: Updates CPU, memory, and uptime metrics
+
+### Available Worker Classes
+
+The exporter provides specialized worker classes for different concurrency models:
+
+```python
+from gunicorn_prometheus_exporter.plugin import (
+    PrometheusWorker,           # Sync worker (default)
+    PrometheusThreadWorker,     # Thread worker
+    PrometheusEventletWorker,   # Eventlet worker
+    PrometheusGeventWorker,     # Gevent worker
+    PrometheusTornadoWorker     # Tornado worker
+)
+```
+
+### PrometheusWorker
+
+Default sync worker class that collects metrics.
 
 #### Constructor
 
@@ -152,6 +187,74 @@ Cleans up metrics from old worker processes.
 ```python
 # Called automatically by Gunicorn
 worker._clear_old_metrics()
+```
+
+### PrometheusThreadWorker
+
+Thread-based worker class for I/O-bound applications.
+
+```python
+from gunicorn_prometheus_exporter.plugin import PrometheusThreadWorker
+```
+
+**Configuration:**
+```python
+worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"
+threads = 4  # Number of threads per worker
+```
+
+### PrometheusEventletWorker
+
+Eventlet-based worker class for async I/O applications.
+
+```python
+from gunicorn_prometheus_exporter.plugin import PrometheusEventletWorker
+```
+
+**Prerequisites:**
+```bash
+pip install eventlet
+```
+
+**Configuration:**
+```python
+worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
+```
+
+### PrometheusGeventWorker
+
+Gevent-based worker class for async I/O applications.
+
+```python
+from gunicorn_prometheus_exporter.plugin import PrometheusGeventWorker
+```
+
+**Prerequisites:**
+```bash
+pip install gevent
+```
+
+**Configuration:**
+```python
+worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"
+```
+
+### PrometheusTornadoWorker
+
+Tornado-based worker class for async applications.
+
+```python
+from gunicorn_prometheus_exporter.plugin import PrometheusTornadoWorker
+```
+
+**Prerequisites:**
+```bash
+pip install tornado
+```
+
+**Configuration:**
+```python
+worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
 ```
 
 ## Master API

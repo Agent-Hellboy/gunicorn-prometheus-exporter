@@ -23,6 +23,7 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")  # nosec B108
 os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # nosec B104
+os.environ.setdefault("GUNICORN_WORKERS", "2")
 
 # Use pre-built hooks
 when_ready = default_when_ready

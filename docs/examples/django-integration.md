@@ -32,7 +32,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 # Server settings
 bind = "0.0.0.0:8000"
 workers = 4
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"  # Sync worker
+# Alternative worker types:
+# worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"  # Thread worker
+# worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"  # Eventlet worker
+# worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"  # Gevent worker
+# worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"  # Tornado worker
 master_class = "gunicorn_prometheus_exporter.PrometheusMaster"
 
 # Environment variables

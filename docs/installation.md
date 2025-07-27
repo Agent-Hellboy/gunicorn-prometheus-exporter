@@ -73,6 +73,38 @@ on_exit = "gunicorn_prometheus_exporter.default_on_exit"
 gunicorn -c gunicorn.conf.py your_app:app
 ```
 
+## Worker Types
+
+The exporter supports multiple Gunicorn worker types. Choose the one that best fits your application:
+
+### Sync Worker (Default)
+```python
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+```
+
+### Thread Worker
+```python
+worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"
+threads = 4  # Number of threads per worker
+```
+
+### Async Workers
+For async applications, install the required dependencies:
+
+```bash
+# For Eventlet workers
+pip install eventlet
+worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
+
+# For Gevent workers
+pip install gevent
+worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"
+
+# For Tornado workers
+pip install tornado
+worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
+```
+
 ## Verification
 
 ### Check Metrics Endpoint

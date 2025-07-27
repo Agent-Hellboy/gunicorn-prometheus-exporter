@@ -31,7 +31,12 @@ bind = "0.0.0.0:8000"
 workers = 4
 
 # Prometheus exporter configuration
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"  # Sync worker
+# Alternative worker types for different use cases:
+# worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"  # Thread worker
+# worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"  # Eventlet worker
+# worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"  # Gevent worker
+# worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"  # Tornado worker
 master_class = "gunicorn_prometheus_exporter.PrometheusMaster"
 
 # Environment variables
@@ -58,6 +63,18 @@ gunicorn -c gunicorn.conf.py your_app:app
 
 Visit your configured metrics endpoint to see your Prometheus metrics!
 
+## Supported Worker Types
+
+The exporter supports all major Gunicorn worker types with the same comprehensive metrics:
+
+| Worker Type | Concurrency Model | Best For | Dependencies |
+|-------------|-------------------|----------|--------------|
+| `PrometheusWorker` | Pre-fork (sync) | Simple, reliable applications | None |
+| `PrometheusThreadWorker` | Threads | I/O-bound applications | None |
+| `PrometheusEventletWorker` | Greenlets | Async I/O with eventlet | `eventlet` |
+| `PrometheusGeventWorker` | Greenlets | Async I/O with gevent | `gevent` |
+| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based applications | `tornado` |
+
 ## Available Metrics
 
 - **Worker Metrics**: CPU, memory, uptime, request count
@@ -81,6 +98,27 @@ Unlike framework-specific monitoring solutions, this exporter:
 
 - **Works Everywhere**: Same setup for Django, FastAPI, Flask, etc.
 - **No Framework Lock-in**: Switch frameworks without changing monitoring
+
+## Testing Status
+
+All worker types have been thoroughly tested and validated:
+
+| Worker Type | Status | Metrics | Master Signals | Load Distribution |
+|-------------|--------|---------|----------------|-------------------|
+| **Sync Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Thread Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Eventlet Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Gevent Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Tornado Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+
+**Validation Includes:**
+- ✅ Request counting and distribution across workers
+- ✅ Memory and CPU usage tracking
+- ✅ Error handling with method/endpoint labels
+- ✅ Master process signal tracking (HUP, USR1, CHLD)
+- ✅ Worker state management with timestamps
+- ✅ Multiprocess metrics collection
+- ✅ Load balancing verification
 - **Simplified DevOps**: One monitoring solution for all your Python web apps
 - **Gunicorn Native**: Leverages Gunicorn's built-in hooks and worker system
 

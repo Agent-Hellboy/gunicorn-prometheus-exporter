@@ -1,37 +1,111 @@
-# Configuration Reference
-
-Complete reference for all configuration options available in the Gunicorn Prometheus Exporter.
+# Configuration
 
 ## Environment Variables
 
-### Required Variables
-
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PROMETHEUS_METRICS_PORT` | - | Port for the Prometheus metrics server |
-| `PROMETHEUS_MULTIPROC_DIR` | - | Directory for multiprocess metrics storage |
-| `GUNICORN_WORKERS` | - | Number of Gunicorn workers |
+| `PROMETHEUS_METRICS_PORT` | `9091` | Port for metrics endpoint |
+| `PROMETHEUS_BIND_ADDRESS` | `0.0.0.0` | Bind address for metrics |
+| `GUNICORN_WORKERS` | `1` | Number of workers |
+| `PROMETHEUS_MULTIPROC_DIR` | Auto-generated | Multiprocess directory |
+| `REDIS_ENABLED` | `false` | Enable Redis forwarding |
+| `REDIS_URL` | `redis://127.0.0.1:6379` | Redis connection URL (configure for your environment) |
 
-### Optional Variables
+## Supported Worker Types
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PROMETHEUS_BIND_ADDRESS` | `0.0.0.0` | Bind address for metrics server |
-| `GUNICORN_TIMEOUT` | `30` | Worker timeout in seconds |
-| `GUNICORN_KEEPALIVE` | `2` | Keep-alive connection timeout |
-| `CLEANUP_DB_FILES` | `true` | Clean up old multiprocess files |
+The Gunicorn Prometheus Exporter supports all major Gunicorn worker types through specialized worker classes. Each worker type maintains the same Prometheus metrics functionality while leveraging the appropriate concurrency model for your application.
 
-### Redis Configuration
+### Worker Type Comparison
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `REDIS_ENABLED` | `false` | Enable Redis metrics forwarding |
-| `REDIS_HOST` | `127.0.0.1` | Redis server hostname (configure for your environment) |
-| `REDIS_PORT` | `6379` | Redis server port |
-| `REDIS_DB` | `0` | Redis database number |
-| `REDIS_PASSWORD` | - | Redis authentication password |
-| `REDIS_KEY_PREFIX` | `gunicorn_metrics:` | Prefix for Redis keys |
-| `REDIS_FORWARD_INTERVAL` | `30` | Metrics forwarding interval in seconds |
+| Worker Class | Concurrency Model | Use Case | Dependencies | Configuration |
+|--------------|-------------------|----------|--------------|---------------|
+| `PrometheusWorker` | Pre-fork (sync) | Simple, reliable applications | None | Standard config |
+| `PrometheusThreadWorker` | Threads | I/O-bound applications | None | Add `threads = 4` |
+| `PrometheusEventletWorker` | Greenlets | Async I/O with eventlet | `eventlet` | `pip install eventlet` |
+| `PrometheusGeventWorker` | Greenlets | Async I/O with gevent | `gevent` | `pip install gevent` |
+| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based applications | `tornado` | `pip install tornado` |
+
+### Sync Worker (Default)
+
+The standard worker type, suitable for most applications:
+
+```python
+# gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+workers = 2
+```
+
+### Threaded Worker
+
+Good for I/O-bound applications that benefit from threading:
+
+```python
+# gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"
+workers = 2
+threads = 4  # Number of threads per worker
+```
+
+### Eventlet Worker
+
+For applications using eventlet for async I/O:
+
+```python
+# gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
+workers = 2
+```
+
+**Prerequisites:**
+```bash
+pip install eventlet
+```
+
+### Gevent Worker
+
+For applications using gevent for async I/O:
+
+```python
+# gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"
+workers = 2
+```
+
+**Prerequisites:**
+```bash
+pip install gevent
+```
+
+### Tornado Worker
+
+For Tornado-based async applications:
+
+```python
+# gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
+workers = 2
+```
+
+**Prerequisites:**
+```bash
+pip install tornado
+```
+
+## Gunicorn Hooks
+
+```python
+# Basic setup
+from gunicorn_prometheus_exporter.hooks import default_when_ready
+
+def when_ready(server):
+    default_when_ready(server)
+
+# With Redis forwarding
+from gunicorn_prometheus_exporter.hooks import redis_when_ready
+
+def when_ready(server):
+    redis_when_ready(server)
+```
 
 ## 📝 Gunicorn Configuration
 

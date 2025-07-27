@@ -80,7 +80,41 @@ from .config import config, get_config
 from .forwarder import RedisForwarder, get_forwarder_manager
 from .master import PrometheusMaster
 from .metrics import registry
-from .plugin import PrometheusWorker
+
+# Import worker classes
+from .plugin import (
+    PrometheusThreadWorker,
+    PrometheusWorker,
+    get_prometheus_eventlet_worker,
+    get_prometheus_gevent_worker,
+    get_prometheus_tornado_worker,
+)
+
+
+# Import async worker classes if available
+try:
+    from .plugin import PrometheusEventletWorker
+
+    EVENTLET_AVAILABLE = True
+except ImportError:
+    PrometheusEventletWorker = None
+    EVENTLET_AVAILABLE = False
+
+try:
+    from .plugin import PrometheusGeventWorker
+
+    GEVENT_AVAILABLE = True
+except ImportError:
+    PrometheusGeventWorker = None
+    GEVENT_AVAILABLE = False
+
+try:
+    from .plugin import PrometheusTornadoWorker
+
+    TORNADO_AVAILABLE = True
+except ImportError:
+    PrometheusTornadoWorker = None
+    TORNADO_AVAILABLE = False
 
 
 logger = logging.getLogger(__name__)
@@ -155,8 +189,11 @@ def start_redis_forwarder():
 
 
 __version__ = "0.1.0"
+
+# Build __all__ list conditionally
 __all__ = [
     "PrometheusWorker",
+    "PrometheusThreadWorker",
     "PrometheusMaster",
     "registry",
     "config",
@@ -164,4 +201,17 @@ __all__ = [
     "get_forwarder_manager",
     "RedisForwarder",
     "start_redis_forwarder",
+    "get_prometheus_eventlet_worker",
+    "get_prometheus_gevent_worker",
+    "get_prometheus_tornado_worker",
 ]
+
+# Add async workers if available
+if EVENTLET_AVAILABLE:
+    __all__.append("PrometheusEventletWorker")
+
+if GEVENT_AVAILABLE:
+    __all__.append("PrometheusGeventWorker")
+
+if TORNADO_AVAILABLE:
+    __all__.append("PrometheusTornadoWorker")
