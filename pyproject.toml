@@ -1,6 +1,6 @@
 [project]
 name = "gunicorn-prometheus-exporter"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Prometheus metrics exporter for Gunicorn"
 readme = "README.md"
 authors = [
