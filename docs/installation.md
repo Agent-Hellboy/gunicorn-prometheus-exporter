@@ -84,7 +84,7 @@ pip install gunicorn-prometheus-exporter[all]
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/gunicorn-prometheus-exporter.git
+git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter.git
 cd gunicorn-prometheus-exporter
 
 # Install in development mode

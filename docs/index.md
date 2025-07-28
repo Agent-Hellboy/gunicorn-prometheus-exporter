@@ -182,7 +182,7 @@ os.environ.setdefault("REDIS_FORWARD_INTERVAL", "30")
 
 ### Setup
 ```bash
-git clone https://github.com/your-username/gunicorn-prometheus-exporter.git
+git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter.git
 cd gunicorn-prometheus-exporter
 pip install -e ".[dev]"
 ```
@@ -207,17 +207,15 @@ ruff check src/ tests/
 # Formatting
 ruff format src/ tests/
 
-# Type checking
-mypy src/
 ```
 
 ## 📚 Documentation
 
-For detailed documentation, visit our [documentation site](https://your-username.github.io/gunicorn-prometheus-exporter/).
+For detailed documentation, visit our [documentation site](https://agent-hellboy.github.io/gunicorn-prometheus-exporter/).
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [Contributing Guide](contributing.md) for details.
 
 ## 📄 License
 
