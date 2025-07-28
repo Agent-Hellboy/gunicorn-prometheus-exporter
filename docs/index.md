@@ -63,7 +63,7 @@ curl http://0.0.0.0:9090/metrics
 | **Thread Worker** | `pip install gunicorn-prometheus-exporter` | `worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"` |
 | **Eventlet Worker** | `pip install gunicorn-prometheus-exporter[eventlet]` | `worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"` |
 | **Gevent Worker** | `pip install gunicorn-prometheus-exporter[gevent]` | `worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"` |
-| **Tornado Worker** | `pip install gunicorn-prometheus-exporter[tornado]` | `worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"` |
+| **Tornado Worker** | `pip install gunicorn-prometheus-exporter[tornado]` (⚠️ Not recommended) | `worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"` (⚠️ Not recommended) |
 
 ## 📈 Available Metrics
 
@@ -93,7 +93,7 @@ All worker types have been thoroughly tested and validated:
 | **Thread Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
 | **Eventlet Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
 | **Gevent Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
-| **Tornado Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Tornado Worker** | ⚠️ Not recommended | ⚠️ Metrics endpoint issues | ✅ HUP, USR1, CHLD | ✅ Balanced |
 
 ### Validation Includes:
 - ✅ Request counting and distribution across workers

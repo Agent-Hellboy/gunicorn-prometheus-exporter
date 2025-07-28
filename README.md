@@ -157,7 +157,7 @@ See the `example/` directory for complete working examples with all worker types
 ### Async Worker Examples
 - `gunicorn_eventlet_async.conf.py`: Eventlet workers with async app
 - `gunicorn_gevent_async.conf.py`: Gevent workers with async app
-- `gunicorn_tornado_async.conf.py`: Tornado workers with async app
+- `gunicorn_tornado_async.conf.py`: Tornado workers with async app (⚠️ Not recommended)
 
 ### Test Applications
 - `app.py`: Simple Flask app for sync/thread workers
@@ -179,13 +179,13 @@ All worker types have been thoroughly tested and are production-ready:
 | **Thread Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
 | **Eventlet Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
 | **Gevent Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
-| **Tornado Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Tornado Worker** | ⚠️ Not recommended | ⚠️ Metrics endpoint issues | ✅ HUP, USR1, CHLD | ✅ Balanced |
 
 All async workers require their respective dependencies:
 
 - Eventlet: `pip install eventlet`
 - Gevent: `pip install gevent`
-- Tornado: `pip install tornado`
+- Tornado: `pip install tornado` (⚠️ Not recommended - see compatibility issues)
 
 ## Configuration
 

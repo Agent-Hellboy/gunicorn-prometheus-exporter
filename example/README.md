@@ -43,7 +43,7 @@ This directory contains practical examples demonstrating how to use the `gunicor
   gunicorn --config gunicorn_gevent_async.conf.py async_app:app
   ```
 
-- **`gunicorn_tornado_async.conf.py`** - Tornado workers with async app
+- **`gunicorn_tornado_async.conf.py`** - Tornado workers with async app (⚠️ Not recommended)
   ```bash
   gunicorn --config gunicorn_tornado_async.conf.py async_app:app
   ```
@@ -57,7 +57,7 @@ This directory contains practical examples demonstrating how to use the `gunicor
 ## Applications
 
 - **`app.py`** - Standard Flask application for sync/thread workers
-- **`async_app.py`** - Async-compatible Flask application for eventlet/gevent/tornado workers
+- **`async_app.py`** - Async-compatible Flask application for eventlet/gevent workers
 
 ## Configuration
 
@@ -74,7 +74,7 @@ Each configuration exposes Prometheus metrics on different ports:
 | `gunicorn_thread_worker.conf.py` | 8001 | 9091 | Thread |
 | `gunicorn_eventlet_async.conf.py` | 8005 | 9095 | Eventlet |
 | `gunicorn_gevent_async.conf.py` | 8006 | 9096 | Gevent |
-| `gunicorn_tornado_async.conf.py` | 8007 | 9097 | Tornado |
+| `gunicorn_tornado_async.conf.py` | 8007 | 9097 | Tornado (⚠️ Not recommended) |
 | `gunicorn_redis_based.conf.py` | 8008 | 9098 | Sync + Redis |
 
 ## Testing
@@ -102,7 +102,7 @@ Each configuration exposes Prometheus metrics on different ports:
 | `PrometheusThreadWorker` | Threads | Multi-threaded, good for I/O-bound apps |
 | `PrometheusEventletWorker` | Greenlets | Async, cooperative I/O |
 | `PrometheusGeventWorker` | Greenlets | Async, cooperative I/O |
-| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based async workers |
+| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based async workers (⚠️ Not recommended) |
 
 ## Features Demonstrated
 
