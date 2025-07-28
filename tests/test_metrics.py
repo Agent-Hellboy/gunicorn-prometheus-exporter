@@ -13,6 +13,7 @@ from gunicorn_prometheus_exporter.metrics import (
     WORKER_FAILED_REQUESTS,
     WORKER_MEMORY,
     WORKER_REQUEST_DURATION,
+    WORKER_REQUEST_SIZE,
     WORKER_REQUESTS,
     WORKER_STATE,
     WORKER_UPTIME,
@@ -53,7 +54,7 @@ def test_worker_requests_metric():
         WORKER_REQUESTS._metric._documentation
         == "Total number of requests handled by this worker"
     )
-    assert WORKER_REQUESTS._metric._labelnames == ("worker_id",)
+    assert WORKER_REQUESTS._metric._labelnames == ("worker_id", "method", "endpoint")
 
 
 def test_worker_request_duration_metric():
@@ -65,7 +66,11 @@ def test_worker_request_duration_metric():
     assert (
         WORKER_REQUEST_DURATION._metric._documentation == "Request duration in seconds"
     )
-    assert WORKER_REQUEST_DURATION._metric._labelnames == ("worker_id",)
+    assert WORKER_REQUEST_DURATION._metric._labelnames == (
+        "worker_id",
+        "method",
+        "endpoint",
+    )
 
 
 def test_worker_memory_metric():
@@ -104,6 +109,17 @@ def test_worker_failed_requests_metric():
     )
 
 
+def test_worker_request_size_metric():
+    """Test WORKER_REQUEST_SIZE metric configuration."""
+    assert WORKER_REQUEST_SIZE._metric._name == "gunicorn_worker_request_size_bytes"
+    assert WORKER_REQUEST_SIZE._metric._documentation == "Request size in bytes"
+    assert WORKER_REQUEST_SIZE._metric._labelnames == (
+        "worker_id",
+        "method",
+        "endpoint",
+    )
+
+
 def test_multiprocess_dir_setup():
     """Test that PROMETHEUS_MULTIPROC_DIR is set."""
     from gunicorn_prometheus_exporter.config import config
@@ -123,6 +139,7 @@ def test_metric_registration():
     metric_classes = [
         WORKER_REQUESTS,
         WORKER_REQUEST_DURATION,
+        WORKER_REQUEST_SIZE,
         WORKER_MEMORY,
         WORKER_CPU,
         WORKER_UPTIME,

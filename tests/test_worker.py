@@ -207,7 +207,7 @@ def test_handle_error(worker):
             for s in samples[0].samples
             if s.labels.get("worker_id") == str(worker.worker_id)
             and s.labels.get("method") == "GET"
-            and s.labels.get("endpoint") == "/test"
+            and s.labels.get("endpoint") == "test"
             and s.labels.get("error_type") == "InvalidRequestLine"
         )
         assert sample.value == 1.0
@@ -246,11 +246,11 @@ def test_clear_old_metrics(worker):
     """Test that old metrics are cleared properly."""
     # Add some old format metrics
     old_worker_id = "12345"
-    WORKER_REQUESTS.inc(worker_id=old_worker_id)
+    WORKER_REQUESTS.inc(worker_id=old_worker_id, method="GET", endpoint="test")
     WORKER_MEMORY.set(1000, worker_id=old_worker_id)
 
     # Add some new format metrics
-    WORKER_REQUESTS.inc(worker_id=worker.worker_id)
+    WORKER_REQUESTS.inc(worker_id=worker.worker_id, method="POST", endpoint="api")
     WORKER_MEMORY.set(2000, worker_id=worker.worker_id)
 
     # Clear old metrics

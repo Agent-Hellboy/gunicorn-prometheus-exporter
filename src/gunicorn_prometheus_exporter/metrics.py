@@ -136,7 +136,7 @@ class WorkerRequests(BaseMetric, metric_type=Counter):
 
     name = "gunicorn_worker_requests"
     documentation = "Total number of requests handled by this worker"
-    labelnames = ["worker_id"]
+    labelnames = ["worker_id", "method", "endpoint"]
 
 
 class WorkerRequestDuration(BaseMetric, metric_type=Histogram):
@@ -144,7 +144,7 @@ class WorkerRequestDuration(BaseMetric, metric_type=Histogram):
 
     name = "gunicorn_worker_request_duration_seconds"
     documentation = "Request duration in seconds"
-    labelnames = ["worker_id"]
+    labelnames = ["worker_id", "method", "endpoint"]
     buckets = (0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, float("inf"))
 
 
@@ -178,6 +178,26 @@ class WorkerFailedRequests(BaseMetric, metric_type=Counter):
     name = "gunicorn_worker_failed_requests"
     documentation = "Total number of failed requests handled by this worker"
     labelnames = ["worker_id", "method", "endpoint", "error_type"]
+
+
+class WorkerRequestSize(BaseMetric, metric_type=Histogram):
+    """Request size in bytes."""
+
+    name = "gunicorn_worker_request_size_bytes"
+    documentation = "Request size in bytes"
+    labelnames = ["worker_id", "method", "endpoint"]
+    buckets = (
+        100,
+        500,
+        1000,
+        5000,
+        10000,
+        50000,
+        100000,
+        500000,
+        1000000,
+        float("inf"),
+    )
 
 
 class WorkerErrorHandling(BaseMetric, metric_type=Counter):
@@ -217,6 +237,7 @@ WORKER_MEMORY = WorkerMemory
 WORKER_CPU = WorkerCPU
 WORKER_UPTIME = WorkerUptime
 WORKER_FAILED_REQUESTS = WorkerFailedRequests
+WORKER_REQUEST_SIZE = WorkerRequestSize
 WORKER_ERROR_HANDLING = WorkerErrorHandling
 WORKER_STATE = WorkerState
 MASTER_WORKER_RESTARTS = MasterWorkerRestarts
