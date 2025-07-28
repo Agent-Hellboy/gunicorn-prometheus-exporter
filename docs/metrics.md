@@ -136,6 +136,7 @@ Example: `worker_1_1234567890`
 
 ### Error Types
 Common error types include:
+
 - `ValueError`: Invalid request data
 - `TypeError`: Type mismatch errors
 - `AttributeError`: Missing attribute errors

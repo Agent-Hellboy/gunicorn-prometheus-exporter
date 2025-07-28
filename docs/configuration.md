@@ -606,6 +606,7 @@ curl http://localhost:9090/metrics | grep gunicorn_worker_failed_requests_total
 ```
 
 3. **Set up alerts for critical metrics:**
+
 - High error rates
 - Memory usage spikes
 - Worker restarts

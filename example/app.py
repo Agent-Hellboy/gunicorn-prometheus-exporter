@@ -2,6 +2,7 @@
 Example Flask application demonstrating Gunicorn Prometheus Exporter.
 
 This application includes multiple endpoints to demonstrate different metrics:
+
 - / : Simple hello world endpoint
 - /slow : Endpoint that simulates slow response
 - /error : Endpoint that raises an error

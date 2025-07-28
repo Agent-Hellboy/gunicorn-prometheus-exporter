@@ -105,6 +105,7 @@ curl http://YOUR_BIND_ADDRESS:9091/metrics
 📖 **Complete documentation is available at: [https://agent-hellboy.github.io/gunicorn-prometheus-exporter](https://agent-hellboy.github.io/gunicorn-prometheus-exporter)**
 
 The documentation includes:
+
 - Installation and configuration guides
 - Complete metrics reference
 - Framework-specific examples (Django, FastAPI, Flask, Pyramid)
@@ -166,6 +167,7 @@ All worker types have been thoroughly tested and are production-ready:
 | **Tornado Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
 
 All async workers require their respective dependencies:
+
 - Eventlet: `pip install eventlet`
 - Gevent: `pip install gevent`
 - Tornado: `pip install tornado`

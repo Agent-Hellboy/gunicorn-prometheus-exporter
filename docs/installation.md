@@ -594,21 +594,6 @@ pip install --upgrade gunicorn-prometheus-exporter
 pip install gunicorn-prometheus-exporter==0.1.3
 ```
 
-#### Permission Issues
-
-**Error:** `PermissionError: [Errno 13] Permission denied`
-
-**Solution:**
-```bash
-# Use virtual environment
-python -m venv venv
-source venv/bin/activate
-pip install gunicorn-prometheus-exporter
-
-# Or use user installation
-pip install --user gunicorn-prometheus-exporter
-```
-
 ### Environment Variable Issues
 
 #### Variables Not Set
