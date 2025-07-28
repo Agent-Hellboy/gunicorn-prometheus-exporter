@@ -307,17 +307,21 @@ worker_connections = 1000
 app = "example.async_app:app"
 ```
 
-### Tornado Worker Problems
+### Tornado Worker Problems (⚠️ Not Recommended)
 
 **Common Issues:**
 1. **Import errors**: Install `tornado` package
 2. **IOLoop conflicts**: May conflict with other async libraries
 3. **Application compatibility**: Requires async-compatible app
+4. **⚠️ Metrics endpoint hanging**: Prometheus metrics endpoint may become unresponsive
+5. **⚠️ Thread safety issues**: Metrics collection can cause deadlocks
 
-**Solution:**
+**⚠️ Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
+
+**Alternative Solution:**
 ```python
-# In gunicorn.conf.py
-worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
+# In gunicorn.conf.py - Use EventletWorker instead
+worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
 
 # Use async-compatible app
 app = "example.async_app:app"

@@ -29,14 +29,6 @@ pip install gunicorn-prometheus-exporter[async]
 # Or install specific worker types
 pip install gunicorn-prometheus-exporter[eventlet]  # Eventlet workers
 pip install gunicorn-prometheus-exporter[gevent]    # Gevent workers
-pip install gunicorn-prometheus-exporter[tornado]   # Tornado workers
-```
-
-**Includes:**
-- All basic features
-- Eventlet worker (`PrometheusEventletWorker`)
-- Gevent worker (`PrometheusGeventWorker`)
-- Tornado worker (`PrometheusTornadoWorker`)
 
 ### Redis Integration
 
@@ -424,7 +416,7 @@ os.environ.setdefault("REDIS_FORWARD_INTERVAL", "60")
 |---------|---------|-------------|
 | `eventlet` | `>=0.30.0` | Eventlet worker |
 | `gevent` | `>=21.8.0` | Gevent worker |
-| `tornado` | `>=6.1.0` | Tornado worker |
+| `tornado` | `>=6.1.0` | Tornado worker (⚠️ Not recommended - see compatibility issues) |
 
 #### Redis Dependencies
 
@@ -556,8 +548,8 @@ python -c "import eventlet; print('Eventlet available')" 2>/dev/null && echo "Ev
 # Test gevent worker
 python -c "import gevent; print('Gevent available')" 2>/dev/null && echo "Gevent worker ready" || echo "Install gevent: pip install gunicorn-prometheus-exporter[gevent]"
 
-# Test tornado worker
-python -c "import tornado; print('Tornado available')" 2>/dev/null && echo "Tornado worker ready" || echo "Install tornado: pip install gunicorn-prometheus-exporter[tornado]"
+# Test tornado worker (⚠️ Not recommended - see compatibility issues)
+python -c "import tornado; print('Tornado available')" 2>/dev/null && echo "Tornado worker available (⚠️ Not recommended)" || echo "Install tornado: pip install gunicorn-prometheus-exporter[tornado] (⚠️ Not recommended)"
 ```
 
 ### Test Redis Integration

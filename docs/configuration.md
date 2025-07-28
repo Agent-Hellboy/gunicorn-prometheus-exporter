@@ -263,7 +263,7 @@ os.environ.setdefault("GUNICORN_WORKERS", "4")
 
 **Best for:** Async applications, high concurrency.
 
-### Tornado Worker
+### Tornado Worker (⚠️ Not Recommended)
 
 ```python
 # gunicorn_tornado.conf.py
@@ -278,7 +278,9 @@ os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "4")
 ```
 
-**Best for:** Tornado-based applications.
+**⚠️ Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
+
+**Best for:** Tornado-based applications (⚠️ Not recommended for production).
 
 ## 🔧 Advanced Configuration
 

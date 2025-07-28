@@ -22,6 +22,21 @@ others) that conforms to the WSGI specification.
 - **Zero Configuration**: Works out-of-the-box with minimal setup
 - **Production Ready**: Retry logic, error handling, health monitoring
 
+## ⚠️ Compatibility Issues
+
+### TornadoWorker Compatibility
+
+The `PrometheusTornadoWorker` has known compatibility issues and is **not recommended for production use**:
+
+- **Metrics Endpoint Hanging**: The Prometheus metrics endpoint may hang or become unresponsive
+- **IOLoop Conflicts**: Tornado's event loop architecture conflicts with metrics collection
+- **Thread Safety Problems**: Metrics collection can cause deadlocks
+
+**Recommended Alternatives:**
+- Use `PrometheusEventletWorker` for async applications requiring eventlet
+- Use `PrometheusGeventWorker` for async applications requiring gevent
+- Use `PrometheusWorker` (sync worker) for most applications
+
 ## Quick Start
 
 ### Installation
@@ -80,7 +95,7 @@ The exporter supports all major Gunicorn worker types:
 | `PrometheusThreadWorker` | Threads | I/O-bound apps, better concurrency | `pip install gunicorn-prometheus-exporter` |
 | `PrometheusEventletWorker` | Greenlets | Async I/O with eventlet | `pip install gunicorn-prometheus-exporter[eventlet]` |
 | `PrometheusGeventWorker` | Greenlets | Async I/O with gevent | `pip install gunicorn-prometheus-exporter[gevent]` |
-| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based async | `pip install gunicorn-prometheus-exporter[tornado]` |
+| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based async (⚠️ Not recommended) | `pip install gunicorn-prometheus-exporter[tornado]` |
 
 ### Start Gunicorn
 
