@@ -1,263 +1,650 @@
 # Installation Guide
 
-This guide covers installing and setting up the Gunicorn Prometheus Exporter for any WSGI framework.
+Complete installation guide for the Gunicorn Prometheus Exporter with all options and environment variables.
 
-## 📋 Prerequisites
+## 🚀 Installation Options
 
-- Python 3.9 or higher
-- Gunicorn 21.2.0 or higher
-- A WSGI application (Django, FastAPI, Flask, etc.)
+### Basic Installation
 
-## Installation Methods
-
-### Method 1: pip (Recommended)
+Install the core package with sync and thread worker support:
 
 ```bash
 pip install gunicorn-prometheus-exporter
 ```
 
-### Method 2: From Source
+**Includes:**
+- Sync worker (`PrometheusWorker`)
+- Thread worker (`PrometheusThreadWorker`)
+- Basic Prometheus metrics collection
+- Multiprocess support
+
+### Async Worker Installation
+
+Install with support for async worker types:
 
 ```bash
-git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter.git
-cd gunicorn-prometheus-exporter
-pip install -e .
+# Install all async workers
+pip install gunicorn-prometheus-exporter[async]
+
+# Or install specific worker types
+pip install gunicorn-prometheus-exporter[eventlet]  # Eventlet workers
+pip install gunicorn-prometheus-exporter[gevent]    # Gevent workers
+pip install gunicorn-prometheus-exporter[tornado]   # Tornado workers
 ```
 
-### Method 3: With Development Dependencies
+**Includes:**
+- All basic features
+- Eventlet worker (`PrometheusEventletWorker`)
+- Gevent worker (`PrometheusGeventWorker`)
+- Tornado worker (`PrometheusTornadoWorker`)
+
+### Redis Integration
+
+Install with Redis forwarding capabilities:
+
+```bash
+pip install gunicorn-prometheus-exporter[redis]
+```
+
+**Includes:**
+- All basic features
+- Redis metrics forwarding
+- Redis connection management
+- Metrics aggregation
+
+### Development Installation
+
+Install with development dependencies:
 
 ```bash
 pip install gunicorn-prometheus-exporter[dev]
 ```
 
-## Basic Setup
+**Includes:**
+- All basic features
+- Testing dependencies (pytest, coverage)
+- Linting tools (ruff, mypy)
+- Documentation tools (mkdocs)
 
-### 1. Environment Variables
+### Complete Installation
 
-Set these environment variables for the exporter to work:
+Install with all features and dependencies:
 
 ```bash
-export PROMETHEUS_METRICS_PORT=9091
-export PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
-export GUNICORN_WORKERS=4
+pip install gunicorn-prometheus-exporter[all]
 ```
 
-### 2. Gunicorn Configuration
+**Includes:**
+- All async worker types
+- Redis integration
+- Development tools
+- Documentation
 
-Create a `gunicorn.conf.py` file:
+### Installation from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/gunicorn-prometheus-exporter.git
+cd gunicorn-prometheus-exporter
+
+# Install in development mode
+pip install -e ".[dev]"
+
+# Or install with specific features
+pip install -e ".[async,redis]"
+```
+
+## 🔧 Environment Variables
+
+### Required Environment Variables
+
+#### `PROMETHEUS_MULTIPROC_DIR`
+
+**Description:** Directory for storing multiprocess Prometheus metrics files.
+
+**Type:** String (path)
+
+**Default:** `/tmp/prometheus_multiproc`
+
+**Example:**
+```bash
+export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
+```
+
+**Requirements:**
+- Directory must be writable by the Gunicorn process
+- Directory should be cleaned up periodically
+- Must be unique per Gunicorn instance
+
+#### `PROMETHEUS_METRICS_PORT`
+
+**Description:** Port number for the Prometheus metrics HTTP server.
+
+**Type:** Integer
+
+**Default:** `9090`
+
+**Range:** 1-65535
+
+**Example:**
+```bash
+export PROMETHEUS_METRICS_PORT="9090"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+```
+
+**Requirements:**
+- Port must be available (not in use by another process)
+- Port must be accessible for metrics collection
+- Consider firewall rules for production environments
+
+#### `PROMETHEUS_BIND_ADDRESS`
+
+**Description:** Bind address for the Prometheus metrics HTTP server.
+
+**Type:** String (IP address)
+
+**Default:** `0.0.0.0`
+
+**Example:**
+```bash
+export PROMETHEUS_BIND_ADDRESS="0.0.0.0"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
+```
+
+**Common values:**
+- `0.0.0.0` - Bind to all interfaces (default)
+- `127.0.0.1` - Bind to localhost only
+- `192.168.1.100` - Bind to specific IP address
+
+#### `GUNICORN_WORKERS`
+
+**Description:** Number of Gunicorn workers for metrics calculation.
+
+**Type:** Integer
+
+**Default:** `1`
+
+**Range:** 1-1000
+
+**Example:**
+```bash
+export GUNICORN_WORKERS="4"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("GUNICORN_WORKERS", "4")
+```
+
+**Recommendations:**
+- Set to match your actual worker count
+- Used for metrics aggregation and calculation
+- Should match the `workers` setting in Gunicorn config
+
+### Optional Environment Variables
+
+#### `GUNICORN_TIMEOUT`
+
+**Description:** Worker timeout in seconds.
+
+**Type:** Integer
+
+**Default:** `30`
+
+**Range:** 1-3600
+
+**Example:**
+```bash
+export GUNICORN_TIMEOUT="60"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("GUNICORN_TIMEOUT", "60")
+```
+
+#### `GUNICORN_KEEPALIVE`
+
+**Description:** Keep-alive connection timeout in seconds.
+
+**Type:** Integer
+
+**Default:** `2`
+
+**Range:** 0-300
+
+**Example:**
+```bash
+export GUNICORN_KEEPALIVE="5"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
+```
+
+#### `CLEANUP_DB_FILES`
+
+**Description:** Whether to clean up old multiprocess files.
+
+**Type:** Boolean
+
+**Default:** `false`
+
+**Values:** `true`, `false`
+
+**Example:**
+```bash
+export CLEANUP_DB_FILES="true"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("CLEANUP_DB_FILES", "true")
+```
+
+### Redis Environment Variables
+
+#### `REDIS_ENABLED`
+
+**Description:** Enable Redis metrics forwarding.
+
+**Type:** Boolean
+
+**Default:** `false`
+
+**Values:** `true`, `false`
+
+**Example:**
+```bash
+export REDIS_ENABLED="true"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("REDIS_ENABLED", "true")
+```
+
+#### `REDIS_HOST`
+
+**Description:** Redis server hostname.
+
+**Type:** String
+
+**Default:** `localhost`
+
+**Example:**
+```bash
+export REDIS_HOST="redis.example.com"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("REDIS_HOST", "redis.example.com")
+```
+
+#### `REDIS_PORT`
+
+**Description:** Redis server port.
+
+**Type:** Integer
+
+**Default:** `6379`
+
+**Range:** 1-65535
+
+**Example:**
+```bash
+export REDIS_PORT="6379"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("REDIS_PORT", "6379")
+```
+
+#### `REDIS_DB`
+
+**Description:** Redis database number.
+
+**Type:** Integer
+
+**Default:** `0`
+
+**Range:** 0-15
+
+**Example:**
+```bash
+export REDIS_DB="1"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("REDIS_DB", "1")
+```
+
+#### `REDIS_PASSWORD`
+
+**Description:** Redis authentication password.
+
+**Type:** String
+
+**Default:** `None` (no authentication)
+
+**Example:**
+```bash
+export REDIS_PASSWORD="your_redis_password"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("REDIS_PASSWORD", "your_redis_password")
+```
+
+#### `REDIS_KEY_PREFIX`
+
+**Description:** Prefix for Redis keys.
+
+**Type:** String
+
+**Default:** `gunicorn_metrics`
+
+**Example:**
+```bash
+export REDIS_KEY_PREFIX="myapp_metrics"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("REDIS_KEY_PREFIX", "myapp_metrics")
+```
+
+#### `REDIS_FORWARD_INTERVAL`
+
+**Description:** Metrics forwarding interval in seconds.
+
+**Type:** Integer
+
+**Default:** `30`
+
+**Range:** 1-3600
+
+**Example:**
+```bash
+export REDIS_FORWARD_INTERVAL="60"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("REDIS_FORWARD_INTERVAL", "60")
+```
+
+## 📦 Package Dependencies
+
+### Core Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `prometheus-client` | `>=0.16.0` | Prometheus metrics collection |
+| `psutil` | `>=5.8.0` | System metrics (CPU, memory) |
+| `gunicorn` | `>=20.1.0` | WSGI server integration |
+
+### Optional Dependencies
+
+#### Async Worker Dependencies
+
+| Package | Version | Worker Type |
+|---------|---------|-------------|
+| `eventlet` | `>=0.30.0` | Eventlet worker |
+| `gevent` | `>=21.8.0` | Gevent worker |
+| `tornado` | `>=6.1.0` | Tornado worker |
+
+#### Redis Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `redis` | `>=4.0.0` | Redis client |
+
+#### Development Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `pytest` | `>=7.0.0` | Testing framework |
+| `pytest-cov` | `>=4.0.0` | Coverage reporting |
+| `ruff` | `>=0.1.0` | Linting and formatting |
+| `mypy` | `>=1.0.0` | Type checking |
+| `mkdocs` | `>=1.4.0` | Documentation |
+| `mkdocs-material` | `>=9.0.0` | Documentation theme |
+
+## 🔧 Configuration Examples
+
+### Basic Configuration
 
 ```python
-# Basic server configuration
+# gunicorn_basic.conf.py
+bind = "0.0.0.0:8000"
+workers = 2
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+
+import os
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
+os.environ.setdefault("GUNICORN_WORKERS", "2")
+```
+
+### Async Worker Configuration
+
+```python
+# gunicorn_async.conf.py
+bind = "0.0.0.0:8000"
+workers = 2
+worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
+worker_connections = 1000
+
+import os
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
+os.environ.setdefault("GUNICORN_WORKERS", "2")
+os.environ.setdefault("GUNICORN_TIMEOUT", "60")
+os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
+```
+
+### Redis Integration Configuration
+
+```python
+# gunicorn_redis.conf.py
+bind = "0.0.0.0:8000"
+workers = 2
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+
+import os
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
+os.environ.setdefault("GUNICORN_WORKERS", "2")
+
+# Redis configuration
+os.environ.setdefault("REDIS_ENABLED", "true")
+os.environ.setdefault("REDIS_HOST", "localhost")
+os.environ.setdefault("REDIS_PORT", "6379")
+os.environ.setdefault("REDIS_DB", "0")
+os.environ.setdefault("REDIS_PASSWORD", "")
+os.environ.setdefault("REDIS_KEY_PREFIX", "gunicorn_metrics")
+os.environ.setdefault("REDIS_FORWARD_INTERVAL", "30")
+```
+
+### Production Configuration
+
+```python
+# gunicorn_production.conf.py
 bind = "0.0.0.0:8000"
 workers = 4
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-master_class = "gunicorn_prometheus_exporter.PrometheusMaster"
+worker_connections = 1000
+max_requests = 1000
+max_requests_jitter = 50
+timeout = 60
+keepalive = 5
 
-# Environment variables
-raw_env = [
-    "PROMETHEUS_METRICS_PORT=9091",
-    "PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc",
-    "GUNICORN_WORKERS=4"
-]
+import os
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/var/tmp/prometheus_multiproc")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # Bind to localhost only
+os.environ.setdefault("GUNICORN_WORKERS", "4")
+os.environ.setdefault("GUNICORN_TIMEOUT", "60")
+os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
+os.environ.setdefault("CLEANUP_DB_FILES", "true")
 
-# Prometheus hooks
-when_ready = "gunicorn_prometheus_exporter.default_when_ready"
-on_starting = "gunicorn_prometheus_exporter.default_on_starting"
-worker_int = "gunicorn_prometheus_exporter.default_worker_int"
-on_exit = "gunicorn_prometheus_exporter.default_on_exit"
+# Redis configuration for production
+os.environ.setdefault("REDIS_ENABLED", "true")
+os.environ.setdefault("REDIS_HOST", "redis.production.com")
+os.environ.setdefault("REDIS_PORT", "6379")
+os.environ.setdefault("REDIS_DB", "0")
+os.environ.setdefault("REDIS_PASSWORD", "production_password")
+os.environ.setdefault("REDIS_KEY_PREFIX", "prod_gunicorn_metrics")
+os.environ.setdefault("REDIS_FORWARD_INTERVAL", "60")
 ```
 
-### 3. Start Your Application
+## 🧪 Installation Verification
+
+### Check Installation
 
 ```bash
-gunicorn -c gunicorn.conf.py your_app:app
+# Verify package installation
+pip show gunicorn-prometheus-exporter
+
+# Check available worker classes
+python -c "from gunicorn_prometheus_exporter import PrometheusWorker; print('Sync worker available')"
+python -c "from gunicorn_prometheus_exporter import PrometheusThreadWorker; print('Thread worker available')"
 ```
 
-## Worker Types
-
-The exporter supports multiple Gunicorn worker types. Choose the one that best fits your application:
-
-### Sync Worker (Default)
-```python
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-```
-
-### Thread Worker
-```python
-worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"
-threads = 4  # Number of threads per worker
-```
-
-### Async Workers
-For async applications, install the required dependencies:
+### Test Async Workers
 
 ```bash
-# For Eventlet workers
-pip install eventlet
-worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
+# Test eventlet worker
+python -c "import eventlet; print('Eventlet available')" 2>/dev/null && echo "Eventlet worker ready" || echo "Install eventlet: pip install gunicorn-prometheus-exporter[eventlet]"
 
-# For Gevent workers
-pip install gevent
-worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"
+# Test gevent worker
+python -c "import gevent; print('Gevent available')" 2>/dev/null && echo "Gevent worker ready" || echo "Install gevent: pip install gunicorn-prometheus-exporter[gevent]"
 
-# For Tornado workers
-pip install tornado
-worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
+# Test tornado worker
+python -c "import tornado; print('Tornado available')" 2>/dev/null && echo "Tornado worker ready" || echo "Install tornado: pip install gunicorn-prometheus-exporter[tornado]"
 ```
 
-## Verification
-
-### Check Metrics Endpoint
-
-Visit your configured metrics endpoint (default: `http://0.0.0.0:9091/metrics`) to see your Prometheus metrics:
+### Test Redis Integration
 
 ```bash
-curl http://0.0.0.0:9091/metrics  # Or use your configured bind address
+# Test Redis connection
+python -c "import redis; print('Redis available')" 2>/dev/null && echo "Redis integration ready" || echo "Install Redis: pip install gunicorn-prometheus-exporter[redis]"
 ```
 
-You should see output like:
+## 🔍 Troubleshooting Installation
 
-```
-# HELP gunicorn_worker_requests_total Total number of requests processed by worker
-# TYPE gunicorn_worker_requests_total counter
-gunicorn_worker_requests_total{worker_id="worker_1_1234567890"} 42.0
+### Common Installation Issues
 
-# HELP gunicorn_worker_request_duration_seconds Request duration in seconds
-# TYPE gunicorn_worker_request_duration_seconds histogram
-gunicorn_worker_request_duration_seconds_bucket{worker_id="worker_1_1234567890",le="0.1"} 35.0
-```
+#### Missing Dependencies
 
-### Check Application Health
+**Error:** `ModuleNotFoundError: No module named 'eventlet'`
 
-Your main application should still be accessible at your configured bind address and port.
-
-## 🐳 Docker Setup
-
-### Dockerfile Example
-
-```dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-
-# Install dependencies
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-RUN pip install gunicorn-prometheus-exporter
-
-# Copy application
-COPY . .
-
-# Create multiprocess directory
-RUN mkdir -p /tmp/prometheus_multiproc
-
-# Expose ports
-EXPOSE 8000 9091
-
-# Set environment variables
-ENV PROMETHEUS_METRICS_PORT=9091
-ENV PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
-ENV GUNICORN_WORKERS=4
-
-# Start with gunicorn
-CMD ["gunicorn", "-c", "gunicorn.conf.py", "your_app:app"]
-```
-
-### Docker Compose Example
-
-```yaml
-version: '3.8'
-services:
-  web:
-    build: .
-    ports:
-      - "8000:8000"
-      - "9091:9091"
-    environment:
-      - PROMETHEUS_METRICS_PORT=9091
-      - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
-      - GUNICORN_WORKERS=4
-    volumes:
-      - /tmp/prometheus_multiproc:/tmp/prometheus_multiproc
-
-  prometheus:
-    image: prom/prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-```
-
-## Advanced Configuration
-
-### Redis Forwarding Setup
-
-For distributed setups, enable Redis forwarding:
-
-```python
-# gunicorn.conf.py
-raw_env = [
-    "PROMETHEUS_METRICS_PORT=9091",
-    "PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc",
-    "GUNICORN_WORKERS=4",
-    "REDIS_ENABLED=true",
-    "REDIS_HOST=your-redis-host",  # Configure for your environment
-    "REDIS_PORT=6379"
-]
-
-# Use Redis-enabled hook
-when_ready = "gunicorn_prometheus_exporter.redis_when_ready"
-```
-
-### Custom Metrics Port
-
+**Solution:**
 ```bash
-export PROMETHEUS_METRICS_PORT=9092
+# Install missing dependency
+pip install gunicorn-prometheus-exporter[eventlet]
 ```
 
-### Custom Multiprocess Directory
+#### Version Conflicts
 
+**Error:** `ImportError: cannot import name 'X' from 'Y'`
+
+**Solution:**
 ```bash
-export PROMETHEUS_MULTIPROC_DIR=/var/lib/prometheus/multiproc
+# Upgrade to latest version
+pip install --upgrade gunicorn-prometheus-exporter
+
+# Or install specific version
+pip install gunicorn-prometheus-exporter==0.1.3
 ```
 
-## Troubleshooting
+#### Permission Issues
 
-### Common Issues
+**Error:** `PermissionError: [Errno 13] Permission denied`
 
-1. **Port Already in Use**
-   ```bash
-   # Check what's using the port
-   lsof -i :9091
+**Solution:**
+```bash
+# Use virtual environment
+python -m venv venv
+source venv/bin/activate
+pip install gunicorn-prometheus-exporter
 
-   # Use a different port
-   export PROMETHEUS_METRICS_PORT=9092
-   ```
+# Or use user installation
+pip install --user gunicorn-prometheus-exporter
+```
 
-2. **Permission Denied for Multiprocess Directory**
-   ```bash
-   # Create directory with proper permissions
-   sudo mkdir -p /tmp/prometheus_multiproc
-   sudo chown $USER:$USER /tmp/prometheus_multiproc
-   ```
+### Environment Variable Issues
 
-3. **Metrics Not Appearing**
-   - Ensure environment variables are set
-   - Check Gunicorn logs for errors
-   - Verify the multiprocess directory exists and is writable
+#### Variables Not Set
 
-### Debug Mode
+**Error:** `ValueError: Environment variable X must be set`
 
-Enable debug logging:
+**Solution:**
+```bash
+# Set required variables
+export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
+export PROMETHEUS_METRICS_PORT="9090"
+export PROMETHEUS_BIND_ADDRESS="0.0.0.0"
+export GUNICORN_WORKERS="2"
+```
 
-```python
-# gunicorn.conf.py
-loglevel = "debug"
+#### Invalid Values
+
+**Error:** `ValueError: Invalid port number`
+
+**Solution:**
+```bash
+# Use valid port range (1-65535)
+export PROMETHEUS_METRICS_PORT="9090"  # Valid
+export PROMETHEUS_METRICS_PORT="99999"  # Invalid
 ```
 
 ## 📚 Next Steps
 
-- [Configuration Reference](configuration.md) - All available options
-- [Framework Examples](examples/) - Setup guides for specific frameworks
-- [Metrics Documentation](metrics.md) - Understanding the metrics
-- [Troubleshooting](troubleshooting.md) - Common issues and solutions
+After installation:
+
+1. **Configure Gunicorn**: Set up your `gunicorn.conf.py` file
+2. **Set Environment Variables**: Configure required environment variables
+3. **Test Installation**: Run a test server and verify metrics
+4. **Configure Prometheus**: Set up Prometheus to scrape metrics
+5. **Monitor Application**: Start monitoring your Gunicorn application
+
+For detailed configuration examples, see the [Configuration Guide](configuration.md).
+
+For troubleshooting, see the [Troubleshooting Guide](troubleshooting.md).

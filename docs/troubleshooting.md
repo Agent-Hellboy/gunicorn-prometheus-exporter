@@ -1,559 +1,485 @@
 # Troubleshooting Guide
 
-Common issues and solutions when using the Gunicorn Prometheus Exporter.
+Common issues and solutions for the Gunicorn Prometheus Exporter.
 
-## Common Issues
+## 🚨 Common Issues
 
-### 1. Port Already in Use
+### Port Already in Use
 
-**Error**: `OSError: [Errno 98] Address already in use`
-
-**Solution**:
-```bash
-# Check what's using the port
-lsof -i :9091
-
-# Kill the process using the port
-sudo kill -9 <PID>
-
-# Or use a different port
-export PROMETHEUS_METRICS_PORT=9092
+**Error:**
+```
+OSError: [Errno 98] Address already in use
 ```
 
-**Prevention**:
+**Solution:**
+1. Change the metrics port in your configuration:
 ```python
-# gunicorn.conf.py
-raw_env = [
-    "PROMETHEUS_METRICS_PORT=9092",  # Use different port
-    # ... other env vars
-]
+# In gunicorn.conf.py
+import os
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")  # Use different port
 ```
 
-### 2. Permission Denied for Multiprocess Directory
+2. Or kill the process using the port:
+```bash
+# Find the process
+lsof -i :9090
 
-**Error**: `PermissionError: [Errno 13] Permission denied`
+# Kill the process
+kill -9 <PID>
+```
 
-**Solution**:
+### Permission Denied
+
+**Error:**
+```
+PermissionError: [Errno 13] Permission denied
+```
+
+**Solution:**
+1. Check multiprocess directory permissions:
 ```bash
 # Create directory with proper permissions
-sudo mkdir -p /tmp/prometheus_multiproc
-sudo chown $USER:$USER /tmp/prometheus_multiproc
-sudo chmod 755 /tmp/prometheus_multiproc
-
-# Or use a different directory
-export PROMETHEUS_MULTIPROC_DIR=/home/$USER/prometheus_multiproc
+mkdir -p /tmp/prometheus_multiproc
+chmod 755 /tmp/prometheus_multiproc
 ```
 
-**Prevention**:
+2. Or use a different directory:
 ```python
-# gunicorn.conf.py
-raw_env = [
-    "PROMETHEUS_MULTIPROC_DIR=/home/user/prometheus_multiproc",
-    # ... other env vars
-]
+# In gunicorn.conf.py
+import os
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/var/tmp/prometheus_multiproc")
 ```
 
-### 3. Environment Variables Not Set
+### Import Errors for Async Workers
 
-**Error**: `ValueError: Environment variable PROMETHEUS_METRICS_PORT must be set`
+**Error:**
+```
+ModuleNotFoundError: No module named 'eventlet'
+```
 
-**Solution**:
+**Solution:**
+1. Install the required dependencies:
 ```bash
-# Set required environment variables
-export PROMETHEUS_METRICS_PORT=9091
-export PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
-export GUNICORN_WORKERS=4
+# For eventlet workers
+pip install gunicorn-prometheus-exporter[eventlet]
+
+# For gevent workers
+pip install gunicorn-prometheus-exporter[gevent]
+
+# For tornado workers
+pip install gunicorn-prometheus-exporter[tornado]
+
+# Or install all async dependencies
+pip install gunicorn-prometheus-exporter[async]
 ```
 
-**Prevention**:
+2. Verify the installation:
+```bash
+python -c "import eventlet; print('eventlet available')"
+```
+
+### Metrics Not Updating
+
+**Issue:** Metrics endpoint shows stale or no data.
+
+**Solutions:**
+
+1. **Check environment variables:**
+```bash
+# Verify all required variables are set
+echo $PROMETHEUS_MULTIPROC_DIR
+echo $PROMETHEUS_METRICS_PORT
+echo $PROMETHEUS_BIND_ADDRESS
+echo $GUNICORN_WORKERS
+```
+
+2. **Check multiprocess directory:**
+```bash
+# Verify directory exists and is writable
+ls -la /tmp/prometheus_multiproc/
+```
+
+3. **Restart Gunicorn:**
+```bash
+# Kill existing process
+pkill -f gunicorn
+
+# Start fresh
+gunicorn -c gunicorn.conf.py app:app
+```
+
+### Worker Type Errors
+
+**Error:**
+```
+TypeError: 'NoneType' object is not callable
+```
+
+**Solution:**
+1. Verify worker class is correctly specified:
 ```python
-# gunicorn.conf.py
-raw_env = [
-    "PROMETHEUS_METRICS_PORT=9091",
-    "PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc",
-    "GUNICORN_WORKERS=4"
-]
+# In gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"  # Sync
+worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"  # Thread
+worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"  # Eventlet
+worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"  # Gevent
+worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"  # Tornado
 ```
 
-### 4. Metrics Not Appearing
-
-**Issue**: No metrics visible at `/metrics` endpoint
-
-**Diagnosis**:
+2. Check if async dependencies are installed:
 ```bash
-# Check if metrics server is running
-curl http://YOUR_BIND_ADDRESS:9091/metrics  # Replace with your configured address
+# For eventlet workers
+python -c "import eventlet"
 
-# Check Gunicorn logs
-tail -f gunicorn.log
+# For gevent workers
+python -c "import gevent"
+
+# For tornado workers
+python -c "import tornado"
+```
+
+## 🔧 Configuration Issues
+
+### Environment Variables Not Set
+
+**Error:**
+```
+ValueError: Environment variable PROMETHEUS_METRICS_PORT must be set in production
+```
+
+**Solution:**
+1. Set environment variables in your configuration:
+```python
+# In gunicorn.conf.py
+import os
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
+os.environ.setdefault("GUNICORN_WORKERS", "2")
+```
+
+2. Or export them in your shell:
+```bash
+export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
+export PROMETHEUS_METRICS_PORT="9090"
+export PROMETHEUS_BIND_ADDRESS="0.0.0.0"
+export GUNICORN_WORKERS="2"
+```
+
+### Redis Configuration Issues
+
+**Error:**
+```
+ConnectionError: Error connecting to Redis
+```
+
+**Solution:**
+1. Check Redis server is running:
+```bash
+redis-cli ping
+```
+
+2. Verify Redis configuration:
+```python
+# In gunicorn.conf.py
+import os
+os.environ.setdefault("REDIS_ENABLED", "true")
+os.environ.setdefault("REDIS_HOST", "localhost")
+os.environ.setdefault("REDIS_PORT", "6379")
+os.environ.setdefault("REDIS_DB", "0")
+```
+
+3. Test Redis connection:
+```bash
+redis-cli -h localhost -p 6379 ping
+```
+
+## 🐛 Debug Mode
+
+### Enable Debug Logging
+
+```python
+# In gunicorn.conf.py
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Or set specific logger
+logging.getLogger('gunicorn_prometheus_exporter').setLevel(logging.DEBUG)
+```
+
+### Verbose Gunicorn Output
+
+```bash
+# Start with verbose logging
+gunicorn -c gunicorn.conf.py app:app --log-level debug
+```
+
+### Check Metrics Endpoint
+
+```bash
+# Test metrics endpoint
+curl http://0.0.0.0:9090/metrics
+
+# Check for specific metrics
+curl http://0.0.0.0:9090/metrics | grep gunicorn_worker
+
+# Check for errors
+curl http://0.0.0.0:9090/metrics | grep -i error
+```
+
+## 🔍 Diagnostic Commands
+
+### Check Process Status
+
+```bash
+# List Gunicorn processes
+ps aux | grep gunicorn
+
+# Check open ports
+netstat -tlnp | grep 9090
 
 # Check multiprocess directory
 ls -la /tmp/prometheus_multiproc/
 ```
 
-**Solutions**:
+### Monitor Metrics
 
-1. **Verify Configuration**:
-   ```python
-   from gunicorn_prometheus_exporter.config import ExporterConfig
-
-   config = ExporterConfig()
-
-### 5. Async Worker Issues
-
-**Issue**: ImportError or TypeError with async workers (Eventlet, Gevent, Tornado)
-
-**Common Errors**:
 ```bash
-# Missing dependencies
-ImportError: No module named 'eventlet'
-ImportError: No module named 'gevent'
-ImportError: No module named 'tornado'
+# Watch metrics in real-time
+watch -n 1 'curl -s http://0.0.0.0:9090/metrics | grep gunicorn_worker_requests_total'
 
-# Method signature issues
-TypeError: handle_request() missing required arguments
+# Monitor specific worker
+watch -n 1 'curl -s http://0.0.0.0:9090/metrics | grep "worker_id=\"worker_1\""'
 ```
 
-**Solutions**:
+### Test Worker Types
 
-1. **Install Required Dependencies**:
-   ```bash
-   # For Eventlet workers
-   pip install eventlet
-
-   # For Gevent workers
-   pip install gevent
-
-   # For Tornado workers
-   pip install tornado
-   ```
-
-2. **Verify Worker Class Configuration**:
-   ```python
-   # gunicorn.conf.py
-   worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"  # Eventlet
-   worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"    # Gevent
-   worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"   # Tornado
-   ```
-
-3. **Check Application Compatibility**:
-   ```python
-   # Ensure your app is WSGI-compatible
-   # For async workers, use async_app.py from examples
-   ```
-
-4. **Verify Metrics Collection**:
-   ```bash
-   # Test metrics endpoint
-   curl http://YOUR_BIND_ADDRESS:9091/metrics | grep worker_requests_total
-   ```
-   if config.validate():
-       print("Configuration is valid")
-   else:
-       print("Configuration has errors")
-   ```
-
-2. **Check Worker Class**:
-   ```python
-   # gunicorn.conf.py
-   worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-   master_class = "gunicorn_prometheus_exporter.PrometheusMaster"
-   ```
-
-3. **Verify Hooks**:
-   ```python
-   # gunicorn.conf.py
-   when_ready = "gunicorn_prometheus_exporter.default_when_ready"
-   on_starting = "gunicorn_prometheus_exporter.default_on_starting"
-   worker_int = "gunicorn_prometheus_exporter.default_worker_int"
-   on_exit = "gunicorn_prometheus_exporter.default_on_exit"
-   ```
-
-### 5. Redis Connection Issues
-
-**Error**: `redis.exceptions.ConnectionError: Error connecting to Redis`
-
-**Solution**:
 ```bash
-# Check if Redis is running
-redis-cli ping
+# Test sync worker
+gunicorn --config example/gunicorn_simple.conf.py example/app:app
 
-# Start Redis if not running
-sudo systemctl start redis
+# Test thread worker
+gunicorn --config example/gunicorn_thread_worker.conf.py example/app:app
 
-# Or use Docker
-docker run -d -p 6379:6379 redis:alpine
+# Test eventlet worker
+gunicorn --config example/gunicorn_eventlet_async.conf.py example/async_app:app
+
+# Test gevent worker
+gunicorn --config example/gunicorn_gevent_async.conf.py example/async_app:app
+
+# Test tornado worker
+gunicorn --config example/gunicorn_tornado_async.conf.py example/async_app:app
 ```
 
-**Configuration**:
+## 🚨 Async Worker Issues
+
+### Eventlet Worker Problems
+
+**Common Issues:**
+1. **Import errors**: Install `eventlet` package
+2. **WSGI compatibility**: Use async-compatible application
+3. **Worker connections**: Set appropriate `worker_connections`
+
+**Solution:**
 ```python
-# gunicorn.conf.py
-raw_env = [
-    "REDIS_ENABLED=true",
-    "REDIS_HOST=your-redis-host",  # Configure for your environment
-    "REDIS_PORT=6379",
-    "REDIS_PASSWORD=your_password",  # if needed
-]
+# In gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
+worker_connections = 1000
+
+# Use async-compatible app
+app = "example.async_app:app"
 ```
 
-### 6. Worker Restart Issues
+### Gevent Worker Problems
 
-**Issue**: Workers restarting frequently
+**Common Issues:**
+1. **Import errors**: Install `gevent` package
+2. **Monkey patching**: May conflict with other libraries
+3. **Worker connections**: Set appropriate `worker_connections`
 
-**Diagnosis**:
-```bash
-# Check worker logs
-tail -f gunicorn.log | grep "worker"
-
-# Check system resources
-htop
-free -h
-df -h
-```
-
-**Solutions**:
-
-1. **Increase Worker Timeout**:
-   ```python
-   # gunicorn.conf.py
-   raw_env = [
-       "GUNICORN_TIMEOUT=60",  # Increase timeout
-   ]
-   ```
-
-2. **Reduce Worker Count**:
-   ```python
-   # gunicorn.conf.py
-   workers = 2  # Reduce from 4 to 2
-   raw_env = [
-       "GUNICORN_WORKERS=2",
-   ]
-   ```
-
-3. **Check Memory Usage**:
-   ```bash
-   # Monitor memory usage
-   watch -n 1 'free -h'
-   ```
-
-### 7. Import Errors
-
-**Error**: `ModuleNotFoundError: No module named 'gunicorn_prometheus_exporter'`
-
-**Solution**:
-```bash
-# Install the package
-pip install gunicorn-prometheus-exporter
-
-# Or install from source
-git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter.git
-cd gunicorn-prometheus-exporter
-pip install -e .
-```
-
-**Verification**:
-```bash
-# Check if package is installed
-python -c "import gunicorn_prometheus_exporter; print('Package installed')"
-```
-
-### 8. Configuration Validation Errors
-
-**Error**: Configuration validation fails
-
-**Diagnosis**:
+**Solution:**
 ```python
-from gunicorn_prometheus_exporter.config import ExporterConfig
+# In gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"
+worker_connections = 1000
 
-config = ExporterConfig()
-config.print_config()  # Show current configuration
-print(f"Valid: {config.validate()}")
+# Use async-compatible app
+app = "example.async_app:app"
 ```
 
-**Common Issues**:
+### Tornado Worker Problems
 
-1. **Invalid Port**:
-   ```python
-   # Port must be between 1 and 65535
-   export PROMETHEUS_METRICS_PORT=9091  # Valid
-   export PROMETHEUS_METRICS_PORT=99999  # Invalid
-   ```
+**Common Issues:**
+1. **Import errors**: Install `tornado` package
+2. **IOLoop conflicts**: May conflict with other async libraries
+3. **Application compatibility**: Requires async-compatible app
 
-2. **Invalid Worker Count**:
-   ```python
-   # Worker count must be positive
-   export GUNICORN_WORKERS=4  # Valid
-   export GUNICORN_WORKERS=0  # Invalid
-   ```
-
-3. **Invalid Directory**:
-   ```python
-   # Directory must be writable
-   export PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc  # Valid
-   export PROMETHEUS_MULTIPROC_DIR=/nonexistent  # Invalid
-   ```
-
-## Debug Mode
-
-### Enable Debug Logging
-
+**Solution:**
 ```python
-# gunicorn.conf.py
-loglevel = "debug"
-accesslog = "-"
-errorlog = "-"
+# In gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
+
+# Use async-compatible app
+app = "example.async_app:app"
 ```
 
-### Verbose Configuration
+## 🔧 Performance Issues
 
+### High Memory Usage
+
+**Symptoms:**
+- Memory usage increases over time
+- Workers restart frequently
+
+**Solutions:**
+1. **Reduce worker count:**
 ```python
-# gunicorn.conf.py
-import logging
-
-# Enable debug logging
-logging.basicConfig(level=logging.DEBUG)
-
-# Server settings
-bind = "0.0.0.0:8000"
-workers = 2  # Use fewer workers for debugging
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-master_class = "gunicorn_prometheus_exporter.PrometheusMaster"
-
-# Environment variables
-raw_env = [
-    "PROMETHEUS_METRICS_PORT=9091",
-    "PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc",
-    "GUNICORN_WORKERS=2"
-]
-
-# Prometheus hooks
-when_ready = "gunicorn_prometheus_exporter.default_when_ready"
-on_starting = "gunicorn_prometheus_exporter.default_on_starting"
-worker_int = "gunicorn_prometheus_exporter.default_worker_int"
-on_exit = "gunicorn_prometheus_exporter.default_on_exit"
-
-# Debug settings
-preload_app = False  # Disable for debugging
+# In gunicorn.conf.py
+workers = 2  # Reduce from default
 ```
 
-### Test Configuration
-
-```bash
-# Test configuration without starting server
-python -c "
-from gunicorn_prometheus_exporter.config import ExporterConfig
-config = ExporterConfig()
-print('Configuration:')
-config.print_config()
-print(f'Valid: {config.validate()}')
-"
-```
-
-## Monitoring and Diagnostics
-
-### Health Check Script
-
+2. **Enable metric cleanup:**
 ```python
-# health_check.py
-import requests
+# In gunicorn.conf.py
 import os
-import sys
-
-def check_metrics_endpoint():
-    """Check if metrics endpoint is accessible."""
-    try:
-        port = os.environ.get('PROMETHEUS_METRICS_PORT', '9091')
-        response = requests.get(f'http://YOUR_BIND_ADDRESS:{port}/metrics', timeout=5)  # Replace with your configured address
-        if response.status_code == 200:
-            print(f"✅ Metrics endpoint accessible on port {port}")
-            return True
-        else:
-            print(f"❌ Metrics endpoint returned status {response.status_code}")
-            return False
-    except Exception as e:
-        print(f"❌ Metrics endpoint not accessible: {e}")
-        return False
-
-def check_multiproc_dir():
-    """Check if multiprocess directory exists and is writable."""
-    mp_dir = os.environ.get('PROMETHEUS_MULTIPROC_DIR', '/tmp/prometheus_multiproc')
-    if os.path.exists(mp_dir) and os.access(mp_dir, os.W_OK):
-        print(f"✅ Multiprocess directory {mp_dir} is writable")
-        return True
-    else:
-        print(f"❌ Multiprocess directory {mp_dir} is not writable")
-        return False
-
-def check_environment_variables():
-    """Check if required environment variables are set."""
-    required_vars = [
-        'PROMETHEUS_METRICS_PORT',
-        'PROMETHEUS_MULTIPROC_DIR',
-        'GUNICORN_WORKERS'
-    ]
-
-    all_set = True
-    for var in required_vars:
-        if os.environ.get(var):
-            print(f"✅ {var} is set")
-        else:
-            print(f"❌ {var} is not set")
-            all_set = False
-
-    return all_set
-
-if __name__ == '__main__':
-    print("Gunicorn Prometheus Exporter Health Check")
-    print("=" * 50)
-
-    env_ok = check_environment_variables()
-    mp_dir_ok = check_multiproc_dir()
-    metrics_ok = check_metrics_endpoint()
-
-    print("\nSummary:")
-    if all([env_ok, mp_dir_ok, metrics_ok]):
-        print("✅ All checks passed")
-        sys.exit(0)
-    else:
-        print("❌ Some checks failed")
-        sys.exit(1)
+os.environ.setdefault("CLEANUP_DB_FILES", "true")
 ```
 
-### Log Analysis Script
+3. **Monitor memory metrics:**
+```bash
+# Check memory usage
+curl http://0.0.0.0:9090/metrics | grep gunicorn_worker_memory_bytes
+```
 
+### High CPU Usage
+
+**Symptoms:**
+- CPU usage spikes during requests
+- Slow response times
+
+**Solutions:**
+1. **Use appropriate worker type:**
 ```python
-# log_analyzer.py
-import re
-import sys
-from collections import defaultdict
+# For I/O-bound apps
+worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"
 
-def analyze_gunicorn_logs(log_file):
-    """Analyze Gunicorn logs for common issues."""
-    issues = defaultdict(list)
-
-    with open(log_file, 'r') as f:
-        for line_num, line in enumerate(f, 1):
-            # Check for worker restarts
-            if 'worker restarting' in line:
-                issues['worker_restarts'].append((line_num, line.strip()))
-
-            # Check for connection errors
-            if 'connection error' in line.lower():
-                issues['connection_errors'].append((line_num, line.strip()))
-
-            # Check for timeout errors
-            if 'timeout' in line.lower():
-                issues['timeout_errors'].append((line_num, line.strip()))
-
-            # Check for memory issues
-            if 'memory' in line.lower() and 'error' in line.lower():
-                issues['memory_errors'].append((line_num, line.strip()))
-
-    return issues
-
-def print_analysis(issues):
-    """Print analysis results."""
-    print("Gunicorn Log Analysis")
-    print("=" * 50)
-
-    for issue_type, occurrences in issues.items():
-        if occurrences:
-            print(f"\n❌ {issue_type.replace('_', ' ').title()}:")
-            for line_num, line in occurrences[:5]:  # Show first 5
-                print(f"  Line {line_num}: {line}")
-            if len(occurrences) > 5:
-                print(f"  ... and {len(occurrences) - 5} more")
-        else:
-            print(f"\n✅ No {issue_type.replace('_', ' ')} found")
-
-if __name__ == '__main__':
-    log_file = sys.argv[1] if len(sys.argv) > 1 else 'gunicorn.log'
-
-    try:
-        issues = analyze_gunicorn_logs(log_file)
-        print_analysis(issues)
-    except FileNotFoundError:
-        print(f"❌ Log file {log_file} not found")
-        sys.exit(1)
+# For async apps
+worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
 ```
 
-## Performance Optimization
+2. **Monitor CPU metrics:**
+```bash
+# Check CPU usage
+curl http://0.0.0.0:9090/metrics | grep gunicorn_worker_cpu_percent
+```
 
-### Memory Optimization
+### Slow Metrics Collection
 
+**Symptoms:**
+- Metrics endpoint responds slowly
+- High latency in metric updates
+
+**Solutions:**
+1. **Reduce metric collection frequency:**
 ```python
-# gunicorn.conf.py
-# Memory optimization settings
-max_requests = 1000
-max_requests_jitter = 50
-worker_connections = 1000
-worker_tmp_dir = "/dev/shm"  # Use RAM for temporary files
+# Update worker metrics less frequently
+def worker_int(worker):
+    # Only update every 10 seconds
+    if hasattr(worker, '_last_metrics_update'):
+        if time.time() - worker._last_metrics_update < 10:
+            return
+    worker._last_metrics_update = time.time()
+    worker.update_worker_metrics()
 ```
 
-### CPU Optimization
-
+2. **Use Redis forwarding for aggregation:**
 ```python
-# gunicorn.conf.py
-# CPU optimization settings
-workers = 4  # Match CPU cores
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-preload_app = True  # Preload application
+# Enable Redis forwarding
+import os
+os.environ.setdefault("REDIS_ENABLED", "true")
 ```
 
-### Network Optimization
+## 🛠️ Recovery Procedures
 
-```python
-# gunicorn.conf.py
-# Network optimization settings
-keepalive = 2
-worker_connections = 1000
-backlog = 2048
+### Clean Restart
+
+```bash
+# Stop all Gunicorn processes
+pkill -f gunicorn
+
+# Clean multiprocess directory
+rm -rf /tmp/prometheus_multiproc/*
+
+# Restart with fresh configuration
+gunicorn -c gunicorn.conf.py app:app
 ```
 
-## Getting Help
+### Emergency Recovery
 
-### Before Asking for Help
+```bash
+# Force kill all processes
+pkill -9 -f gunicorn
 
-1. **Check the logs**: Look at Gunicorn and application logs
-2. **Verify configuration**: Use the health check script
-3. **Test minimal setup**: Try with basic configuration first
-4. **Check system resources**: Monitor CPU, memory, and disk usage
+# Clean all temporary files
+rm -rf /tmp/prometheus_multiproc/*
+rm -rf /tmp/gunicorn*
 
-### Information to Include
+# Restart with minimal configuration
+gunicorn --bind 0.0.0.0:8000 --workers 1 app:app
+```
+
+### Data Recovery
+
+```bash
+# Backup metrics data
+cp -r /tmp/prometheus_multiproc /backup/prometheus_multiproc_$(date +%Y%m%d_%H%M%S)
+
+# Restore from backup
+cp -r /backup/prometheus_multiproc_latest/* /tmp/prometheus_multiproc/
+```
+
+## 📞 Getting Help
+
+### Debug Information
 
 When reporting issues, include:
 
-1. **Environment**:
-   - Python version
-   - Gunicorn version
-   - Operating system
-   - Package version
+1. **Gunicorn version:**
+```bash
+gunicorn --version
+```
 
-2. **Configuration**:
-   - `gunicorn.conf.py` content
-   - Environment variables
-   - Application type (Django, Flask, etc.)
+2. **Python version:**
+```bash
+python --version
+```
 
-3. **Error Details**:
-   - Full error message
-   - Stack trace
-   - Log files
+3. **Installed packages:**
+```bash
+pip list | grep gunicorn
+```
 
-4. **Steps to Reproduce**:
-   - Installation steps
-   - Configuration steps
-   - Commands run
+4. **Configuration file:**
+```bash
+cat gunicorn.conf.py
+```
+
+5. **Error logs:**
+```bash
+gunicorn -c gunicorn.conf.py app:app --log-level debug 2>&1
+```
+
+6. **Metrics endpoint:**
+```bash
+curl http://0.0.0.0:9090/metrics
+```
 
 ### Support Channels
 
-- **GitHub Issues**: [Create an issue](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues)
-- **Documentation**: Check this troubleshooting guide
-- **Examples**: Review framework-specific examples
+- **GitHub Issues**: Report bugs and feature requests
+- **Documentation**: Check the [API Reference](api-reference.md)
+- **Examples**: See the `example/` directory for working configurations
 
-## Related Documentation
+---
 
-- [Installation Guide](installation.md)
-- [Configuration Reference](configuration.md)
-- [Metrics Documentation](metrics.md)
-- [API Reference](api-reference.md)
-- [Framework Examples](examples/)
+**For more help, see the [Installation Guide](installation.md) and [Configuration Reference](configuration.md).**

@@ -1,771 +1,392 @@
 # API Reference
 
-Complete API reference for the Gunicorn Prometheus Exporter.
+Complete reference for the Gunicorn Prometheus Exporter API, including worker classes, hooks, and configuration options.
 
-## Configuration API
+## 🔧 Worker Classes
 
-### ExporterConfig
+### PrometheusWorker
 
-Main configuration class for the exporter.
-
-```python
-from gunicorn_prometheus_exporter.config import ExporterConfig
-```
-
-#### Constructor
+The base sync worker class that provides Prometheus metrics integration.
 
 ```python
-ExporterConfig()
+from gunicorn_prometheus_exporter import PrometheusWorker
+
+# Usage in gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 ```
 
-Creates a new configuration instance. Reads environment variables and validates them.
+**Features:**
+- Request counting and timing
+- Memory and CPU usage tracking
+- Error handling with method/endpoint labels
+- Worker state management with timestamps
 
-#### Properties
+### PrometheusThreadWorker
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `prometheus_metrics_port` | `int` | Port for the Prometheus metrics server |
-| `prometheus_bind_address` | `str` | Bind address for metrics server |
-| `prometheus_multiproc_dir` | `str` | Directory for multiprocess metrics storage |
-| `gunicorn_workers` | `int` | Number of Gunicorn workers |
-| `gunicorn_timeout` | `int` | Worker timeout in seconds |
-| `gunicorn_keepalive` | `int` | Keep-alive connection timeout |
-| `redis_enabled` | `bool` | Whether Redis forwarding is enabled |
-| `redis_host` | `str` | Redis server hostname |
-| `redis_port` | `int` | Redis server port |
-| `redis_db` | `int` | Redis database number |
-| `redis_password` | `str` | Redis authentication password |
-| `redis_key_prefix` | `str` | Prefix for Redis keys |
-| `redis_forward_interval` | `int` | Metrics forwarding interval in seconds |
-| `cleanup_db_files` | `bool` | Whether to clean up old multiprocess files |
-
-#### Methods
-
-##### `validate() -> bool`
-
-Validates the configuration and returns `True` if valid, `False` otherwise.
+Thread-based worker for I/O-bound applications.
 
 ```python
-config = ExporterConfig()
-if config.validate():
-    print("Configuration is valid")
-else:
-    print("Configuration has errors")
+from gunicorn_prometheus_exporter import PrometheusThreadWorker
+
+# Usage in gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"
 ```
 
-##### `print_config() -> None`
+**Features:**
+- All features of PrometheusWorker
+- Thread-based concurrency
+- Better performance for I/O-bound applications
 
-Prints the current configuration to stdout.
+### PrometheusEventletWorker
+
+Eventlet-based worker for async applications.
 
 ```python
-config = ExporterConfig()
-config.print_config()
+from gunicorn_prometheus_exporter import PrometheusEventletWorker
+
+# Usage in gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
 ```
 
-##### `get_gunicorn_config() -> Dict[str, Any]`
+**Requirements:**
+```bash
+pip install gunicorn-prometheus-exporter[eventlet]
+```
 
-Returns a dictionary with Gunicorn-specific configuration.
+**Features:**
+- All features of PrometheusWorker
+- Eventlet-based async I/O
+- High concurrency for async applications
+
+### PrometheusGeventWorker
+
+Gevent-based worker for async applications.
 
 ```python
-config = ExporterConfig()
-gunicorn_config = config.get_gunicorn_config()
+from gunicorn_prometheus_exporter import PrometheusGeventWorker
+
+# Usage in gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"
 ```
 
-##### `get_prometheus_config() -> Dict[str, Any]`
+**Requirements:**
+```bash
+pip install gunicorn-prometheus-exporter[gevent]
+```
 
-Returns a dictionary with Prometheus-specific configuration.
+**Features:**
+- All features of PrometheusWorker
+- Gevent-based async I/O
+- High concurrency for async applications
+
+### PrometheusTornadoWorker
+
+Tornado-based worker for async applications.
 
 ```python
-config = ExporterConfig()
-prometheus_config = config.get_prometheus_config()
+from gunicorn_prometheus_exporter import PrometheusTornadoWorker
+
+# Usage in gunicorn.conf.py
+worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
 ```
 
-## Worker API
+**Requirements:**
+```bash
+pip install gunicorn-prometheus-exporter[tornado]
+```
 
-### Plugin Architecture
+**Features:**
+- All features of PrometheusWorker
+- Tornado-based async IOLoop
+- High concurrency for async applications
 
-The exporter uses a mixin-based architecture to provide consistent metrics collection across all worker types:
+## 🔌 Plugin Architecture
 
-#### PrometheusMixin
+### PrometheusMixin
 
-The `PrometheusMixin` class provides shared functionality for all worker types:
+The core mixin class that provides Prometheus functionality to all worker types.
 
 ```python
 from gunicorn_prometheus_exporter.plugin import PrometheusMixin
 ```
 
-**Key Features:**
-- **Unified Metrics Collection**: All worker types use the same metrics collection logic
-- **Method Signature Handling**: Automatically handles different method signatures for each worker type
-- **Error Tracking**: Consistent error tracking with method and endpoint labels
-- **State Management**: Unified worker state tracking with timestamps
-
 **Core Methods:**
-- `_handle_request_metrics(start_time)`: Updates request count and duration metrics
-- `_handle_request_error_metrics(req, exc, start_time)`: Tracks failed requests with detailed labels
-- `_generic_handle_request(parent_method, *args, **kwargs)`: Generic request handler wrapper
-- `_generic_handle_error(parent_method, *args, **kwargs)`: Generic error handler wrapper
-- `update_worker_metrics()`: Updates CPU, memory, and uptime metrics
 
-### Available Worker Classes
+#### `update_worker_metrics()`
 
-The exporter provides specialized worker classes for different concurrency models:
+Updates worker-specific metrics including memory, CPU, and uptime.
 
 ```python
-from gunicorn_prometheus_exporter.plugin import (
-    PrometheusWorker,           # Sync worker (default)
-    PrometheusThreadWorker,     # Thread worker
-    PrometheusEventletWorker,   # Eventlet worker
-    PrometheusGeventWorker,     # Gevent worker
-    PrometheusTornadoWorker     # Tornado worker
-)
+def update_worker_metrics(self):
+    """Update worker metrics including memory, CPU, and uptime."""
+    # Updates gunicorn_worker_memory_bytes
+    # Updates gunicorn_worker_cpu_percent
+    # Updates gunicorn_worker_uptime_seconds
+    # Updates gunicorn_worker_state
 ```
 
-### PrometheusWorker
+#### `_handle_request_metrics()`
 
-Default sync worker class that collects metrics.
-
-#### Constructor
+Handles request-level metrics tracking.
 
 ```python
-PrometheusWorker(age, ppid, sockets, app, timeout, cfg, log)
+def _handle_request_metrics(self):
+    """Track request metrics including count and duration."""
+    # Updates gunicorn_worker_requests_total
+    # Updates gunicorn_worker_request_duration_seconds
 ```
 
-Creates a new Prometheus worker instance.
+#### `_handle_request_error_metrics(req, e)`
 
-#### Methods
-
-##### `handle_request(listener, req, client, addr) -> List[str]`
-
-Handles an incoming request and collects metrics.
+Handles error metrics with method and endpoint labels.
 
 ```python
-# Called automatically by Gunicorn
-worker.handle_request(listener, req, client, addr)
+def _handle_request_error_metrics(self, req, e):
+    """Track error metrics with method and endpoint labels."""
+    # Updates gunicorn_worker_failed_requests_total
+    # Updates gunicorn_worker_error_handling_total
 ```
 
-##### `handle_error(req, client, addr, exc) -> None`
+#### `_generic_handle_request(parent_method, *args, **kwargs)`
 
-Handles request errors and collects error metrics.
+Generic request handler that wraps parent worker methods.
 
 ```python
-# Called automatically by Gunicorn
-worker.handle_error(req, client, addr, exc)
+def _generic_handle_request(self, parent_method, *args, **kwargs):
+    """Generic request handler with metrics tracking."""
+    # Calls parent method
+    # Updates request metrics
+    # Handles exceptions
 ```
 
-##### `update_worker_metrics() -> None`
+#### `_generic_handle_error(parent_method, *args, **kwargs)`
 
-Updates worker-specific metrics (CPU, memory, uptime).
+Generic error handler that wraps parent worker methods.
 
 ```python
-# Called automatically by Gunicorn
-worker.update_worker_metrics()
+def _generic_handle_error(self, parent_method, *args, **kwargs):
+    """Generic error handler with metrics tracking."""
+    # Calls parent method
+    # Updates error metrics
+    # Handles exceptions
 ```
 
-##### `handle_quit(signum, frame) -> None`
+## 🎣 Gunicorn Hooks
 
-Handles worker quit signal and updates state metrics.
+### Default Hooks
+
+The exporter provides several Gunicorn hooks for automatic setup:
+
+#### `default_on_starting(server)`
+
+Called when the server is starting up.
 
 ```python
-# Called automatically by Gunicorn
-worker.handle_quit(signum, frame)
+from gunicorn_prometheus_exporter.hooks import default_on_starting
+
+def on_starting(server):
+    default_on_starting(server)
 ```
 
-##### `handle_abort(signum, frame) -> None`
+#### `default_when_ready(server)`
 
-Handles worker abort signal and updates state metrics.
+Called when the server is ready to accept connections.
 
 ```python
-# Called automatically by Gunicorn
-worker.handle_abort(signum, frame)
+from gunicorn_prometheus_exporter.hooks import default_when_ready
+
+def when_ready(server):
+    default_when_ready(server)
 ```
 
-##### `_clear_old_metrics() -> None`
+#### `default_worker_int(worker)`
 
-Cleans up metrics from old worker processes.
+Called when a worker is initialized.
 
 ```python
-# Called automatically by Gunicorn
-worker._clear_old_metrics()
+from gunicorn_prometheus_exporter.hooks import default_worker_int
+
+def worker_int(worker):
+    default_worker_int(worker)
 ```
 
-### PrometheusThreadWorker
+#### `default_on_exit(server)`
 
-Thread-based worker class for I/O-bound applications.
+Called when the server is shutting down.
 
 ```python
-from gunicorn_prometheus_exporter.plugin import PrometheusThreadWorker
+from gunicorn_prometheus_exporter.hooks import default_on_exit
+
+def on_exit(server):
+    default_on_exit(server)
 ```
 
-**Configuration:**
-```python
-worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"
-threads = 4  # Number of threads per worker
-```
+### Redis Hooks
 
-### PrometheusEventletWorker
+For Redis integration, use the Redis-specific hooks:
 
-Eventlet-based worker class for async I/O applications.
+#### `redis_when_ready(server)`
 
-```python
-from gunicorn_prometheus_exporter.plugin import PrometheusEventletWorker
-```
-
-**Prerequisites:**
-```bash
-pip install eventlet
-```
-
-**Configuration:**
-```python
-worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
-```
-
-### PrometheusGeventWorker
-
-Gevent-based worker class for async I/O applications.
+Sets up Redis forwarding when the server is ready.
 
 ```python
-from gunicorn_prometheus_exporter.plugin import PrometheusGeventWorker
+from gunicorn_prometheus_exporter.hooks import redis_when_ready
+
+def when_ready(server):
+    redis_when_ready(server)
 ```
 
-**Prerequisites:**
-```bash
-pip install gevent
-```
+## 📊 Metrics Reference
 
-**Configuration:**
-```python
-worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"
-```
+### Worker Metrics
 
-### PrometheusTornadoWorker
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `gunicorn_worker_requests_total` | Counter | `worker_id` | Total requests handled by each worker |
+| `gunicorn_worker_request_duration_seconds` | Histogram | `worker_id` | Request duration distribution |
+| `gunicorn_worker_memory_bytes` | Gauge | `worker_id` | Memory usage per worker |
+| `gunicorn_worker_cpu_percent` | Gauge | `worker_id` | CPU usage per worker |
+| `gunicorn_worker_uptime_seconds` | Gauge | `worker_id` | Worker uptime |
+| `gunicorn_worker_state` | Gauge | `worker_id`, `state`, `timestamp` | Worker state with timestamp |
+| `gunicorn_worker_failed_requests_total` | Counter | `worker_id`, `method`, `endpoint` | Failed requests with labels |
 
-Tornado-based worker class for async applications.
+### Master Metrics
 
-```python
-from gunicorn_prometheus_exporter.plugin import PrometheusTornadoWorker
-```
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `gunicorn_master_worker_restarts_total` | Counter | None | Total worker restarts |
+| `gunicorn_master_signals_total` | Counter | `signal` | Signal handling metrics |
 
-**Prerequisites:**
-```bash
-pip install tornado
-```
+### Error Metrics
 
-**Configuration:**
-```python
-worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
-```
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `gunicorn_worker_error_handling_total` | Counter | `worker_id`, `method`, `endpoint`, `error_type` | Error tracking with labels |
 
-## Master API
+## ⚙️ Configuration Options
 
-### PrometheusMaster
+### Environment Variables
 
-Custom Gunicorn master class that handles worker restarts and signals.
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `PROMETHEUS_MULTIPROC_DIR` | String | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics |
+| `PROMETHEUS_METRICS_PORT` | Integer | `9090` | Port for metrics endpoint |
+| `PROMETHEUS_BIND_ADDRESS` | String | `0.0.0.0` | Bind address for metrics server |
+| `GUNICORN_WORKERS` | Integer | `1` | Number of workers for metrics calculation |
 
-```python
-from gunicorn_prometheus_exporter.master import PrometheusMaster
-```
+### Redis Configuration
 
-#### Constructor
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `REDIS_ENABLED` | Boolean | `false` | Enable Redis forwarding |
+| `REDIS_HOST` | String | `localhost` | Redis server host |
+| `REDIS_PORT` | Integer | `6379` | Redis server port |
+| `REDIS_DB` | Integer | `0` | Redis database number |
+| `REDIS_FORWARD_INTERVAL` | Integer | `30` | Forwarding interval in seconds |
 
-```python
-PrometheusMaster(age, ppid, sockets, app, timeout, cfg, log)
-```
+## 🔧 Advanced Usage
 
-Creates a new Prometheus master instance.
+### Custom Metrics
 
-#### Methods
-
-##### `_setup_master_metrics() -> None`
-
-Initializes master-specific metrics.
-
-```python
-# Called automatically by Gunicorn
-master._setup_master_metrics()
-```
-
-##### `signal(signum, frame) -> None`
-
-Handles signals and updates metrics.
+You can extend the exporter with custom metrics:
 
 ```python
-# Called automatically by Gunicorn
-master.signal(signum, frame)
+from prometheus_client import Counter, Gauge
+
+# Custom metrics
+CUSTOM_REQUESTS = Counter('custom_requests_total', 'Custom request counter')
+CUSTOM_MEMORY = Gauge('custom_memory_bytes', 'Custom memory usage')
+
+# Use in your application
+CUSTOM_REQUESTS.inc()
+CUSTOM_MEMORY.set(1024)
 ```
 
-##### `handle_hup(signum, frame) -> None`
+### Custom Hooks
 
-Handles HUP signal (reload configuration).
-
-```python
-# Called automatically by Gunicorn
-master.handle_hup(signum, frame)
-```
-
-##### `handle_ttin(signum, frame) -> None`
-
-Handles TTIN signal (increase worker count).
+Create custom hooks for specific requirements:
 
 ```python
-# Called automatically by Gunicorn
-master.handle_ttin(signum, frame)
-```
-
-##### `handle_ttou(signum, frame) -> None`
-
-Handles TTOU signal (decrease worker count).
-
-```python
-# Called automatically by Gunicorn
-master.handle_ttou(signum, frame)
-```
-
-##### `handle_chld(signum, frame) -> None`
-
-Handles CHLD signal (child process status change).
-
-```python
-# Called automatically by Gunicorn
-master.handle_chld(signum, frame)
-```
-
-##### `handle_usr1(signum, frame) -> None`
-
-Handles USR1 signal (reopen log files).
-
-```python
-# Called automatically by Gunicorn
-master.handle_usr1(signum, frame)
-```
-
-##### `handle_usr2(signum, frame) -> None`
-
-Handles USR2 signal (reload application).
-
-```python
-# Called automatically by Gunicorn
-master.handle_usr2(signum, frame)
-```
-
-##### `init_signals() -> None`
-
-Initializes signal handlers.
-
-```python
-# Called automatically by Gunicorn
-master.init_signals()
-```
-
-## Hooks API
-
-### Gunicorn Hooks
-
-Pre-built hook functions for Gunicorn integration.
-
-```python
-from gunicorn_prometheus_exporter import (
-    default_on_starting,
-    default_when_ready,
-    default_worker_int,
-    default_on_exit,
-    redis_when_ready
-)
-```
-
-#### `default_on_starting(server) -> None`
-
-Hook called when the master process starts.
-
-```python
-# In gunicorn.conf.py
-on_starting = "gunicorn_prometheus_exporter.default_on_starting"
-```
-
-#### `default_when_ready(server) -> None`
-
-Hook called when the server is ready to accept connections.
-
-```python
-# In gunicorn.conf.py
-when_ready = "gunicorn_prometheus_exporter.default_when_ready"
-```
-
-#### `default_worker_int(worker) -> None`
-
-Hook called when a worker receives an interrupt signal.
-
-```python
-# In gunicorn.conf.py
-worker_int = "gunicorn_prometheus_exporter.default_worker_int"
-```
-
-#### `default_on_exit(server) -> None`
-
-Hook called when the server exits.
-
-```python
-# In gunicorn.conf.py
-on_exit = "gunicorn_prometheus_exporter.default_on_exit"
-```
-
-#### `redis_when_ready(server) -> None`
-
-Hook called when the server is ready, with Redis forwarding enabled.
-
-```python
-# In gunicorn.conf.py
-when_ready = "gunicorn_prometheus_exporter.redis_when_ready"
-```
-
-## Metrics API
-
-### Metrics Classes
-
-Custom metric classes for Gunicorn monitoring.
-
-```python
-from gunicorn_prometheus_exporter.metrics import (
-    WorkerRequests,
-    WorkerRequestDuration,
-    WorkerMemory,
-    WorkerCPU,
-    WorkerUptime,
-    WorkerFailedRequests,
-    WorkerErrorHandling,
-    WorkerState,
-    MasterWorkerRestarts
-)
-```
-
-#### WorkerRequests
-
-Counter metric for tracking total requests per worker.
-
-```python
-# Usage
-worker_requests = WorkerRequests()
-worker_requests.inc(worker_id="worker_1")
-```
-
-#### WorkerRequestDuration
-
-Histogram metric for tracking request duration.
-
-```python
-# Usage
-request_duration = WorkerRequestDuration()
-request_duration.observe(0.5, worker_id="worker_1")
-```
-
-#### WorkerMemory
-
-Gauge metric for tracking worker memory usage.
-
-```python
-# Usage
-worker_memory = WorkerMemory()
-worker_memory.set(52428800, worker_id="worker_1")  # 50MB in bytes
-```
-
-#### WorkerCPU
-
-Gauge metric for tracking worker CPU usage.
-
-```python
-# Usage
-worker_cpu = WorkerCPU()
-worker_cpu.set(2.5, worker_id="worker_1")  # 2.5%
-```
-
-#### WorkerUptime
-
-Gauge metric for tracking worker uptime.
-
-```python
-# Usage
-worker_uptime = WorkerUptime()
-worker_uptime.set(3600, worker_id="worker_1")  # 1 hour in seconds
-```
-
-#### WorkerFailedRequests
-
-Counter metric for tracking failed requests.
-
-```python
-# Usage
-failed_requests = WorkerFailedRequests()
-failed_requests.inc(
-    worker_id="worker_1",
-    method="GET",
-    endpoint="/api/users",
-    status_code="404"
-)
-```
-
-#### WorkerErrorHandling
-
-Counter metric for tracking error handling.
-
-```python
-# Usage
-error_handling = WorkerErrorHandling()
-error_handling.inc(
-    worker_id="worker_1",
-    method="POST",
-    endpoint="/api/data",
-    error_type="ValueError"
-)
-```
-
-#### WorkerState
-
-Gauge metric for tracking worker state.
-
-```python
-# Usage
-worker_state = WorkerState()
-worker_state.set(
-    1.0,
-    worker_id="worker_1",
-    state="running",
-    timestamp="1640995200.123"
-)
-```
-
-#### MasterWorkerRestarts
-
-Counter metric for tracking worker restarts.
-
-```python
-# Usage
-worker_restarts = MasterWorkerRestarts()
-worker_restarts.inc()
-```
-
-## Utils API
-
-### Utility Functions
-
-Helper functions for common operations.
-
-```python
-from gunicorn_prometheus_exporter.utils import (
-    get_multiprocess_dir,
-    ensure_multiprocess_dir
-)
-```
-
-#### `get_multiprocess_dir() -> Optional[str]`
-
-Gets the multiprocess directory from environment variables.
-
-```python
-mp_dir = get_multiprocess_dir()
-if mp_dir:
-    print(f"Multiprocess directory: {mp_dir}")
-else:
-    print("Multiprocess directory not set")
-```
-
-#### `ensure_multiprocess_dir(mp_dir: str) -> bool`
-
-Ensures the multiprocess directory exists and is writable.
-
-```python
-mp_dir = "/tmp/prometheus_multiproc"
-if ensure_multiprocess_dir(mp_dir):
-    print("Multiprocess directory is ready")
-else:
-    print("Failed to create multiprocess directory")
-```
-
-## Forwarder API
-
-### Redis Forwarder
-
-Redis-based metrics forwarding for distributed setups.
-
-```python
-from gunicorn_prometheus_exporter.forwarder import (
-    create_redis_forwarder,
-    get_forwarder_manager
-)
-```
-
-#### `create_redis_forwarder() -> RedisForwarder`
-
-Creates a new Redis forwarder instance.
-
-```python
-forwarder = create_redis_forwarder()
-```
-
-#### `get_forwarder_manager() -> ForwarderManager`
-
-Gets the global forwarder manager instance.
-
-```python
-manager = get_forwarder_manager()
-```
-
-### ForwarderManager
-
-Manages multiple forwarder instances.
-
-```python
-from gunicorn_prometheus_exporter.forwarder.manager import ForwarderManager
-```
-
-#### Methods
-
-##### `add_forwarder(name: str, forwarder: BaseForwarder) -> None`
-
-Adds a forwarder to the manager.
-
-```python
-manager = ForwarderManager()
-manager.add_forwarder("redis", redis_forwarder)
-```
-
-##### `start_forwarder(name: str) -> None`
-
-Starts a specific forwarder.
-
-```python
-manager.start_forwarder("redis")
-```
-
-##### `stop_forwarder(name: str) -> None`
-
-Stops a specific forwarder.
-
-```python
-manager.stop_forwarder("redis")
-```
-
-##### `start_all() -> None`
-
-Starts all forwarders.
-
-```python
-manager.start_all()
-```
-
-##### `stop_all() -> None`
-
-Stops all forwarders.
-
-```python
-manager.stop_all()
-```
-
-##### `get_status() -> Dict[str, Dict[str, Any]]`
-
-Gets status of all forwarders.
-
-```python
-status = manager.get_status()
-```
-
-## Registry API
-
-### Shared Registry
-
-Access to the shared Prometheus registry.
-
-```python
-from gunicorn_prometheus_exporter.metrics import get_shared_registry
-```
-
-#### `get_shared_registry() -> CollectorRegistry`
-
-Gets the shared Prometheus registry instance.
-
-```python
-registry = get_shared_registry()
-```
-
-## Error Handling
-
-### Common Exceptions
-
-#### `ConfigurationError`
-
-Raised when configuration validation fails.
-
-```python
-from gunicorn_prometheus_exporter.config import ConfigurationError
-
-try:
-    config = ExporterConfig()
-    if not config.validate():
-        raise ConfigurationError("Invalid configuration")
-except ConfigurationError as e:
-    print(f"Configuration error: {e}")
-```
-
-#### `MetricsError`
-
-Raised when metrics operations fail.
-
-```python
-from gunicorn_prometheus_exporter.metrics import MetricsError
-
-try:
-    # Metrics operation
+def custom_when_ready(server):
+    """Custom hook for additional setup."""
+    # Your custom logic here
     pass
-except MetricsError as e:
-    print(f"Metrics error: {e}")
+
+def custom_worker_int(worker):
+    """Custom worker initialization."""
+    # Your custom logic here
+    pass
 ```
 
-## Best Practices
+### Error Handling
 
-### Configuration
+The exporter includes robust error handling:
 
-1. **Validate Configuration Early**
-   ```python
-   config = ExporterConfig()
-   if not config.validate():
-       sys.exit(1)
-   ```
+```python
+# All metrics operations are wrapped in try-catch blocks
+try:
+    # Metric operation
+    metric.labels(**labels).inc()
+except Exception as e:
+    logger.error("Failed to update metric: %s", e)
+```
 
-2. **Use Environment Variables**
-   ```bash
-   export PROMETHEUS_METRICS_PORT=9091
-   export PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
-   ```
+## 🧪 Testing
 
-3. **Handle Errors Gracefully**
-   ```python
-   try:
-       # API operation
-       pass
-   except Exception as e:
-       logger.error(f"Operation failed: {e}")
-   ```
+### Unit Tests
 
-### Metrics
+```bash
+# Run all tests
+pytest
 
-1. **Use Appropriate Metric Types**
-   - Use `Counter` for cumulative values
-   - Use `Gauge` for current values
-   - Use `Histogram` for distributions
+# Run specific test file
+pytest tests/test_plugin.py
 
-2. **Label Cardinality**
-   - Keep label values limited
-   - Avoid high-cardinality labels
-   - Use aggregation when possible
+# Run with coverage
+pytest --cov=src/gunicorn_prometheus_exporter --cov-report=html
+```
 
-3. **Clean Up Old Metrics**
-   ```python
-   worker._clear_old_metrics()
-   ```
+### Integration Tests
 
-## Related Documentation
+```bash
+# Test with actual Gunicorn
+cd example
+gunicorn --config gunicorn_simple.conf.py app:app
 
-- [Installation Guide](installation.md)
-- [Configuration Reference](configuration.md)
-- [Metrics Documentation](metrics.md)
-- [Troubleshooting](troubleshooting.md)
+# Test metrics endpoint
+curl http://0.0.0.0:9090/metrics
+```
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+1. **Port already in use**: Change `PROMETHEUS_METRICS_PORT`
+2. **Permission denied**: Check multiprocess directory permissions
+3. **Import errors**: Install required dependencies for async workers
+4. **Metrics not updating**: Verify environment variables are set
+
+### Debug Mode
+
+Enable debug logging:
+
+```python
+import logging
+logging.getLogger('gunicorn_prometheus_exporter').setLevel(logging.DEBUG)
+```
+
+### Health Checks
+
+Check exporter health:
+
+```bash
+# Check if metrics endpoint is responding
+curl http://0.0.0.0:9090/metrics
+
+# Check for specific metrics
+curl http://0.0.0.0:9090/metrics | grep gunicorn_worker
+```
+
+---
+
+**For more detailed information, see the [Installation Guide](installation.md) and [Configuration Reference](configuration.md).**
