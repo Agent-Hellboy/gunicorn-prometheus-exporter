@@ -363,7 +363,6 @@ class TestMetricsServerManager(unittest.TestCase):
         ):
             with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
                 mock_config.prometheus_metrics_port = 9090
-                mock_config.registry = MagicMock()
 
                 with patch(
                     "gunicorn_prometheus_exporter.hooks.MultiProcessCollector"
@@ -373,8 +372,13 @@ class TestMetricsServerManager(unittest.TestCase):
                     self.assertIsNotNone(result)
                     port, registry = result
                     self.assertEqual(port, 9090)
-                    self.assertEqual(registry, mock_config.registry)
-                    mock_collector.assert_called_once_with(mock_config.registry)
+                    # The registry is now imported from metrics module, so it's the real registry
+                    from gunicorn_prometheus_exporter.metrics import (
+                        registry as metrics_registry,
+                    )
+
+                    self.assertEqual(registry, metrics_registry)
+                    mock_collector.assert_called_once_with(metrics_registry)
                     mock_logger.info.assert_called_once_with(
                         "Successfully initialized MultiProcessCollector"
                     )
@@ -405,7 +409,6 @@ class TestMetricsServerManager(unittest.TestCase):
         ):
             with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
                 mock_config.prometheus_metrics_port = 9090
-                mock_config.registry = MagicMock()
 
                 with patch(
                     "gunicorn_prometheus_exporter.hooks.MultiProcessCollector",
