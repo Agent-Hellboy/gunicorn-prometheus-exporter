@@ -32,7 +32,7 @@ class TestPostForkHook(unittest.TestCase):
             if var in os.environ:
                 del os.environ[var]
 
-    def test_post_fork_with_timeout(self):
+    def test_post_fork_with_cli_options(self):
         """Test post_fork hook with CLI options."""
         # Mock server and worker
         server = MagicMock()
@@ -54,7 +54,6 @@ class TestPostForkHook(unittest.TestCase):
             os.environ.get("GUNICORN_WORKER_CLASS"),
             "gunicorn_prometheus_exporter.PrometheusWorker",
         )
-
     def test_post_fork_without_cli_options(self):
         """Test post_fork hook without CLI options."""
         # Mock server and worker without CLI options
