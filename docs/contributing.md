@@ -2,16 +2,14 @@
 
 Thank you for your interest in contributing to the Gunicorn Prometheus Exporter! This guide will help you get started with development, testing, and documentation.
 
-## 🏗️ Architecture Overview
+## 📁 Project Structure
 
-This project follows a well-structured architecture with clear separation of concerns:
-
-### **Core Components**
+### **Core Modules**
 
 - **`src/gunicorn_prometheus_exporter/plugin.py`**: Worker classes and PrometheusMixin
 - **`src/gunicorn_prometheus_exporter/metrics.py`**: Prometheus metrics definitions
 - **`src/gunicorn_prometheus_exporter/config.py`**: Configuration management
-- **`src/gunicorn_prometheus_exporter/hooks.py`**: Pre-built Gunicorn hooks
+- **`src/gunicorn_prometheus_exporter/hooks.py`**: Modular hooks system with manager classes
 - **`src/gunicorn_prometheus_exporter/master.py`**: Master process handling
 - **`src/gunicorn_prometheus_exporter/forwarder/`**: Redis integration
 

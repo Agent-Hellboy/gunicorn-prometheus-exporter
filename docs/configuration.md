@@ -313,7 +313,29 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
 
 ## 🔧 Advanced Configuration
 
+### 🏗️ Hooks Architecture
+
+The exporter uses a modular, class-based hooks architecture for managing Gunicorn lifecycle events:
+
+#### **Manager Classes**
+
+- **`HookManager`**: Centralized logging and execution management
+- **`EnvironmentManager`**: CLI-to-environment variable mapping
+- **`MetricsServerManager`**: Prometheus server lifecycle with retry logic
+- **`WorkerManager`**: Worker metrics and graceful shutdown
+- **`ProcessManager`**: Process cleanup and termination
+
+#### **Benefits**
+
+- **Modular Design**: Each responsibility isolated in its own manager
+- **Lazy Initialization**: Managers created on-demand to avoid import issues
+- **Enhanced Error Handling**: Comprehensive exception handling with fallbacks
+- **Better Testability**: Each manager can be tested independently
+- **Backward Compatible**: All existing hook functions continue to work
+
 ### Custom Hooks
+
+#### **Basic Custom Hooks**
 
 ```python
 # gunicorn_custom_hooks.conf.py
@@ -351,20 +373,103 @@ def on_exit(server):
     print("Gunicorn shutting down...")
 ```
 
+#### **Advanced Custom Hooks with Managers**
+
+```python
+# gunicorn_advanced_hooks.conf.py
+import os
+import logging
+
+# Environment variables (set before imports)
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
+
+from gunicorn_prometheus_exporter.hooks import (
+    HookContext,
+    HookManager,
+    EnvironmentManager,
+    MetricsServerManager,
+    WorkerManager,
+    ProcessManager,
+    default_on_starting,
+    default_when_ready,
+    default_worker_int,
+    default_on_exit,
+    default_post_fork,
+)
+
+# Gunicorn settings
+bind = "0.0.0.0:8000"
+workers = 4
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+timeout = 300
+
+# Custom hook with manager usage
+def custom_when_ready(server):
+    """Custom when_ready hook using managers directly."""
+    logger = logging.getLogger(__name__)
+
+    # Create context
+    context = HookContext(server=server, logger=logger)
+
+    # Use metrics manager for custom setup
+    metrics_manager = MetricsServerManager(logger)
+    result = metrics_manager.setup_server()
+
+    if result:
+        port, registry = result
+        logger.info(f"Custom metrics server setup on port {port}")
+
+        # Start with custom retry logic
+        if metrics_manager.start_server(port, registry):
+            logger.info("Custom metrics server started successfully")
+        else:
+            logger.error("Custom metrics server failed to start")
+    else:
+        logger.warning("Custom metrics server setup failed")
+
+# Use custom hooks
+when_ready = custom_when_ready
+on_starting = default_on_starting
+worker_int = default_worker_int
+on_exit = default_on_exit
+post_fork = default_post_fork
+```
+
 ### CLI Options and Post-Fork Hook
 
-Some Gunicorn CLI options like `--timeout`, `--workers`, `--bind`, and `--worker-class` do not automatically populate environment variables. To ensure these CLI options are properly configured and consistent with environment-based settings, use the `post_fork` hook.
+Some Gunicorn CLI options like `--timeout`, `--workers`, `--bind`, and `--worker-class` do not automatically populate environment variables. The `post_fork` hook ensures these CLI options are properly configured and consistent with environment-based settings.
 
-**Why use post_fork hook for CLI options:**
+#### **Why use post_fork hook for CLI options:**
+
 - CLI options like `--timeout` don't automatically set environment variables
 - The post_fork hook runs after each worker is forked and can access Gunicorn's configuration
 - It ensures consistency between CLI and environment-based configuration
 - It logs worker-specific configuration for debugging
+- Uses `EnvironmentManager` to handle CLI-to-environment mapping
 
-**Example with post_fork hook:**
+#### **What the post_fork hook does:**
+
+1. **Configuration Logging**: Logs detailed worker configuration for debugging
+2. **Environment Updates**: Updates environment variables with CLI values
+3. **CLI Option Detection**: Detects and processes CLI options like:
+   - `--workers`: Number of worker processes
+   - `--bind`: Bind address and port
+   - `--worker-class`: Worker class to use
+4. **Consistency Check**: Ensures CLI and environment settings are consistent
+
+#### **Example with post_fork hook:**
 
 ```python
 # gunicorn_with_cli.conf.py
+import os
+
+# Environment variables (set before imports)
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
+
 from gunicorn_prometheus_exporter.hooks import (
     default_on_starting,
     default_when_ready,
@@ -373,6 +478,7 @@ from gunicorn_prometheus_exporter.hooks import (
     default_post_fork,
 )
 
+# Gunicorn settings
 bind = "0.0.0.0:8000"
 workers = 4
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
@@ -384,15 +490,9 @@ on_starting = default_on_starting
 worker_int = default_worker_int
 on_exit = default_on_exit
 post_fork = default_post_fork  # Configure CLI options after worker fork
-
-import os
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
-os.environ.setdefault("GUNICORN_WORKERS", "4")
 ```
 
-**CLI usage with post_fork hook:**
+#### **CLI usage with post_fork hook:**
 
 ```bash
 # Override timeout from CLI
@@ -408,15 +508,87 @@ gunicorn -c gunicorn_with_cli.conf.py app:app --bind 0.0.0.0:9000
 gunicorn -c gunicorn_with_cli.conf.py app:app --worker-class gunicorn_prometheus_exporter.PrometheusWorker
 ```
 
-The post_fork hook will automatically detect these CLI options and update the corresponding environment variables, ensuring consistency between CLI and environment-based configuration.
+#### **Environment Variable Updates**
 
-**Supported CLI options in post_fork hook:**
-- `--timeout`: Worker timeout in seconds
-- `--workers`: Number of worker processes
-- `--bind`: Bind address and port
-- `--worker-class`: Worker class to use
+The post_fork hook automatically updates these environment variables based on CLI options:
 
-### SSL/TLS Configuration
+```bash
+# CLI: --workers 8
+# Sets: GUNICORN_WORKERS=8
+
+# CLI: --bind 0.0.0.0:9000
+# Sets: GUNICORN_BIND=0.0.0.0:9000
+
+# CLI: --worker-class gunicorn_prometheus_exporter.PrometheusWorker
+# Sets: GUNICORN_WORKER_CLASS=gunicorn_prometheus_exporter.PrometheusWorker
+```
+
+### 🔍 Debugging Hooks
+
+#### **Enable Debug Logging**
+
+```python
+# gunicorn_debug.conf.py
+import logging
+
+# Enable debug logging for hooks
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+# ... rest of configuration
+```
+
+#### **Hook Debugging Features**
+
+The hooks system provides detailed logging for debugging:
+
+- **Configuration Updates**: Logs when environment variables are updated
+- **Server Lifecycle**: Logs server startup, ready, and shutdown events
+- **Worker Events**: Logs worker initialization and shutdown
+- **Error Conditions**: Logs errors with detailed context
+- **Recovery Actions**: Logs fallback and recovery attempts
+
+#### **Example Debug Output**
 
 ```
+2024-01-15 10:30:00 - gunicorn_prometheus_exporter.hooks - INFO - Server starting - initializing PrometheusMaster metrics
+2024-01-15 10:30:01 - gunicorn_prometheus_exporter.hooks - INFO - Updated GUNICORN_WORKERS from CLI: 4
+2024-01-15 10:30:01 - gunicorn_prometheus_exporter.hooks - INFO - Updated GUNICORN_BIND from CLI: 0.0.0.0:8000
+2024-01-15 10:30:02 - gunicorn_prometheus_exporter.hooks - INFO - Starting Prometheus multiprocess metrics server on :9090
+2024-01-15 10:30:02 - gunicorn_prometheus_exporter.hooks - INFO - Metrics server started successfully on port 9090
+2024-01-15 10:30:03 - gunicorn_prometheus_exporter.hooks - INFO - Worker 12345 received interrupt signal
+2024-01-15 10:30:03 - gunicorn_prometheus_exporter.hooks - INFO - Server shutting down - cleaning up Prometheus metrics server
 ```
+
+### 🛠️ Error Handling
+
+#### **Graceful Degradation**
+
+All hooks include comprehensive error handling:
+
+```python
+# Example of error handling in custom hooks
+def custom_hook(server):
+    try:
+        # Your custom logic
+        pass
+    except Exception as e:
+        logger.error(f"Custom hook failed: {e}")
+        # Continue with fallback behavior
+```
+
+#### **Common Error Scenarios**
+
+1. **Missing Configuration**: Hooks handle missing environment variables gracefully
+2. **Port Conflicts**: Metrics server retry logic handles port conflicts
+3. **Process Cleanup**: Comprehensive cleanup handles orphaned processes
+4. **Worker Shutdown**: Graceful shutdown with fallback mechanisms
+
+#### **Recovery Mechanisms**
+
+- **Lazy Initialization**: Prevents import-time configuration issues
+- **Retry Logic**: Automatic retry for transient failures
+- **Fallback Options**: Alternative approaches when primary methods fail
+- **Timeout Handling**: Prevents hanging operations
