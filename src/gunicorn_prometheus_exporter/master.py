@@ -39,6 +39,12 @@ class PrometheusMaster(Arbiter):
         except Exception as e:
             logger.error("Failed to set up master metrics: %s", e)
 
+    def handle_int(self):
+        """Handle INT signal (Ctrl+C)."""
+        logger.info("Gunicorn master INT signal received (Ctrl+C)")
+        MasterWorkerRestarts.labels(reason="int").inc()
+        super().handle_int()
+
     def handle_hup(self):
         """Handle HUP signal."""
         logger.info("Gunicorn master HUP signal received")

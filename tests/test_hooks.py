@@ -365,9 +365,7 @@ class TestMetricsServerManager(unittest.TestCase):
         port = 9090
         registry = MagicMock()
 
-        with patch(
-            "gunicorn_prometheus_exporter.hooks.start_http_server"
-        ) as mock_start:
+        with patch("prometheus_client.exposition.start_http_server") as mock_start:
             result = manager.start_server(port, registry)
 
             self.assertTrue(result)
@@ -383,9 +381,7 @@ class TestMetricsServerManager(unittest.TestCase):
         port = 9090
         registry = MagicMock()
 
-        with patch(
-            "gunicorn_prometheus_exporter.hooks.start_http_server"
-        ) as mock_start:
+        with patch("prometheus_client.exposition.start_http_server") as mock_start:
             # First call raises OSError, second call succeeds
             mock_start.side_effect = [OSError(98, "Address already in use"), None]
 
@@ -401,7 +397,7 @@ class TestMetricsServerManager(unittest.TestCase):
         registry = MagicMock()
 
         with patch(
-            "gunicorn_prometheus_exporter.hooks.start_http_server",
+            "prometheus_client.exposition.start_http_server",
             side_effect=OSError(98, "Address already in use"),
         ):
             # All attempts will fail with OSError that gets re-raised
@@ -416,7 +412,7 @@ class TestMetricsServerManager(unittest.TestCase):
         registry = MagicMock()
 
         with patch(
-            "gunicorn_prometheus_exporter.hooks.start_http_server",
+            "prometheus_client.exposition.start_http_server",
             side_effect=OSError(13, "Permission denied"),
         ):
             result = manager.start_server(port, registry)
@@ -433,9 +429,7 @@ class TestMetricsServerManager(unittest.TestCase):
         port = 9090
         registry = MagicMock()
 
-        with patch(
-            "gunicorn_prometheus_exporter.hooks.start_http_server"
-        ) as mock_start:
+        with patch("prometheus_client.exposition.start_http_server") as mock_start:
             result = manager._start_single_attempt(port, registry)
 
             self.assertTrue(result)
@@ -452,7 +446,7 @@ class TestMetricsServerManager(unittest.TestCase):
         registry = MagicMock()
 
         with patch(
-            "gunicorn_prometheus_exporter.hooks.start_http_server",
+            "prometheus_client.exposition.start_http_server",
             side_effect=OSError(98, "Address already in use"),
         ):
             with self.assertRaises(OSError):
@@ -466,7 +460,7 @@ class TestMetricsServerManager(unittest.TestCase):
         registry = MagicMock()
 
         with patch(
-            "gunicorn_prometheus_exporter.hooks.start_http_server",
+            "prometheus_client.exposition.start_http_server",
             side_effect=OSError(13, "Permission denied"),
         ):
             result = manager._start_single_attempt(port, registry)
@@ -485,7 +479,7 @@ class TestMetricsServerManager(unittest.TestCase):
         registry = MagicMock()
 
         with patch(
-            "gunicorn_prometheus_exporter.hooks.start_http_server",
+            "prometheus_client.exposition.start_http_server",
             side_effect=Exception("Test error"),
         ):
             result = manager._start_single_attempt(port, registry)

@@ -21,7 +21,6 @@ from typing import Any, Optional
 
 import psutil
 
-from prometheus_client import start_http_server
 from prometheus_client.multiprocess import MultiProcessCollector
 
 from .config import config
@@ -132,6 +131,7 @@ class MetricsServerManager:
         self.logger = logger
         self.max_retries = 3
         self.retry_delay = 1
+        self._server_thread = None  # Store the server thread
 
     def setup_server(self) -> Optional[tuple[int, Any]]:
         """Setup Prometheus metrics server."""
@@ -176,9 +176,26 @@ class MetricsServerManager:
         )
         return False
 
+    def stop_server(self) -> None:
+        """Stop the metrics server."""
+        if self._server_thread is not None:
+            try:
+                # The prometheus_client start_http_server runs in a daemon thread
+                # which should automatically terminate when the main process exits
+                self.logger.info("Metrics server will be stopped when process exits")
+            except Exception as e:
+                self.logger.error("Failed to stop metrics server: %s", e)
+            finally:
+                self._server_thread = None
+
     def _start_single_attempt(self, port: int, registry: Any) -> bool:
         """Start metrics server in a single attempt."""
         try:
+            from prometheus_client.exposition import start_http_server
+
+            # start_http_server runs in a daemon thread,
+            # so it will be cleaned up automatically
+            # when the main process exits
             start_http_server(port, registry=registry)
             self.logger.info("Metrics server started successfully on port %s", port)
             return True
@@ -339,10 +356,21 @@ def default_on_exit(_server: Any) -> None:
 
     context.logger.info("Server shutting down - cleaning up Prometheus metrics server")
 
-    # Force cleanup of any remaining processes
-    _get_process_manager().cleanup_processes()
+    try:
+        # Stop the metrics server
+        _get_metrics_manager().stop_server()
 
-    context.logger.info("Server shutdown complete")
+        # Force cleanup of any remaining processes
+        _get_process_manager().cleanup_processes()
+
+        context.logger.info("Server shutdown complete")
+    except Exception as e:
+        context.logger.error("Error during server shutdown: %s", e)
+        # Still try to cleanup processes even if metrics server cleanup failed
+        try:
+            _get_process_manager().cleanup_processes()
+        except Exception as cleanup_error:
+            context.logger.error("Error during process cleanup: %s", cleanup_error)
 
 
 def redis_when_ready(_server: Any) -> None:
