@@ -158,9 +158,8 @@ def patched_run(self):
 
 gunicorn.app.base.BaseApplication.run = patched_run
 
+
 # Redis forwarder startup moved to gunicorn config when_ready hook
-
-
 def start_redis_forwarder():
     """Start Redis forwarder if enabled. Call this from gunicorn when_ready hook."""
     if not config.redis_enabled:

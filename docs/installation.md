@@ -192,27 +192,6 @@ os.environ.setdefault("GUNICORN_WORKERS", "4")
 
 ### Optional Environment Variables
 
-#### `GUNICORN_TIMEOUT`
-
-**Description:** Worker timeout in seconds.
-
-**Type:** Integer
-
-**Default:** `30`
-
-**Range:** 1-3600
-
-**Example:**
-```bash
-export GUNICORN_TIMEOUT="60"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("GUNICORN_TIMEOUT", "60")
-```
-
 #### `GUNICORN_KEEPALIVE`
 
 **Description:** Keep-alive connection timeout in seconds.
@@ -466,7 +445,6 @@ os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
 os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "2")
-os.environ.setdefault("GUNICORN_TIMEOUT", "60")
 os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
 ```
 
@@ -512,7 +490,6 @@ os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/var/tmp/prometheus_multiproc
 os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # Bind to localhost only
 os.environ.setdefault("GUNICORN_WORKERS", "4")
-os.environ.setdefault("GUNICORN_TIMEOUT", "60")
 os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
 os.environ.setdefault("CLEANUP_DB_FILES", "true")
 

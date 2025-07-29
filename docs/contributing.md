@@ -151,6 +151,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) forma
 ```
 
 **Types**:
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -163,7 +164,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) forma
 ```
 feat: add Redis metrics forwarding support
 
-fix(worker): handle worker restart gracefully
+fix(worker/hooks/metric): handle worker restart gracefully
 
 docs: update installation guide with Docker examples
 

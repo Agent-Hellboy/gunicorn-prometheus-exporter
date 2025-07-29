@@ -224,6 +224,39 @@ def on_exit(server):
     default_on_exit(server)
 ```
 
+#### `default_post_fork(server, worker)`
+
+Called after each worker process is forked. Configures CLI options like `--workers`, `--bind`, and `--worker-class`.
+
+```python
+from gunicorn_prometheus_exporter.hooks import default_post_fork
+
+def post_fork(server, worker):
+    default_post_fork(server, worker)
+```
+
+**What it does:**
+- Accesses Gunicorn configuration (`server.cfg`)
+- Logs worker-specific configuration (timeout, keepalive, max_requests, etc.)
+- Updates environment variables with CLI values
+- Ensures consistency between CLI and environment-based configuration
+
+**Supported CLI options:**
+- `--workers`: Number of worker processes
+- `--bind`: Bind address and port
+- `--worker-class`: Worker class to use
+
+**Example usage:**
+```bash
+# Override workers from CLI
+gunicorn -c gunicorn.conf.py app:app --workers 8
+
+# Override bind address from CLI
+gunicorn -c gunicorn.conf.py app:app --bind 0.0.0.0:9000
+```
+
+The post_fork hook will automatically detect these CLI options and update the corresponding environment variables.
+
 ### Redis Hooks
 
 For Redis integration, use the Redis-specific hooks:
@@ -333,63 +366,3 @@ try:
 except Exception as e:
     logger.error("Failed to update metric: %s", e)
 ```
-
-## 🧪 Testing
-
-### Unit Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/test_plugin.py
-
-# Run with coverage
-pytest --cov=src/gunicorn_prometheus_exporter --cov-report=html
-```
-
-### Integration Tests
-
-```bash
-# Test with actual Gunicorn
-cd example
-gunicorn --config gunicorn_simple.conf.py app:app
-
-# Test metrics endpoint
-curl http://0.0.0.0:9090/metrics
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-1. **Port already in use**: Change `PROMETHEUS_METRICS_PORT`
-2. **Permission denied**: Check multiprocess directory permissions
-3. **Import errors**: Install required dependencies for async workers
-4. **Metrics not updating**: Verify environment variables are set
-
-### Debug Mode
-
-Enable debug logging:
-
-```python
-import logging
-logging.getLogger('gunicorn_prometheus_exporter').setLevel(logging.DEBUG)
-```
-
-### Health Checks
-
-Check exporter health:
-
-```bash
-# Check if metrics endpoint is responding
-curl http://0.0.0.0:9090/metrics
-
-# Check for specific metrics
-curl http://0.0.0.0:9090/metrics | grep gunicorn_worker
-```
-
----
-
-**For more detailed information, see the [Installation Guide](installation.md) and [Configuration Reference](configuration.md).**
