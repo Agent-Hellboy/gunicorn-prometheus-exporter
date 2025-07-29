@@ -358,18 +358,21 @@ def default_when_ready(_server: Any) -> None:
 
 
 def default_worker_int(worker: Any) -> None:
-    """Default worker_int hook for signal handling."""
-    context = HookContext(
-        server=None, worker=worker, logger=_get_hook_manager().get_logger()
-    )
+    """Default worker interrupt handler.
 
-    context.logger.info("Worker received interrupt signal")
+    Args:
+        worker: Gunicorn worker instance
+    """
+    logger = logging.getLogger(__name__)
+    logger.info("Worker received interrupt signal")
 
     # Update worker metrics if the worker has the method
-    _get_worker_manager().update_metrics(worker)
-
-    # Handle worker shutdown
-    _get_worker_manager().shutdown_worker(worker)
+    if hasattr(worker, "update_worker_metrics"):
+        try:
+            worker.update_worker_metrics()
+            logger.debug("Updated worker metrics for %s", worker.worker_id)
+        except Exception as e:
+            logger.error("Failed to update worker metrics: %s", e)
 
 
 def default_on_exit(_server: Any) -> None:
