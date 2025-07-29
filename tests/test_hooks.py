@@ -1,7 +1,6 @@
 """Tests for Gunicorn hooks."""
 
 import os
-import signal
 import unittest
 
 from unittest.mock import MagicMock, patch
@@ -11,7 +10,6 @@ from gunicorn_prometheus_exporter.hooks import (
     HookManager,
     MetricsServerManager,
     ProcessManager,
-    WorkerManager,
     _start_redis_forwarder_if_enabled,
     default_on_exit,
     default_on_starting,
@@ -138,16 +136,29 @@ class TestPostForkHook(unittest.TestCase):
 
 
 class TestHelperFunctions(unittest.TestCase):
-    """Test helper functions."""
+    """Test helper functions for environment management."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        # Clear any existing environment variables
+        for var in [
+            "GUNICORN_WORKERS",
+            "GUNICORN_BIND",
+            "GUNICORN_WORKER_CLASS",
+        ]:
+            if var in os.environ:
+                del os.environ[var]
 
     def test_update_workers_env_with_valid_value(self):
-        """Test _update_workers_env with valid value."""
-        cfg = MagicMock()
-        cfg.workers = 4
+        """Test update_workers_env with valid value."""
         mock_logger = MagicMock()
-
         env_manager = EnvironmentManager(mock_logger)
-        env_manager._update_workers_env(cfg)
+
+        # Mock server config
+        server = MagicMock()
+        server.cfg.workers = 4
+
+        env_manager._update_workers_env(server.cfg)
 
         self.assertEqual(os.environ.get("GUNICORN_WORKERS"), "4")
         mock_logger.info.assert_called_once_with(
@@ -155,26 +166,30 @@ class TestHelperFunctions(unittest.TestCase):
         )
 
     def test_update_workers_env_with_default_value(self):
-        """Test _update_workers_env with default value."""
-        cfg = MagicMock()
-        cfg.workers = 1  # Default value
+        """Test update_workers_env with default value."""
         mock_logger = MagicMock()
-
         env_manager = EnvironmentManager(mock_logger)
-        env_manager._update_workers_env(cfg)
+
+        # Mock server config with default value
+        server = MagicMock()
+        server.cfg.workers = 1  # Default value
+
+        env_manager._update_workers_env(server.cfg)
 
         # Should not set environment variable for default value
         self.assertIsNone(os.environ.get("GUNICORN_WORKERS"))
         mock_logger.info.assert_not_called()
 
     def test_update_bind_env_with_valid_value(self):
-        """Test _update_bind_env with valid value."""
-        cfg = MagicMock()
-        cfg.bind = "0.0.0.0:8000"
+        """Test update_bind_env with valid value."""
         mock_logger = MagicMock()
-
         env_manager = EnvironmentManager(mock_logger)
-        env_manager._update_bind_env(cfg)
+
+        # Mock server config
+        server = MagicMock()
+        server.cfg.bind = "0.0.0.0:8000"
+
+        env_manager._update_bind_env(server.cfg)
 
         self.assertEqual(os.environ.get("GUNICORN_BIND"), "0.0.0.0:8000")
         mock_logger.info.assert_called_once_with(
@@ -182,26 +197,30 @@ class TestHelperFunctions(unittest.TestCase):
         )
 
     def test_update_bind_env_with_default_value(self):
-        """Test _update_bind_env with default value."""
-        cfg = MagicMock()
-        cfg.bind = ["127.0.0.1:8000"]  # Default value
+        """Test update_bind_env with default value."""
         mock_logger = MagicMock()
-
         env_manager = EnvironmentManager(mock_logger)
-        env_manager._update_bind_env(cfg)
+
+        # Mock server config with default value
+        server = MagicMock()
+        server.cfg.bind = ["127.0.0.1:8000"]  # Default value
+
+        env_manager._update_bind_env(server.cfg)
 
         # Should not set environment variable for default value
         self.assertIsNone(os.environ.get("GUNICORN_BIND"))
         mock_logger.info.assert_not_called()
 
     def test_update_worker_class_env_with_valid_value(self):
-        """Test _update_worker_class_env with valid value."""
-        cfg = MagicMock()
-        cfg.worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+        """Test update_worker_class_env with valid value."""
         mock_logger = MagicMock()
-
         env_manager = EnvironmentManager(mock_logger)
-        env_manager._update_worker_class_env(cfg)
+
+        # Mock server config
+        server = MagicMock()
+        server.cfg.worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+
+        env_manager._update_worker_class_env(server.cfg)
 
         self.assertEqual(
             os.environ.get("GUNICORN_WORKER_CLASS"),
@@ -213,129 +232,42 @@ class TestHelperFunctions(unittest.TestCase):
         )
 
     def test_update_worker_class_env_with_default_value(self):
-        """Test _update_worker_class_env with default value."""
-        cfg = MagicMock()
-        cfg.worker_class = "sync"  # Default value
+        """Test update_worker_class_env with default value."""
         mock_logger = MagicMock()
-
         env_manager = EnvironmentManager(mock_logger)
-        env_manager._update_worker_class_env(cfg)
+
+        # Mock server config with default value
+        server = MagicMock()
+        server.cfg.worker_class = "sync"  # Default value
+
+        env_manager._update_worker_class_env(server.cfg)
 
         # Should not set environment variable for default value
         self.assertIsNone(os.environ.get("GUNICORN_WORKER_CLASS"))
         mock_logger.info.assert_not_called()
 
     def test_update_env_from_cli_calls_all_helpers(self):
-        """Test update_from_cli calls all helper functions."""
-        cfg = MagicMock()
-        cfg.workers = 4
-        cfg.bind = "0.0.0.0:8000"
-        cfg.worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+        """Test update_from_cli calls all helper methods."""
         mock_logger = MagicMock()
-
         env_manager = EnvironmentManager(mock_logger)
-        env_manager.update_from_cli(cfg)
 
-        # Verify all environment variables were set
-        self.assertEqual(os.environ.get("GUNICORN_WORKERS"), "4")
-        self.assertEqual(os.environ.get("GUNICORN_BIND"), "0.0.0.0:8000")
-        self.assertEqual(
-            os.environ.get("GUNICORN_WORKER_CLASS"),
-            "gunicorn_prometheus_exporter.PrometheusWorker",
-        )
+        # Mock server config
+        server = MagicMock()
+        server.cfg.workers = 4
+        server.cfg.bind = "0.0.0.0:8000"
+        server.cfg.worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
-    def test_update_worker_metrics_success(self):
-        """Test update_metrics with successful call."""
-        worker = MagicMock()
-        worker.worker_id = "worker-1"
-        mock_logger = MagicMock()
+        # Mock the helper methods
+        with patch.object(env_manager, "_update_workers_env") as mock_workers:
+            with patch.object(env_manager, "_update_bind_env") as mock_bind:
+                with patch.object(
+                    env_manager, "_update_worker_class_env"
+                ) as mock_class:
+                    env_manager.update_from_cli(server.cfg)
 
-        worker_manager = WorkerManager(mock_logger)
-        worker_manager.update_metrics(worker)
-
-        worker.update_worker_metrics.assert_called_once()
-        mock_logger.debug.assert_called_once_with(
-            "Updated worker metrics for %s", "worker-1"
-        )
-
-    def test_update_worker_metrics_exception(self):
-        """Test update_metrics with exception."""
-        worker = MagicMock()
-        worker.update_worker_metrics.side_effect = Exception("Test error")
-        mock_logger = MagicMock()
-
-        worker_manager = WorkerManager(mock_logger)
-        worker_manager.update_metrics(worker)
-
-        mock_logger.error.assert_called_once()
-        call_args = mock_logger.error.call_args
-        self.assertEqual(call_args[0][0], "Failed to update worker metrics: %s")
-        self.assertIsInstance(call_args[0][1], Exception)
-        self.assertEqual(str(call_args[0][1]), "Test error")
-
-    def test_update_worker_metrics_no_method(self):
-        """Test update_metrics when worker has no update_worker_metrics method."""
-        worker = MagicMock()
-        del worker.update_worker_metrics  # Remove the method
-        mock_logger = MagicMock()
-
-        worker_manager = WorkerManager(mock_logger)
-        worker_manager.update_metrics(worker)
-
-        # Should not raise an exception
-        mock_logger.debug.assert_not_called()
-
-    def test_handle_worker_shutdown_with_handle_quit(self):
-        """Test shutdown_worker with handle_quit method."""
-        worker = MagicMock()
-        mock_logger = MagicMock()
-
-        worker_manager = WorkerManager(mock_logger)
-        worker_manager.shutdown_worker(worker)
-
-        worker.handle_quit.assert_called_once_with(signal.SIGINT, None)
-
-    def test_handle_worker_shutdown_handle_quit_exception(self):
-        """Test shutdown_worker with handle_quit exception."""
-        worker = MagicMock()
-        worker.handle_quit.side_effect = Exception("Test error")
-        mock_logger = MagicMock()
-
-        worker_manager = WorkerManager(mock_logger)
-        worker_manager.shutdown_worker(worker)
-
-        mock_logger.error.assert_called_once()
-        call_args = mock_logger.error.call_args
-        self.assertEqual(call_args[0][0], "Failed to call parent handle_quit: %s")
-        self.assertIsInstance(call_args[0][1], Exception)
-        self.assertEqual(str(call_args[0][1]), "Test error")
-
-    def test_handle_worker_shutdown_without_handle_quit(self):
-        """Test shutdown_worker without handle_quit method."""
-        worker = MagicMock()
-        del worker.handle_quit  # Remove the method
-        mock_logger = MagicMock()
-
-        worker_manager = WorkerManager(mock_logger)
-        worker_manager.shutdown_worker(worker)
-
-        self.assertFalse(worker.alive)
-        mock_logger.info.assert_called_once_with(
-            "Set worker.alive = False for graceful shutdown"
-        )
-
-    def test_handle_worker_shutdown_no_alive_attribute(self):
-        """Test shutdown_worker without alive attribute."""
-        worker = MagicMock()
-        del worker.handle_quit  # Remove the method
-        del worker.alive  # Remove the attribute
-        mock_logger = MagicMock()
-
-        worker_manager = WorkerManager(mock_logger)
-        worker_manager.shutdown_worker(worker)
-
-        # Should not raise an exception
-        mock_logger.info.assert_not_called()
+                    mock_workers.assert_called_once_with(server.cfg)
+                    mock_bind.assert_called_once_with(server.cfg)
+                    mock_class.assert_called_once_with(server.cfg)
 
     def tearDown(self):
         """Clean up after tests."""
@@ -757,26 +689,32 @@ class TestWorkerIntHook(unittest.TestCase):
     def test_default_worker_int(self):
         """Test default_worker_int hook."""
         mock_worker = MagicMock()
-        mock_logger = MagicMock()
+        mock_worker.worker_id = "worker-1"
+        mock_worker.update_worker_metrics = MagicMock()
 
-        with patch(
-            "gunicorn_prometheus_exporter.hooks._get_hook_manager"
-        ) as mock_get_manager:
-            mock_manager = MagicMock()
-            mock_manager.get_logger.return_value = mock_logger
-            mock_get_manager.return_value = mock_manager
+        # Test with worker that has update_worker_metrics method
+        default_worker_int(mock_worker)
 
-            with patch(
-                "gunicorn_prometheus_exporter.hooks._get_worker_manager"
-            ) as mock_get_worker_manager:
-                mock_worker_manager = MagicMock()
-                mock_get_worker_manager.return_value = mock_worker_manager
+        # Verify the worker's update_worker_metrics method was called
+        mock_worker.update_worker_metrics.assert_called_once()
 
-                default_worker_int(mock_worker)
+    def test_default_worker_int_no_update_method(self):
+        """Test default_worker_int hook when worker has no update_worker_metrics method."""
+        mock_worker = MagicMock()
+        # Remove the update_worker_metrics method
+        del mock_worker.update_worker_metrics
 
-        mock_logger.info.assert_called_once_with("Worker received interrupt signal")
-        mock_worker_manager.update_metrics.assert_called_once_with(mock_worker)
-        mock_worker_manager.shutdown_worker.assert_called_once_with(mock_worker)
+        # Should not raise an exception
+        default_worker_int(mock_worker)
+
+    def test_default_worker_int_exception(self):
+        """Test default_worker_int hook when update_worker_metrics raises an exception."""
+        mock_worker = MagicMock()
+        mock_worker.worker_id = "worker-1"
+        mock_worker.update_worker_metrics.side_effect = Exception("Test error")
+
+        # Should not raise an exception, should handle it gracefully
+        default_worker_int(mock_worker)
 
 
 class TestWhenReadyHook(unittest.TestCase):

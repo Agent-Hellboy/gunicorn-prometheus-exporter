@@ -14,7 +14,6 @@ Available hooks:
 
 import logging
 import os
-import signal
 import time
 
 from dataclasses import dataclass
@@ -193,39 +192,6 @@ class MetricsServerManager:
             return False
 
 
-class WorkerManager:
-    """Manages worker lifecycle and metrics."""
-
-    def __init__(self, logger: logging.Logger):
-        self.logger = logger
-
-    def update_metrics(self, worker: Any) -> None:
-        """Update worker metrics before shutdown."""
-        if hasattr(worker, "update_worker_metrics"):
-            try:
-                worker.update_worker_metrics()
-                self.logger.debug("Updated worker metrics for %s", worker.worker_id)
-            except Exception as e:
-                self.logger.error("Failed to update worker metrics: %s", e)
-
-    def shutdown_worker(self, worker: Any) -> None:
-        """Handle worker shutdown gracefully."""
-        if hasattr(worker, "handle_quit"):
-            try:
-                worker.handle_quit(signal.SIGINT, None)
-            except Exception as e:
-                self.logger.error("Failed to call parent handle_quit: %s", e)
-                self._set_worker_alive_false(worker)
-        elif hasattr(worker, "alive"):
-            self._set_worker_alive_false(worker)
-            self.logger.info("Set worker.alive = False for graceful shutdown")
-
-    def _set_worker_alive_false(self, worker: Any) -> None:
-        """Set worker.alive to False as fallback."""
-        if hasattr(worker, "alive"):
-            worker.alive = False
-
-
 class ProcessManager:
     """Manages process cleanup and termination."""
 
@@ -284,14 +250,6 @@ def _get_metrics_manager() -> "MetricsServerManager":
     if _metrics_manager is None:
         _metrics_manager = MetricsServerManager(_get_hook_manager().get_logger())
     return _metrics_manager
-
-
-def _get_worker_manager() -> "WorkerManager":
-    """Get or create the global worker manager instance."""
-    global _worker_manager
-    if _worker_manager is None:
-        _worker_manager = WorkerManager(_get_hook_manager().get_logger())
-    return _worker_manager
 
 
 def _get_process_manager() -> "ProcessManager":
