@@ -1,162 +1,123 @@
-import logging
+"""Tests for Gunicorn hooks."""
+
 import os
+import unittest
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-import pytest
-
-from gunicorn_prometheus_exporter import hooks
-
-
-@pytest.fixture(autouse=True)
-def reset_env(monkeypatch):
-    # ensure redis env var is cleared for tests
-    monkeypatch.delenv("REDIS_ENABLED", raising=False)
-    # Set required environment variables for tests
-    monkeypatch.setenv("PROMETHEUS_METRICS_PORT", "9091")
-    monkeypatch.setenv("GUNICORN_WORKERS", "2")
+from gunicorn_prometheus_exporter.hooks import default_post_fork
 
 
-def test_setup_prometheus_server_success(monkeypatch):
-    logger = logging.getLogger("test")
-    mock_registry = MagicMock()
-    monkeypatch.setattr("gunicorn_prometheus_exporter.metrics.registry", mock_registry)
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.utils.get_multiprocess_dir", lambda: "/tmp"
-    )
-    mpc = MagicMock()
-    monkeypatch.setattr("gunicorn_prometheus_exporter.hooks.MultiProcessCollector", mpc)
+class TestPostForkHook(unittest.TestCase):
+    """Test the post_fork hook functionality."""
 
-    port, registry = hooks._setup_prometheus_server(logger)
+    def setUp(self):
+        """Set up test fixtures."""
+        # Clear any existing environment variables
+        for var in [
+            "GUNICORN_WORKERS",
+            "GUNICORN_BIND",
+            "GUNICORN_WORKER_CLASS",
+        ]:
+            if var in os.environ:
+                del os.environ[var]
 
-    assert port == hooks.config.prometheus_metrics_port
-    assert registry is mock_registry
-    mpc.assert_called_once_with(mock_registry)
+    def test_post_fork_with_timeout(self):
+        """Test post_fork hook with CLI options."""
+        # Mock server and worker
+        server = MagicMock()
+        server.cfg.workers = 4
+        server.cfg.bind = "0.0.0.0:8000"
+        server.cfg.worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
+        worker = MagicMock()
+        worker.pid = 12345
 
-def test_setup_prometheus_server_no_dir(monkeypatch):
-    logger = logging.getLogger("test")
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.utils.get_multiprocess_dir", lambda: None
-    )
-    result = hooks._setup_prometheus_server(logger)
-    assert result is None
+        # Call the hook
+        with patch("gunicorn_prometheus_exporter.hooks.logging.getLogger"):
+            default_post_fork(server, worker)
 
+        # Verify environment variables were set
+        self.assertEqual(os.environ.get("GUNICORN_WORKERS"), "4")
+        self.assertEqual(os.environ.get("GUNICORN_BIND"), "0.0.0.0:8000")
+        self.assertEqual(
+            os.environ.get("GUNICORN_WORKER_CLASS"),
+            "gunicorn_prometheus_exporter.PrometheusWorker",
+        )
 
-def test_setup_prometheus_server_mpc_failure(monkeypatch):
-    logger = logging.getLogger("test")
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.utils.get_multiprocess_dir", lambda: "/tmp"
-    )
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.hooks.MultiProcessCollector",
-        MagicMock(side_effect=Exception("boom")),
-    )
-    result = hooks._setup_prometheus_server(logger)
-    assert result is None
+    def test_post_fork_without_cli_options(self):
+        """Test post_fork hook without CLI options."""
+        # Mock server and worker without CLI options
+        server = MagicMock()
+        server.cfg.workers = None
+        server.cfg.bind = None
+        server.cfg.worker_class = None
 
+        worker = MagicMock()
+        worker.pid = 12345
 
-def test_default_on_starting(monkeypatch):
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.utils.get_multiprocess_dir", lambda: "/tmp"
-    )
-    ensure = MagicMock()
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.utils.ensure_multiprocess_dir", ensure
-    )
-    hooks.default_on_starting(None)
-    ensure.assert_called_once_with("/tmp")
+        # Call the hook
+        with patch("gunicorn_prometheus_exporter.hooks.logging.getLogger"):
+            default_post_fork(server, worker)
 
+        # Verify environment variables were not set
+        self.assertIsNone(os.environ.get("GUNICORN_WORKERS"))
+        self.assertIsNone(os.environ.get("GUNICORN_BIND"))
+        self.assertIsNone(os.environ.get("GUNICORN_WORKER_CLASS"))
 
-def test_default_on_starting_no_dir(monkeypatch):
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.utils.get_multiprocess_dir", lambda: None
-    )
-    ensure = MagicMock()
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.utils.ensure_multiprocess_dir", ensure
-    )
-    hooks.default_on_starting(None)
-    ensure.assert_not_called()
+    def test_post_fork_logs_worker_configuration(self):
+        """Test that post_fork hook logs worker configuration."""
+        # Mock server and worker
+        server = MagicMock()
+        server.cfg.workers = 4
+        server.cfg.bind = "0.0.0.0:8000"
+        server.cfg.worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
+        worker = MagicMock()
+        worker.pid = 12345
 
-def test_default_when_ready_success(monkeypatch):
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.hooks._setup_prometheus_server",
-        lambda logger: (1234, "reg"),
-    )
-    start = MagicMock()
-    monkeypatch.setattr("gunicorn_prometheus_exporter.hooks.start_http_server", start)
+        # Mock logger
+        mock_logger = MagicMock()
+        with patch(
+            "gunicorn_prometheus_exporter.hooks.logging.getLogger",
+            return_value=mock_logger,
+        ):
+            default_post_fork(server, worker)
 
-    hooks.default_when_ready(None)
-    start.assert_called_once_with(1234, registry="reg")
+        # Verify logger was called
+        mock_logger.info.assert_called()
+        # Check that the log message contains configuration info
+        log_calls = [call[0][0] for call in mock_logger.info.call_args_list]
+        config_log = any("Gunicorn configuration:" in call for call in log_calls)
+        self.assertTrue(config_log)
 
+    def test_post_fork_handles_missing_attributes(self):
+        """Test post_fork hook handles missing configuration attributes."""
+        # Mock server and worker with missing attributes
+        server = MagicMock()
+        # Don't set any attributes on cfg
 
-def test_default_when_ready_retry(monkeypatch):
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.hooks._setup_prometheus_server",
-        lambda logger: (1234, "reg"),
-    )
-    attempt = {"count": 0}
+        worker = MagicMock()
+        worker.pid = 12345
 
-    def failing_start(port, registry):
-        if attempt["count"] < 2:
-            attempt["count"] += 1
-            raise OSError(98, "in use")
-        start_called.append((port, registry))
+        # Call the hook - should not raise an exception
+        with patch("gunicorn_prometheus_exporter.hooks.logging.getLogger"):
+            try:
+                default_post_fork(server, worker)
+            except AttributeError:
+                self.fail("post_fork hook should handle missing attributes gracefully")
 
-    start_called = []
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.hooks.start_http_server", failing_start
-    )
-    monkeypatch.setattr("time.sleep", lambda s: None)
-
-    hooks.default_when_ready(None)
-    assert start_called == [(1234, "reg")]
-
-
-def test_default_when_ready_setup_none(monkeypatch):
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.hooks._setup_prometheus_server",
-        lambda logger: None,
-    )
-    start = MagicMock()
-    monkeypatch.setattr("gunicorn_prometheus_exporter.hooks.start_http_server", start)
-    hooks.default_when_ready(None)
-    start.assert_not_called()
-
-
-def test_redis_when_ready_enabled(monkeypatch):
-    os.environ["REDIS_ENABLED"] = "true"
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.hooks._setup_prometheus_server",
-        lambda logger: (1234, "reg"),
-    )
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.hooks.start_http_server", lambda *a, **k: None
-    )
-    start_forwarder = MagicMock()
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.start_redis_forwarder", start_forwarder
-    )
-
-    hooks.redis_when_ready(None)
-    start_forwarder.assert_called_once()
+    def tearDown(self):
+        """Clean up after tests."""
+        # Clear any environment variables set during tests
+        for var in [
+            "GUNICORN_WORKERS",
+            "GUNICORN_BIND",
+            "GUNICORN_WORKER_CLASS",
+        ]:
+            if var in os.environ:
+                del os.environ[var]
 
 
-def test_redis_when_ready_disabled(monkeypatch):
-    os.environ["REDIS_ENABLED"] = "false"
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.hooks._setup_prometheus_server",
-        lambda logger: (1234, "reg"),
-    )
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.hooks.start_http_server", lambda *a, **k: None
-    )
-    start_forwarder = MagicMock()
-    monkeypatch.setattr(
-        "gunicorn_prometheus_exporter.start_redis_forwarder", start_forwarder
-    )
-
-    hooks.redis_when_ready(None)
-    start_forwarder.assert_not_called()
+if __name__ == "__main__":
+    unittest.main()

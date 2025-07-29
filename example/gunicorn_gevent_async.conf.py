@@ -11,10 +11,18 @@ Usage:
     gunicorn -c gunicorn_gevent_async.conf.py async_app:app
 """
 
-import os
+import os  # noqa: E402
+
+
+# Environment variables must be set before imports
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9096")  # noqa: E501
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # nosec B104  # noqa: E501
+os.environ.setdefault("GUNICORN_WORKERS", "2")  # noqa: E501
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/home/proshan/.gunicorn_prometheus")  # noqa: E501
+os.environ.setdefault("REDIS_ENABLED", "false")  # noqa: E501
 
 # Force early import to ensure PrometheusMaster patching happens
-from gunicorn_prometheus_exporter.hooks import (
+from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
     default_on_exit,
     default_on_starting,
     default_when_ready,
@@ -36,13 +44,6 @@ errorlog = "-"
 loglevel = "info"
 
 # Prometheus configuration
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9096")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # nosec B104
-os.environ.setdefault("GUNICORN_WORKERS", "2")
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/home/proshan/.gunicorn_prometheus")
-
-# Optional: Redis forwarding (disabled by default)
-os.environ.setdefault("REDIS_ENABLED", "false")
 
 
 # Gunicorn hooks for Prometheus setup
