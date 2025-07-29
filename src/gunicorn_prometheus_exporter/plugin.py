@@ -20,6 +20,7 @@ import time
 
 import psutil
 
+from gunicorn.http.body import Body, EOFReader
 from gunicorn.workers.gthread import ThreadWorker
 from gunicorn.workers.sync import SyncWorker
 
@@ -30,6 +31,7 @@ from .metrics import (
     WORKER_FAILED_REQUESTS,
     WORKER_MEMORY,
     WORKER_REQUEST_DURATION,
+    WORKER_REQUEST_SIZE,
     WORKER_REQUESTS,
     WORKER_STATE,
     WORKER_UPTIME,
@@ -150,34 +152,105 @@ class PrometheusMixin:
         except Exception as e:
             logger.error("Failed to update worker metrics: %s", e)
 
-    def _handle_request_metrics(self, start_time=None):
+    def _extract_request_info(self, req):
+        """Extract method and endpoint from request object.
+
+        Args:
+            req: The HTTP request object (optional)
+
+        Returns:
+            tuple: (method, endpoint)
+        """
+        method = getattr(req, "method", "UNKNOWN") if req is not None else "UNKNOWN"
+        endpoint = getattr(req, "path", "UNKNOWN") if req is not None else "UNKNOWN"
+
+        # Clean endpoint (remove leading slash, handle root)
+        if endpoint and endpoint.startswith("/"):
+            endpoint = endpoint[1:] if len(endpoint) > 1 else "root"
+        elif not endpoint or endpoint == "":
+            endpoint = "root"
+
+        return method, endpoint
+
+    def _record_basic_request_metrics(self, method, endpoint):
+        """Record basic request metrics (count and duration).
+
+        Args:
+            method: HTTP method
+            endpoint: Request endpoint
+        """
+        # Increment request counter
+        self._request_count += 1
+
+        # Update request metrics
+        WORKER_REQUESTS.labels(
+            worker_id=self.worker_id, method=method, endpoint=endpoint
+        ).inc()
+
+    def _record_duration_metrics(self, method, endpoint, duration):
+        """Record request duration metrics.
+
+        Args:
+            method: HTTP method
+            endpoint: Request endpoint
+            duration: Request duration in seconds
+        """
+        WORKER_REQUEST_DURATION.labels(
+            worker_id=self.worker_id, method=method, endpoint=endpoint
+        ).observe(duration)
+
+    def _handle_request_metrics(self, req=None, start_time=None):
         """Handle request metrics tracking.
 
         Args:
+            req: The HTTP request object (optional)
             start_time: Optional start time for request duration calculation
         """
         if start_time is None:
             start_time = time.time()
 
         try:
-            # Increment request counter
-            self._request_count += 1
+            # Extract method and endpoint from request
+            method, endpoint = self._extract_request_info(req)
 
-            # Update request metrics
-            WORKER_REQUESTS.labels(worker_id=self.worker_id).inc()
+            # Record basic request metrics
+            self._record_basic_request_metrics(method, endpoint)
 
             # Calculate and record request duration
             duration = time.time() - start_time
-            WORKER_REQUEST_DURATION.labels(worker_id=self.worker_id).observe(duration)
+            self._record_duration_metrics(method, endpoint, duration)
+
+            # Measure and record request size if request object is available
+            if req is not None:
+                request_size = self._measure_request_size(req)
+                self._record_request_size_metrics(request_size, method, endpoint)
 
             logger.debug(
-                "Request metrics updated for worker %s: duration=%s, total_requests=%s",
+                "Request metrics updated for worker %s: duration=%s, "
+                "total_requests=%s, method=%s, endpoint=%s",
                 self.worker_id,
                 duration,
                 self._request_count,
+                method,
+                endpoint,
             )
         except Exception as e:
             logger.error("Failed to update request metrics: %s", e)
+
+    def _record_error_metrics(self, method, endpoint, error_type):
+        """Record error metrics.
+
+        Args:
+            method: HTTP method
+            endpoint: Request endpoint
+            error_type: Type of error that occurred
+        """
+        WORKER_FAILED_REQUESTS.labels(
+            worker_id=self.worker_id,
+            method=method,
+            endpoint=endpoint,
+            error_type=error_type,
+        ).inc()
 
     def _handle_request_error_metrics(self, req, e, start_time=None):
         """Handle request error metrics tracking.
@@ -194,17 +267,12 @@ class PrometheusMixin:
             # Calculate request duration
             duration = time.time() - start_time
 
-            # Update failed request metrics
-            method = req.method if hasattr(req, "method") else "UNKNOWN"
-            endpoint = req.path if hasattr(req, "path") else "UNKNOWN"
+            # Extract method and endpoint from request
+            method, endpoint = self._extract_request_info(req)
             error_type = type(e).__name__
 
-            WORKER_FAILED_REQUESTS.labels(
-                worker_id=self.worker_id,
-                method=method,
-                endpoint=endpoint,
-                error_type=error_type,
-            ).inc()
+            # Record error metrics
+            self._record_error_metrics(method, endpoint, error_type)
 
             logger.error(
                 "Request failed in worker %s: %s (duration=%s)",
@@ -214,6 +282,78 @@ class PrometheusMixin:
             )
         except Exception as metric_error:
             logger.error("Failed to update error metrics: %s", metric_error)
+
+    def _measure_request_size(self, req):
+        """Measure the total request size in bytes.
+
+        Args:
+            req: The HTTP request object
+
+        Returns:
+            int: Total request size in bytes
+        """
+        try:
+            # Get request body size
+            body_data = req.body.read()
+            body_size = len(body_data)
+
+            # Re-create body reader since we consumed it
+            req.body = Body(EOFReader(req.unreader))
+            req.body.buf.write(body_data)
+
+            # Get request headers size
+            headers_size = sum(
+                len(name) + len(value) + 4 for name, value in req.headers
+            )
+
+            # Get request line size
+            line_size = len(
+                f"{req.method} {req.uri} HTTP/{req.version[0]}.{req.version[1]}"
+            )
+
+            total_size = body_size + headers_size + line_size
+
+            logger.debug(
+                "Request size measured for worker %s: body=%d, headers=%d, "
+                "line=%d, total=%d",
+                self.worker_id,
+                body_size,
+                headers_size,
+                line_size,
+                total_size,
+            )
+
+            return total_size
+
+        except Exception as e:
+            logger.warning("Failed to measure request size: %s", e)
+            return 0
+
+    def _record_request_size_metrics(
+        self, request_size, method="UNKNOWN", endpoint="UNKNOWN"
+    ):
+        """Record request size metrics.
+
+        Args:
+            request_size: Size of the request in bytes
+            method: HTTP method
+            endpoint: Request endpoint
+        """
+        try:
+            WORKER_REQUEST_SIZE.labels(
+                worker_id=self.worker_id, method=method, endpoint=endpoint
+            ).observe(request_size)
+
+            logger.debug(
+                "Request size metrics recorded for worker %s: size=%d, "
+                "method=%s, endpoint=%s",
+                self.worker_id,
+                request_size,
+                method,
+                endpoint,
+            )
+        except Exception as e:
+            logger.warning("Failed to record request size metrics: %s", e)
 
     def _generic_handle_request(self, parent_method, *args, **kwargs):
         """Generic handle_request wrapper for all worker types.
@@ -232,14 +372,24 @@ class PrometheusMixin:
             # Call parent handle_request
             result = parent_method(*args, **kwargs)
 
+            # Extract req from args for metrics
+            req = None
+            if args:
+                # For most workers, req is the second argument
+                # (after listener/listener_name)
+                if len(args) >= 2:
+                    req = args[1]
+                elif len(args) == 1:
+                    req = args[0]
+
             # Update request metrics after successful request
-            self._handle_request_metrics(start_time)
+            self._handle_request_metrics(req, start_time)
 
             return result
         except Exception as e:
             # Handle request error metrics
             # Try to extract req from args (first argument after self)
-            req = args[0] if args else None
+            req = args[1] if len(args) >= 2 else (args[0] if args else None)
             self._handle_request_error_metrics(req, e, start_time)
             raise
 
@@ -253,8 +403,14 @@ class PrometheusMixin:
             e: The exception that occurred
         """
         # Extract method and endpoint from request if available
-        method = req.method if hasattr(req, "method") else "UNKNOWN"
-        endpoint = req.path if hasattr(req, "path") else "UNKNOWN"
+        method = getattr(req, "method", "UNKNOWN") if req is not None else "UNKNOWN"
+        endpoint = getattr(req, "path", "UNKNOWN") if req is not None else "UNKNOWN"
+
+        # Clean endpoint (remove leading slash, handle root)
+        if endpoint and endpoint.startswith("/"):
+            endpoint = endpoint[1:] if len(endpoint) > 1 else "root"
+        elif not endpoint or endpoint == "":
+            endpoint = "root"
 
         # Update error metrics
         error_type = type(e).__name__

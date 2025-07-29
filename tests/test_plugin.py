@@ -292,7 +292,7 @@ class TestPrometheusWorker:
                             mock_error_metric.labels.assert_called_with(
                                 worker_id="worker_1",
                                 method="POST",
-                                endpoint="/error",
+                                endpoint="error",
                                 error_type="ValueError",
                             )
                             # The parent handle_error should be called
@@ -336,7 +336,7 @@ class TestPrometheusWorker:
                         mock_error_metric.labels.assert_called_with(
                             worker_id="worker_1",
                             method="GET",
-                            endpoint="/test",
+                            endpoint="test",
                             error_type="str",
                         )
                         mock_super_handle.assert_called_once_with(
@@ -414,3 +414,201 @@ class TestPrometheusWorker:
                             )
                             # The parent handle_abort should be called
                             mock_super_handle.assert_called_once_with(sig, frame)
+
+
+class TestRequestSizeTracking:
+    """Test request size tracking functionality."""
+
+    def test_extract_request_info(self):
+        """Test _extract_request_info method."""
+        with patch("gunicorn_prometheus_exporter.plugin._setup_logging"):
+            with patch(
+                "gunicorn_prometheus_exporter.plugin.psutil.Process"
+            ) as mock_process:
+                mock_process.return_value = MagicMock()
+
+                worker = PrometheusWorker.__new__(PrometheusWorker)
+                worker.age = 1
+                worker.worker_id = "test_worker_123"
+                worker.start_time = time.time()
+                worker.process = mock_process.return_value
+
+                # Test with valid request
+                req = MagicMock()
+                req.method = "POST"
+                req.path = "/api/users"
+
+                method, endpoint = worker._extract_request_info(req)
+                assert method == "POST"
+                assert endpoint == "api/users"
+
+                # Test with root path
+                req.path = "/"
+                method, endpoint = worker._extract_request_info(req)
+                assert method == "POST"
+                assert endpoint == "root"
+
+                # Test with empty path
+                req.path = ""
+                method, endpoint = worker._extract_request_info(req)
+                assert method == "POST"
+                assert endpoint == "root"
+
+                # Test with None request
+                method, endpoint = worker._extract_request_info(None)
+                assert method == "UNKNOWN"
+                assert endpoint == "UNKNOWN"
+
+    def test_measure_request_size(self):
+        """Test _measure_request_size method."""
+        with patch("gunicorn_prometheus_exporter.plugin._setup_logging"):
+            with patch(
+                "gunicorn_prometheus_exporter.plugin.psutil.Process"
+            ) as mock_process:
+                mock_process.return_value = MagicMock()
+
+                worker = PrometheusWorker.__new__(PrometheusWorker)
+                worker.age = 1
+                worker.worker_id = "test_worker_123"
+                worker.start_time = time.time()
+                worker.process = mock_process.return_value
+
+                # Mock request object
+                req = MagicMock()
+                req.method = "POST"
+                req.uri = "/api/test"
+                req.version = (1, 1)
+                req.headers = [
+                    ("Content-Type", "application/json"),
+                    ("User-Agent", "curl"),
+                ]
+                req.body = MagicMock()
+                req.body.read.return_value = b'{"key": "value"}'
+                req.unreader = MagicMock()
+
+                # Mock Body and EOFReader
+                with patch("gunicorn_prometheus_exporter.plugin.Body") as mock_body:
+                    with patch(
+                        "gunicorn_prometheus_exporter.plugin.EOFReader"
+                    ) as mock_eof:
+                        mock_body_instance = MagicMock()
+                        mock_body_instance.buf = MagicMock()
+                        mock_body.return_value = mock_body_instance
+                        mock_eof.return_value = MagicMock()
+
+                        size = worker._measure_request_size(req)
+
+                        # Verify the method returns a reasonable size
+                        assert size > 0
+                        assert isinstance(size, int)
+
+                        # Verify body was read (the actual call happens in the method)
+                        # Note: The mock setup is complex, so we just verify the method works
+
+    def test_record_request_size_metrics(self):
+        """Test _record_request_size_metrics method."""
+        with patch("gunicorn_prometheus_exporter.plugin._setup_logging"):
+            with patch(
+                "gunicorn_prometheus_exporter.plugin.psutil.Process"
+            ) as mock_process:
+                mock_process.return_value = MagicMock()
+
+                worker = PrometheusWorker.__new__(PrometheusWorker)
+                worker.age = 1
+                worker.worker_id = "test_worker_123"
+                worker.start_time = time.time()
+                worker.process = mock_process.return_value
+
+                with patch(
+                    "gunicorn_prometheus_exporter.plugin.WORKER_REQUEST_SIZE"
+                ) as mock_metric:
+                    mock_labels = MagicMock()
+                    mock_metric.labels.return_value = mock_labels
+
+                    worker._record_request_size_metrics(150, "POST", "api/test")
+
+                    mock_metric.labels.assert_called_once_with(
+                        worker_id="test_worker_123", method="POST", endpoint="api/test"
+                    )
+                    mock_labels.observe.assert_called_once_with(150)
+
+    def test_handle_request_metrics_with_size(self):
+        """Test _handle_request_metrics with request size tracking."""
+        with patch("gunicorn_prometheus_exporter.plugin._setup_logging"):
+            with patch(
+                "gunicorn_prometheus_exporter.plugin.psutil.Process"
+            ) as mock_process:
+                mock_process.return_value = MagicMock()
+
+                worker = PrometheusWorker.__new__(PrometheusWorker)
+                worker.age = 1
+                worker.worker_id = "test_worker_123"
+                worker.start_time = time.time()
+                worker.process = mock_process.return_value
+                worker._request_count = 0
+
+                # Mock request object
+                req = MagicMock()
+                req.method = "POST"
+                req.path = "/api/test"
+                req.body = MagicMock()
+                req.body.read.return_value = b'{"data": "test"}'
+                req.unreader = MagicMock()
+
+                with patch(
+                    "gunicorn_prometheus_exporter.plugin.WORKER_REQUESTS"
+                ) as mock_requests:
+                    with patch(
+                        "gunicorn_prometheus_exporter.plugin.WORKER_REQUEST_DURATION"
+                    ) as mock_duration:
+                        with patch(
+                            "gunicorn_prometheus_exporter.plugin.WORKER_REQUEST_SIZE"
+                        ) as mock_size:
+                            with patch(
+                                "gunicorn_prometheus_exporter.plugin.Body"
+                            ) as mock_body:
+                                with patch(
+                                    "gunicorn_prometheus_exporter.plugin.EOFReader"
+                                ) as mock_eof:
+                                    mock_body_instance = MagicMock()
+                                    mock_body.return_value = mock_body_instance
+                                    mock_eof.return_value = MagicMock()
+
+                                    mock_requests_labels = MagicMock()
+                                    mock_duration_labels = MagicMock()
+                                    mock_size_labels = MagicMock()
+
+                                    mock_requests.labels.return_value = (
+                                        mock_requests_labels
+                                    )
+                                    mock_duration.labels.return_value = (
+                                        mock_duration_labels
+                                    )
+                                    mock_size.labels.return_value = mock_size_labels
+
+                                    worker._handle_request_metrics(req, time.time())
+
+                                    # Verify request count was incremented
+                                    assert worker._request_count == 1
+
+                                    # Verify metrics were called with correct labels
+                                    mock_requests.labels.assert_called_once_with(
+                                        worker_id="test_worker_123",
+                                        method="POST",
+                                        endpoint="api/test",
+                                    )
+                                    mock_requests_labels.inc.assert_called_once()
+
+                                    mock_duration.labels.assert_called_once_with(
+                                        worker_id="test_worker_123",
+                                        method="POST",
+                                        endpoint="api/test",
+                                    )
+                                    mock_duration_labels.observe.assert_called_once()
+
+                                    mock_size.labels.assert_called_once_with(
+                                        worker_id="test_worker_123",
+                                        method="POST",
+                                        endpoint="api/test",
+                                    )
+                                    mock_size_labels.observe.assert_called_once()
