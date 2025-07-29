@@ -18,9 +18,8 @@ import os  # noqa: E402
 os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9095")  # noqa: E501
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # nosec B104  # noqa: E501
 os.environ.setdefault("GUNICORN_WORKERS", "2")  # noqa: E501
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/home/proshan/.gunicorn_prometheus")  # noqa: E501
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", os.path.expanduser("~/.gunicorn_prometheus"))  # noqa: E501
 os.environ.setdefault("REDIS_ENABLED", "false")  # noqa: E501
-
 # Force early import to ensure PrometheusMaster patching happens
 from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
     default_on_exit,
