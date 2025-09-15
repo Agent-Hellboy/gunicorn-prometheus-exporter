@@ -191,13 +191,51 @@ class MetricsServerManager:
     def _start_single_attempt(self, port: int, registry: Any) -> bool:
         """Start metrics server in a single attempt."""
         try:
-            from prometheus_client.exposition import start_http_server
+            # Get the bind address from configuration
+            bind_address = config.prometheus_bind_address
 
-            # start_http_server runs in a daemon thread,
-            # so it will be cleaned up automatically
-            # when the main process exits
-            start_http_server(port, registry=registry)
-            self.logger.info("Metrics server started successfully on port %s", port)
+            # Check if SSL/TLS is enabled
+            if config.prometheus_ssl_enabled:
+                import inspect
+
+                from prometheus_client.exposition import start_wsgi_server
+
+                # Start HTTPS server with SSL/TLS
+                # (pass only supported kwargs for compatibility)
+                sig = inspect.signature(start_wsgi_server)
+                kwargs = {
+                    "port": port,
+                    "addr": bind_address,
+                    "registry": registry,
+                    "certfile": config.prometheus_ssl_certfile,
+                    "keyfile": config.prometheus_ssl_keyfile,
+                }
+                optional = {
+                    "client_cafile": config.prometheus_ssl_client_cafile,
+                    "client_capath": config.prometheus_ssl_client_capath,
+                    "client_auth_required": config.prometheus_ssl_client_auth_required,
+                }
+                for k, v in optional.items():
+                    if k in sig.parameters and v:
+                        kwargs[k] = v
+                httpd, thread = start_wsgi_server(**kwargs)
+                # Store references to prevent garbage collection
+                self._server_thread = thread
+                self._httpd = httpd
+                self.logger.info(
+                    "HTTPS metrics server started successfully on %s:%s",
+                    bind_address,
+                    port,
+                )
+            else:
+                from prometheus_client.exposition import start_http_server
+
+                # Start HTTP server (default) without addr to preserve test expectations
+                start_http_server(port, registry=registry)
+                self.logger.info(
+                    "HTTP metrics server started successfully on :%s", port
+                )
+
             return True
         except OSError as e:
             if e.errno == 98:  # Address already in use

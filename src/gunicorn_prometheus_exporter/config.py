@@ -44,6 +44,13 @@ class ExporterConfig:
     # Cleanup environment variables
     ENV_CLEANUP_DB_FILES = "CLEANUP_DB_FILES"
 
+    # SSL/TLS environment variables for metrics server
+    ENV_PROMETHEUS_SSL_CERTFILE = "PROMETHEUS_SSL_CERTFILE"
+    ENV_PROMETHEUS_SSL_KEYFILE = "PROMETHEUS_SSL_KEYFILE"
+    ENV_PROMETHEUS_SSL_CLIENT_CAFILE = "PROMETHEUS_SSL_CLIENT_CAFILE"
+    ENV_PROMETHEUS_SSL_CLIENT_CAPATH = "PROMETHEUS_SSL_CLIENT_CAPATH"
+    ENV_PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED = "PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED"
+
     def __init__(self):
         """Initialize configuration with environment variables and defaults.
 
@@ -57,9 +64,9 @@ class ExporterConfig:
     def _setup_multiproc_dir(self):
         """Set up the Prometheus multiprocess directory."""
         if not os.environ.get(self.ENV_PROMETHEUS_MULTIPROC_DIR):
-            os.environ[
-                self.ENV_PROMETHEUS_MULTIPROC_DIR
-            ] = self.PROMETHEUS_MULTIPROC_DIR
+            os.environ[self.ENV_PROMETHEUS_MULTIPROC_DIR] = (
+                self.PROMETHEUS_MULTIPROC_DIR
+            )
 
     @property
     def prometheus_multiproc_dir(self) -> str:
@@ -174,6 +181,44 @@ class ExporterConfig:
             "yes",
             "on",
         )
+
+    # SSL/TLS properties
+    @property
+    def prometheus_ssl_certfile(self) -> str:
+        """Get SSL certificate file path."""
+        return os.environ.get(self.ENV_PROMETHEUS_SSL_CERTFILE)
+
+    @property
+    def prometheus_ssl_keyfile(self) -> str:
+        """Get SSL private key file path."""
+        return os.environ.get(self.ENV_PROMETHEUS_SSL_KEYFILE)
+
+    @property
+    def prometheus_ssl_client_cafile(self) -> str:
+        """Get SSL client CA file path."""
+        return os.environ.get(self.ENV_PROMETHEUS_SSL_CLIENT_CAFILE)
+
+    @property
+    def prometheus_ssl_client_capath(self) -> str:
+        """Get SSL client CA directory path."""
+        return os.environ.get(self.ENV_PROMETHEUS_SSL_CLIENT_CAPATH)
+
+    @property
+    def prometheus_ssl_client_auth_required(self) -> bool:
+        """Check if SSL client authentication is required."""
+        return os.environ.get(
+            self.ENV_PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED, "false"
+        ).lower() in (
+            "true",
+            "1",
+            "yes",
+            "on",
+        )
+
+    @property
+    def prometheus_ssl_enabled(self) -> bool:
+        """Check if SSL/TLS is enabled for metrics server."""
+        return bool(self.prometheus_ssl_certfile and self.prometheus_ssl_keyfile)
 
     def get_gunicorn_config(self) -> dict:
         """Get Gunicorn configuration dictionary."""

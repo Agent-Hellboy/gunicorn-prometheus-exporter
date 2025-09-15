@@ -10,7 +10,7 @@ import os  # noqa: E402
 # Prometheus-only configuration we need to place these over import because
 # the config is loaded before the environment variables are set.
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")  # nosec B108  # noqa: E501
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")  # noqa: E501
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")  # noqa: E501
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # nosec B104  # noqa: E501
 os.environ.setdefault("GUNICORN_WORKERS", "2")  # noqa: E501
 
