@@ -25,7 +25,7 @@ pip install gunicorn-prometheus-exporter[all]
 1. **Set up environment variables**:
 ```bash
 export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
-export PROMETHEUS_METRICS_PORT="9090"
+export PROMETHEUS_METRICS_PORT="9091"
 export PROMETHEUS_BIND_ADDRESS="0.0.0.0"
 export GUNICORN_WORKERS="2"
 ```
@@ -40,7 +40,7 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 # Prometheus configuration
 import os
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "2")
 ```
@@ -52,7 +52,7 @@ gunicorn -c gunicorn.conf.py your_app:app
 
 4. **Access metrics**:
 ```bash
-curl http://0.0.0.0:9090/metrics
+curl http://0.0.0.0:9091/metrics
 ```
 
 ## 📊 Supported Worker Types
@@ -111,7 +111,7 @@ All worker types have been thoroughly tested and validated:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PROMETHEUS_MULTIPROC_DIR` | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics |
-| `PROMETHEUS_METRICS_PORT` | `9090` | Port for metrics endpoint |
+| `PROMETHEUS_METRICS_PORT` | `9091` | Port for metrics endpoint |
 | `PROMETHEUS_BIND_ADDRESS` | `0.0.0.0` | Bind address for metrics server |
 | `GUNICORN_WORKERS` | `1` | Number of workers for metrics calculation |
 
@@ -126,6 +126,18 @@ export REDIS_DB="0"
 export REDIS_FORWARD_INTERVAL="30"
 ```
 
+## 🌐 Understanding the Three URLs
+
+When deploying with Gunicorn Prometheus Exporter, you'll work with three distinct URLs:
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **Prometheus UI** | `http://localhost:9090` | Prometheus web interface for querying and visualizing metrics |
+| **Your Application** | `http://localhost:8200` | Your actual web application (Gunicorn server) |
+| **Metrics Endpoint** | `http://127.0.0.1:9091/metrics` | Raw metrics data for Prometheus to scrape |
+
+> **Note**: The metrics endpoint URL is configurable through environment variables. The default port is 9091 to avoid conflicts with Prometheus UI (9090).
+
 ## 📝 Examples
 
 ### Basic Configuration
@@ -137,7 +149,7 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
 import os
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "2")
 ```
@@ -152,7 +164,7 @@ worker_connections = 1000
 
 import os
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "2")
 ```
@@ -166,7 +178,7 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
 import os
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "2")
 
@@ -212,6 +224,16 @@ ruff format src/ tests/
 ## 📚 Documentation
 
 For detailed documentation, visit our [documentation site](https://agent-hellboy.github.io/gunicorn-prometheus-exporter/).
+
+### Framework-Specific Guides
+- [Django Integration](examples/django-integration.md)
+- [FastAPI Integration](examples/fastapi-integration.md)
+- [Flask Integration](examples/flask-integration.md)
+- [Pyramid Integration](examples/pyramid-integration.md)
+- [Custom WSGI App](examples/custom-wsgi-app.md)
+
+### Deployment Guides
+- [Deployment Guide](examples/deployment-guide.md) - Comprehensive guide for Docker, Kubernetes, and production deployments
 
 ## 🤝 Contributing
 

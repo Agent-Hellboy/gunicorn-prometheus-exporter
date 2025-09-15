@@ -191,13 +191,33 @@ class MetricsServerManager:
     def _start_single_attempt(self, port: int, registry: Any) -> bool:
         """Start metrics server in a single attempt."""
         try:
-            from prometheus_client.exposition import start_http_server
-
-            # start_http_server runs in a daemon thread,
-            # so it will be cleaned up automatically
-            # when the main process exits
-            start_http_server(port, registry=registry)
-            self.logger.info("Metrics server started successfully on port %s", port)
+            # Get the bind address from configuration
+            bind_address = config.prometheus_bind_address
+            
+            # Check if SSL/TLS is enabled
+            if config.prometheus_ssl_enabled:
+                from prometheus_client.exposition import start_wsgi_server
+                import ssl
+                
+                # Start HTTPS server with SSL/TLS
+                httpd, thread = start_wsgi_server(
+                    port=port,
+                    addr=bind_address,
+                    registry=registry,
+                    certfile=config.prometheus_ssl_certfile,
+                    keyfile=config.prometheus_ssl_keyfile,
+                    client_cafile=config.prometheus_ssl_client_cafile,
+                    client_capath=config.prometheus_ssl_client_capath,
+                    client_auth_required=config.prometheus_ssl_client_auth_required,
+                )
+                self.logger.info("HTTPS metrics server started successfully on %s:%s", bind_address, port)
+            else:
+                from prometheus_client.exposition import start_http_server
+                
+                # Start HTTP server (default)
+                start_http_server(port, addr=bind_address, registry=registry)
+                self.logger.info("HTTP metrics server started successfully on %s:%s", bind_address, port)
+            
             return True
         except OSError as e:
             if e.errno == 98:  # Address already in use
@@ -325,7 +345,8 @@ def default_when_ready(_server: Any) -> None:
         return
 
     port, registry = result
-    context.logger.info("Starting Prometheus multiprocess metrics server on :%s", port)
+    bind_address = config.prometheus_bind_address
+    context.logger.info("Starting Prometheus multiprocess metrics server on %s:%s", bind_address, port)
 
     # Start HTTP server for metrics with retry logic
     if not _get_metrics_manager().start_server(port, registry):
@@ -383,7 +404,8 @@ def redis_when_ready(_server: Any) -> None:
         return
 
     port, registry = result
-    context.logger.info("Starting Prometheus multiprocess metrics server on :%s", port)
+    bind_address = config.prometheus_bind_address
+    context.logger.info("Starting Prometheus multiprocess metrics server on %s:%s", bind_address, port)
 
     # Start HTTP server for metrics with retry logic
     if not _get_metrics_manager().start_server(port, registry):
