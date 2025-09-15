@@ -177,10 +177,13 @@ class TestStorageModuleIntegration:
         mock_redis_forwarder.assert_called_once()
 
     @patch("gunicorn_prometheus_exporter.storage.redis_backend.storage_dict.redis")
-    def test_redis_backend_integration(self, mock_redis):
+    @patch("gunicorn_prometheus_exporter.storage.redis_backend.storage_values.redis")
+    def test_redis_backend_integration(self, mock_redis_values, mock_redis_dict):
         """Test Redis backend components integration."""
         mock_client = Mock()
-        mock_redis.Redis.return_value = mock_client
+        mock_redis_dict.Redis.return_value = mock_client
+        mock_redis_values.Redis.return_value = mock_client
+        mock_redis_values.from_url.return_value = mock_client
         mock_client.ping.return_value = True
         mock_client.set.return_value = True
         mock_client.hset.return_value = 1
@@ -191,8 +194,8 @@ class TestStorageModuleIntegration:
             "1234567890",  # For read_all_values key1
             "2.0",
             "1234567890",  # For read_all_values key2
-            "10.0",
-            "1234567890",  # For RedisValueClass read_value("test_key")
+            None,  # For RedisValueClass read_value("test_key") - should return None to get default value
+            None,  # For RedisValueClass read_value("test_key") timestamp
         ]
         mock_client.get.return_value = b"test_value"
         mock_client.delete.return_value = 1
