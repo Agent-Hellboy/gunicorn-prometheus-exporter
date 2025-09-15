@@ -200,7 +200,8 @@ class MetricsServerManager:
 
                 from prometheus_client.exposition import start_wsgi_server
 
-                # Start HTTPS server with SSL/TLS (pass only supported kwargs for compat)
+                # Start HTTPS server with SSL/TLS
+                # (pass only supported kwargs for compatibility)
                 sig = inspect.signature(start_wsgi_server)
                 kwargs = {
                     "port": port,
@@ -218,7 +219,9 @@ class MetricsServerManager:
                     if k in sig.parameters and v:
                         kwargs[k] = v
                 httpd, thread = start_wsgi_server(**kwargs)
+                # Store references to prevent garbage collection
                 self._server_thread = thread
+                self._httpd = httpd
                 self.logger.info(
                     "HTTPS metrics server started successfully on %s:%s",
                     bind_address,
