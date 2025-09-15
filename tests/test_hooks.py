@@ -958,6 +958,8 @@ class TestRedisForwarder(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
 class TestHookContextAdditional(unittest.TestCase):
     """Additional tests for HookContext to improve coverage."""
 
@@ -974,15 +976,15 @@ class TestHookManagerAdditional(unittest.TestCase):
     def test_setup_logging_exception_handling(self):
         """Test _setup_logging handles exceptions gracefully."""
         manager = HookManager()
-        
+
         with patch("logging.basicConfig") as mock_basic_config:
             with patch("logging.getLogger") as mock_get_logger:
                 # Mock getLogger to raise an exception
                 mock_get_logger.side_effect = Exception("Test error")
-                
+
                 # This should not raise an exception
                 manager._setup_logging()
-                
+
                 # Should fall back to basic logging setup
                 mock_basic_config.assert_called_with(level=20)  # logging.INFO
 
@@ -994,14 +996,14 @@ class TestMetricsServerManagerAdditional(unittest.TestCase):
         """Test stop_server handles exceptions gracefully."""
         mock_logger = MagicMock()
         manager = MetricsServerManager(mock_logger)
-        
+
         # Set up a mock server thread
         manager._server_thread = MagicMock()
-        
+
         with patch.object(manager.logger, "info", side_effect=Exception("Test error")):
             # Should not raise an exception
             manager.stop_server()
-            
+
             # Should still clean up the thread reference
             assert manager._server_thread is None
 
@@ -1023,14 +1025,16 @@ class TestMetricsServerManagerAdditional(unittest.TestCase):
             os.environ["PROMETHEUS_SSL_KEYFILE"] = "/path/to/key.pem"
             os.environ["PROMETHEUS_BIND_ADDRESS"] = "127.0.0.1"
 
-            with patch("prometheus_client.exposition.start_wsgi_server") as mock_start_wsgi:
+            with patch(
+                "prometheus_client.exposition.start_wsgi_server"
+            ) as mock_start_wsgi:
                 mock_start_wsgi.return_value = (MagicMock(), MagicMock())
-                
+
                 result = manager._start_single_attempt(port, registry)
-                
+
                 self.assertTrue(result)
                 mock_start_wsgi.assert_called_once()
-                
+
                 # Check that thread reference is stored
                 assert manager._server_thread is not None
 
@@ -1075,14 +1079,16 @@ class TestMetricsServerManagerAdditional(unittest.TestCase):
             os.environ["PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED"] = "true"
             os.environ["PROMETHEUS_BIND_ADDRESS"] = "127.0.0.1"
 
-            with patch("prometheus_client.exposition.start_wsgi_server") as mock_start_wsgi:
+            with patch(
+                "prometheus_client.exposition.start_wsgi_server"
+            ) as mock_start_wsgi:
                 mock_start_wsgi.return_value = (MagicMock(), MagicMock())
-                
+
                 result = manager._start_single_attempt(port, registry)
-                
+
                 self.assertTrue(result)
                 mock_start_wsgi.assert_called_once()
-                
+
                 # Check that all parameters are passed
                 call_args = mock_start_wsgi.call_args[1]
                 assert call_args["certfile"] == "/path/to/cert.pem"
@@ -1132,12 +1138,16 @@ class TestWhenReadyHooksAdditional(unittest.TestCase):
             os.environ["PROMETHEUS_BIND_ADDRESS"] = "127.0.0.1"
             os.environ["PROMETHEUS_METRICS_PORT"] = "9091"
 
-            with patch("gunicorn_prometheus_exporter.hooks._get_hook_manager") as mock_get_manager:
+            with patch(
+                "gunicorn_prometheus_exporter.hooks._get_hook_manager"
+            ) as mock_get_manager:
                 mock_manager = MagicMock()
                 mock_manager.get_logger.return_value = mock_logger
                 mock_get_manager.return_value = mock_manager
 
-                with patch("gunicorn_prometheus_exporter.hooks._get_metrics_manager") as mock_get_metrics_manager:
+                with patch(
+                    "gunicorn_prometheus_exporter.hooks._get_metrics_manager"
+                ) as mock_get_metrics_manager:
                     mock_metrics_manager = MagicMock()
                     mock_metrics_manager.setup_server.return_value = (9091, MagicMock())
                     mock_metrics_manager.start_server.return_value = True
@@ -1179,18 +1189,24 @@ class TestWhenReadyHooksAdditional(unittest.TestCase):
             os.environ["PROMETHEUS_BIND_ADDRESS"] = "127.0.0.1"
             os.environ["PROMETHEUS_METRICS_PORT"] = "9091"
 
-            with patch("gunicorn_prometheus_exporter.hooks._get_hook_manager") as mock_get_manager:
+            with patch(
+                "gunicorn_prometheus_exporter.hooks._get_hook_manager"
+            ) as mock_get_manager:
                 mock_manager = MagicMock()
                 mock_manager.get_logger.return_value = mock_logger
                 mock_get_manager.return_value = mock_manager
 
-                with patch("gunicorn_prometheus_exporter.hooks._get_metrics_manager") as mock_get_metrics_manager:
+                with patch(
+                    "gunicorn_prometheus_exporter.hooks._get_metrics_manager"
+                ) as mock_get_metrics_manager:
                     mock_metrics_manager = MagicMock()
                     mock_metrics_manager.setup_server.return_value = (9091, MagicMock())
                     mock_metrics_manager.start_server.return_value = True
                     mock_get_metrics_manager.return_value = mock_metrics_manager
 
-                    with patch("gunicorn_prometheus_exporter.hooks._start_redis_forwarder_if_enabled") as mock_start_redis:
+                    with patch(
+                        "gunicorn_prometheus_exporter.hooks._start_redis_forwarder_if_enabled"
+                    ) as mock_start_redis:
                         redis_when_ready(mock_server)
 
                         # Should have called start_server and start_redis

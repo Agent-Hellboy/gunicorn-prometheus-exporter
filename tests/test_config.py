@@ -1,8 +1,8 @@
 """Tests for the configuration system."""
 
 import os
-import tempfile
 import shutil
+import tempfile
 
 import pytest
 
@@ -300,6 +300,8 @@ class TestConfigFunctions:
                 os.environ["PROMETHEUS_METRICS_PORT"] = original_metrics_port
             if original_workers:
                 os.environ["GUNICORN_WORKERS"] = original_workers
+
+
 class TestExporterConfigAdditional:
     """Additional tests for the ExporterConfig class to improve coverage."""
 
