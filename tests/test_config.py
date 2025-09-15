@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+import shutil
 
 import pytest
 
@@ -299,3 +300,146 @@ class TestConfigFunctions:
                 os.environ["PROMETHEUS_METRICS_PORT"] = original_metrics_port
             if original_workers:
                 os.environ["GUNICORN_WORKERS"] = original_workers
+class TestExporterConfigAdditional:
+    """Additional tests for the ExporterConfig class to improve coverage."""
+
+    def test_ssl_configuration_properties(self):
+        """Test SSL configuration properties."""
+        # Save original environment
+        original_certfile = os.environ.get("PROMETHEUS_SSL_CERTFILE")
+        original_keyfile = os.environ.get("PROMETHEUS_SSL_KEYFILE")
+        original_client_cafile = os.environ.get("PROMETHEUS_SSL_CLIENT_CAFILE")
+        original_client_capath = os.environ.get("PROMETHEUS_SSL_CLIENT_CAPATH")
+        original_client_auth = os.environ.get("PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED")
+
+        try:
+            # Test SSL certificate file
+            os.environ["PROMETHEUS_SSL_CERTFILE"] = "/path/to/cert.pem"
+            config = ExporterConfig()
+            assert config.prometheus_ssl_certfile == "/path/to/cert.pem"
+
+            # Test SSL key file
+            os.environ["PROMETHEUS_SSL_KEYFILE"] = "/path/to/key.pem"
+            config = ExporterConfig()
+            assert config.prometheus_ssl_keyfile == "/path/to/key.pem"
+
+            # Test SSL client CA file
+            os.environ["PROMETHEUS_SSL_CLIENT_CAFILE"] = "/path/to/ca.pem"
+            config = ExporterConfig()
+            assert config.prometheus_ssl_client_cafile == "/path/to/ca.pem"
+
+            # Test SSL client CA path
+            os.environ["PROMETHEUS_SSL_CLIENT_CAPATH"] = "/path/to/ca/dir"
+            config = ExporterConfig()
+            assert config.prometheus_ssl_client_capath == "/path/to/ca/dir"
+
+            # Test SSL client auth required
+            os.environ["PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED"] = "true"
+            config = ExporterConfig()
+            assert config.prometheus_ssl_client_auth_required is True
+
+            os.environ["PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED"] = "false"
+            config = ExporterConfig()
+            assert config.prometheus_ssl_client_auth_required is False
+
+            # Test SSL enabled property
+            os.environ["PROMETHEUS_SSL_CERTFILE"] = "/path/to/cert.pem"
+            os.environ["PROMETHEUS_SSL_KEYFILE"] = "/path/to/key.pem"
+            config = ExporterConfig()
+            assert config.prometheus_ssl_enabled is True
+
+            # Test SSL disabled when only certfile is set
+            del os.environ["PROMETHEUS_SSL_KEYFILE"]
+            config = ExporterConfig()
+            assert config.prometheus_ssl_enabled is False
+
+        finally:
+            # Restore original environment
+            if original_certfile:
+                os.environ["PROMETHEUS_SSL_CERTFILE"] = original_certfile
+            elif "PROMETHEUS_SSL_CERTFILE" in os.environ:
+                del os.environ["PROMETHEUS_SSL_CERTFILE"]
+
+            if original_keyfile:
+                os.environ["PROMETHEUS_SSL_KEYFILE"] = original_keyfile
+            elif "PROMETHEUS_SSL_KEYFILE" in os.environ:
+                del os.environ["PROMETHEUS_SSL_KEYFILE"]
+
+            if original_client_cafile:
+                os.environ["PROMETHEUS_SSL_CLIENT_CAFILE"] = original_client_cafile
+            elif "PROMETHEUS_SSL_CLIENT_CAFILE" in os.environ:
+                del os.environ["PROMETHEUS_SSL_CLIENT_CAFILE"]
+
+            if original_client_capath:
+                os.environ["PROMETHEUS_SSL_CLIENT_CAPATH"] = original_client_capath
+            elif "PROMETHEUS_SSL_CLIENT_CAPATH" in os.environ:
+                del os.environ["PROMETHEUS_SSL_CLIENT_CAPATH"]
+
+            if original_client_auth:
+                os.environ["PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED"] = original_client_auth
+            elif "PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED" in os.environ:
+                del os.environ["PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED"]
+
+    def test_redis_enabled_property(self):
+        """Test Redis enabled property."""
+        # Save original environment
+        original_redis_enabled = os.environ.get("REDIS_ENABLED")
+
+        try:
+            # Test various truthy values
+            for value in ["true", "1", "yes", "on"]:
+                os.environ["REDIS_ENABLED"] = value
+                config = ExporterConfig()
+                assert config.redis_enabled is True
+
+            # Test various falsy values
+            for value in ["false", "0", "no", "off", ""]:
+                os.environ["REDIS_ENABLED"] = value
+                config = ExporterConfig()
+                assert config.redis_enabled is False
+
+            # Test when not set
+            if "REDIS_ENABLED" in os.environ:
+                del os.environ["REDIS_ENABLED"]
+            config = ExporterConfig()
+            assert config.redis_enabled is False
+
+        finally:
+            # Restore original environment
+            if original_redis_enabled:
+                os.environ["REDIS_ENABLED"] = original_redis_enabled
+            elif "REDIS_ENABLED" in os.environ:
+                del os.environ["REDIS_ENABLED"]
+
+    def test_validation_creates_multiproc_dir(self):
+        """Test that validation creates multiprocess directory if it doesn't exist."""
+        # Save original environment
+        original_multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+
+        try:
+            # Create a temporary directory and remove it
+            temp_dir = tempfile.mkdtemp()
+            shutil.rmtree(temp_dir)
+
+            # Set the multiproc dir to the non-existent directory
+            os.environ["PROMETHEUS_MULTIPROC_DIR"] = temp_dir
+            os.environ["PROMETHEUS_BIND_ADDRESS"] = "127.0.0.1"
+            os.environ["PROMETHEUS_METRICS_PORT"] = "9091"
+            os.environ["GUNICORN_WORKERS"] = "2"
+
+            config = ExporterConfig()
+            result = config.validate()
+
+            # Directory should be created and validation should succeed
+            assert result is True
+            assert os.path.exists(temp_dir)
+
+            # Clean up
+            shutil.rmtree(temp_dir)
+
+        finally:
+            # Restore original environment
+            if original_multiproc_dir:
+                os.environ["PROMETHEUS_MULTIPROC_DIR"] = original_multiproc_dir
+            elif "PROMETHEUS_MULTIPROC_DIR" in os.environ:
+                del os.environ["PROMETHEUS_MULTIPROC_DIR"]
