@@ -369,11 +369,9 @@ class TestMetricsServerManager(unittest.TestCase):
             result = manager.start_server(port, registry)
 
             self.assertTrue(result)
-            mock_start.assert_called_once_with(
-                port, addr="127.0.0.1", registry=registry
-            )
+            mock_start.assert_called_once_with(port, registry=registry)
             mock_logger.info.assert_called_once_with(
-                "HTTP metrics server started successfully on %s:%s", "127.0.0.1", port
+                "HTTP metrics server started successfully on :%s", port
             )
 
     def test_start_server_success_after_retry(self):
@@ -435,11 +433,9 @@ class TestMetricsServerManager(unittest.TestCase):
             result = manager._start_single_attempt(port, registry)
 
             self.assertTrue(result)
-            mock_start.assert_called_once_with(
-                port, addr="127.0.0.1", registry=registry
-            )
+            mock_start.assert_called_once_with(port, registry=registry)
             mock_logger.info.assert_called_once_with(
-                "HTTP metrics server started successfully on %s:%s", "127.0.0.1", port
+                "HTTP metrics server started successfully on :%s", port
             )
 
     def test_start_single_attempt_oserror_address_in_use(self):
@@ -741,8 +737,7 @@ class TestWhenReadyHook(unittest.TestCase):
                 default_when_ready(mock_server)
 
         mock_logger.info.assert_called_with(
-            "Starting Prometheus multiprocess metrics server on %s:%s",
-            "127.0.0.1",
+            "Starting Prometheus multiprocess metrics server on :%s",
             9090,
         )
 
@@ -854,8 +849,7 @@ class TestRedisWhenReadyHook(unittest.TestCase):
                     redis_when_ready(mock_server)
 
         mock_logger.info.assert_called_with(
-            "Starting Prometheus multiprocess metrics server on %s:%s",
-            "127.0.0.1",
+            "Starting Prometheus multiprocess metrics server on :%s",
             9090,
         )
         mock_start_redis.assert_called_once_with(mock_logger)
