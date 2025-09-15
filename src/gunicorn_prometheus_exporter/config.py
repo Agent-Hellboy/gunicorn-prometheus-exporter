@@ -64,9 +64,9 @@ class ExporterConfig:
     def _setup_multiproc_dir(self):
         """Set up the Prometheus multiprocess directory."""
         if not os.environ.get(self.ENV_PROMETHEUS_MULTIPROC_DIR):
-            os.environ[
-                self.ENV_PROMETHEUS_MULTIPROC_DIR
-            ] = self.PROMETHEUS_MULTIPROC_DIR
+            os.environ[self.ENV_PROMETHEUS_MULTIPROC_DIR] = (
+                self.PROMETHEUS_MULTIPROC_DIR
+            )
 
     @property
     def prometheus_multiproc_dir(self) -> str:
@@ -206,7 +206,9 @@ class ExporterConfig:
     @property
     def prometheus_ssl_client_auth_required(self) -> bool:
         """Check if SSL client authentication is required."""
-        return os.environ.get(self.ENV_PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED, "false").lower() in (
+        return os.environ.get(
+            self.ENV_PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED, "false"
+        ).lower() in (
             "true",
             "1",
             "yes",
