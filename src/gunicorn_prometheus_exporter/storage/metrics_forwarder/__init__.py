@@ -2,7 +2,7 @@
 
 from .base import BaseForwarder
 from .manager import ForwarderManager, get_forwarder_manager
-from .redis import RedisForwarder
+from .redis_forwarder import RedisForwarder
 
 
 __all__ = [

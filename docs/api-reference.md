@@ -79,7 +79,7 @@ pip install gunicorn-prometheus-exporter[gevent]
 - Gevent-based async I/O
 - High concurrency for async applications
 
-### PrometheusTornadoWorker (⚠️ Not Recommended)
+### PrometheusTornadoWorker (Not Recommended)
 
 Tornado-based worker for async applications.
 
@@ -95,13 +95,13 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
 pip install gunicorn-prometheus-exporter[tornado]
 ```
 
-**⚠️ Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
+**Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
 
 **Features:**
 - All features of PrometheusWorker
 - Tornado-based async IOLoop
 - High concurrency for async applications
-- ⚠️ **Known issues with metrics collection**
+- **Known issues with metrics collection**
 
 ## 🔌 Plugin Architecture
 
@@ -178,7 +178,7 @@ def _generic_handle_error(self, parent_method, *args, **kwargs):
 
 The exporter provides a comprehensive hooks system with a modular, class-based architecture for managing Gunicorn lifecycle events.
 
-### 🏗️ Hooks Architecture
+### Hooks Architecture
 
 The hooks system is built around several specialized manager classes:
 
@@ -302,13 +302,13 @@ gunicorn -c gunicorn.conf.py app:app --bind 0.0.0.0:9000
 
 The post_fork hook will automatically detect these CLI options and update the corresponding environment variables.
 
-### 🔄 Redis Hooks
+### Redis Hooks
 
 For Redis integration, use the Redis-specific hooks:
 
 #### `redis_when_ready(server)`
 
-Sets up Redis forwarding when the server is ready.
+Sets up Redis storage when the server is ready.
 
 ```python
 from gunicorn_prometheus_exporter.hooks import redis_when_ready
@@ -323,7 +323,7 @@ def when_ready(server):
 - Handles Redis connection failures gracefully
 - Provides detailed logging for debugging
 
-### 🛠️ Advanced Usage
+### Advanced Usage
 
 #### **Custom Hook Context**
 
@@ -484,7 +484,7 @@ logging.basicConfig(level=logging.DEBUG)
 # - Error conditions and recovery
 ```
 
-## 📊 Metrics Reference
+## Metrics Reference
 
 ### Worker Metrics
 
@@ -511,7 +511,7 @@ logging.basicConfig(level=logging.DEBUG)
 |--------|------|--------|-------------|
 | `gunicorn_worker_error_handling_total` | Counter | `worker_id`, `method`, `endpoint`, `error_type` | Error tracking with labels |
 
-## ⚙️ Configuration Options
+## Configuration Options
 
 ### Environment Variables
 
@@ -524,9 +524,18 @@ logging.basicConfig(level=logging.DEBUG)
 
 ### Redis Configuration
 
+#### Redis Storage (No Files Created)
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `REDIS_ENABLED` | Boolean | `false` | Enable Redis forwarding |
+| `REDIS_ENABLED` | Boolean | `false` | Enable Redis storage (replaces file storage) |
+| `REDIS_HOST` | String | `localhost` | Redis server host |
+| `REDIS_PORT` | Integer | `6379` | Redis server port |
+| `REDIS_DB` | Integer | `0` | Redis database number |
+
+#### Redis Forwarding (Files + Redis)
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `REDIS_FORWARD_ENABLED` | Boolean | `false` | Enable Redis forwarding (keeps files + forwards to Redis) |
 | `REDIS_HOST` | String | `localhost` | Redis server host |
 | `REDIS_PORT` | Integer | `6379` | Redis server port |
 | `REDIS_DB` | Integer | `0` | Redis database number |

@@ -22,9 +22,19 @@ Complete configuration guide for the Gunicorn Prometheus Exporter with all optio
 
 ### Redis Variables
 
+#### Redis Storage (No Files Created)
 | Variable | Type | Default | Description | Example |
 |----------|------|---------|-------------|---------|
-| `REDIS_ENABLED` | Boolean | `false` | Enable Redis forwarding | `true` |
+| `REDIS_ENABLED` | Boolean | `false` | Enable Redis storage (replaces file storage) | `true` |
+| `REDIS_HOST` | String | `localhost` | Redis server host | `redis.example.com` |
+| `REDIS_PORT` | Integer | `6379` | Redis server port | `6380` |
+| `REDIS_DB` | Integer | `0` | Redis database number | `1` |
+| `REDIS_PASSWORD` | String | `None` | Redis password | `secret123` |
+
+#### Redis Forwarding (Files + Redis)
+| Variable | Type | Default | Description | Example |
+|----------|------|---------|-------------|---------|
+| `REDIS_FORWARD_ENABLED` | Boolean | `false` | Enable Redis forwarding (keeps files + forwards to Redis) | `true` |
 | `REDIS_HOST` | String | `localhost` | Redis server host | `redis.example.com` |
 | `REDIS_PORT` | Integer | `6379` | Redis server port | `6380` |
 | `REDIS_DB` | Integer | `0` | Redis database number | `1` |
@@ -32,7 +42,7 @@ Complete configuration guide for the Gunicorn Prometheus Exporter with all optio
 | `REDIS_KEY_PREFIX` | String | `gunicorn_metrics` | Redis key prefix | `myapp_metrics` |
 | `REDIS_FORWARD_INTERVAL` | Integer | `30` | Forwarding interval | `60` |
 
-## 🚀 Configuration Scenarios
+## Configuration Scenarios
 
 ### Basic Setup
 
@@ -145,22 +155,53 @@ errorlog = "/var/log/gunicorn/error.log"
 loglevel = "info"
 ```
 
-### Redis Integration Setup
+### Redis Storage Setup
 
-**Use Case:** Distributed setup with Redis metrics forwarding.
+**Use Case:** Distributed setup with Redis storage (no files created).
 
 ```python
-# gunicorn_redis.conf.py
+# gunicorn_redis_storage.conf.py
+import os
+
+# Environment variables must be set before imports
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9092")  # Different port for Redis storage
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
+os.environ.setdefault("GUNICORN_WORKERS", "4")
+
+# Redis storage configuration (no files created)
+os.environ.setdefault("REDIS_ENABLED", "true")
+os.environ.setdefault("REDIS_HOST", "localhost")
+os.environ.setdefault("REDIS_PORT", "6379")
+os.environ.setdefault("REDIS_DB", "0")
+os.environ.setdefault("REDIS_PASSWORD", "")
+
+# Gunicorn settings
+bind = "0.0.0.0:8000"
+workers = 4
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+worker_connections = 1000
+max_requests = 1000
+max_requests_jitter = 50
+timeout = 60
+keepalive = 5
+```
+
+### Redis Forwarding Setup
+
+**Use Case:** Migration scenario with both file storage and Redis forwarding.
+
+```python
+# gunicorn_redis_forwarding.conf.py
 import os
 
 # Environment variables must be set before imports
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "4")
 
-# Redis configuration
-os.environ.setdefault("REDIS_ENABLED", "true")
+# Redis forwarding configuration (keeps files + forwards to Redis)
+os.environ.setdefault("REDIS_FORWARD_ENABLED", "true")
 os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("REDIS_PORT", "6379")
 os.environ.setdefault("REDIS_DB", "0")
@@ -289,7 +330,7 @@ worker_connections = 1000
 
 **Best for:** Async applications, high concurrency.
 
-### Tornado Worker (⚠️ Not Recommended)
+### Tornado Worker (Not Recommended)
 
 ```python
 # gunicorn_tornado.conf.py
@@ -307,13 +348,13 @@ workers = 4
 worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
 ```
 
-**⚠️ Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
+**Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
 
-**Best for:** Tornado-based applications (⚠️ Not recommended for production).
+**Best for:** Tornado-based applications (Not recommended for production).
 
 ## 🔧 Advanced Configuration
 
-### 🏗️ Hooks Architecture
+### Hooks Architecture
 
 The exporter uses a modular, class-based hooks architecture for managing Gunicorn lifecycle events:
 
@@ -562,7 +603,7 @@ The hooks system provides detailed logging for debugging:
 2024-01-15 10:30:03 - gunicorn_prometheus_exporter.hooks - INFO - Server shutting down - cleaning up Prometheus metrics server
 ```
 
-### 🛠️ Error Handling
+### Error Handling
 
 #### **Graceful Degradation**
 

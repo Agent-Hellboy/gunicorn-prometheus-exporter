@@ -2,7 +2,41 @@
 
 A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities.
 
-## 🚀 Quick Start
+## Redis Storage Innovation
+
+### Extended Prometheus Python Client
+
+We've **extended the Prometheus Python client** to support Redis-based storage, creating a new architecture that separates storage from compute:
+
+#### **Traditional Prometheus Multiprocess**
+```python
+# Standard approach - files only
+from prometheus_client import multiprocess
+multiprocess.MultiProcessCollector(registry)
+# Creates files in /tmp/prometheus_multiproc/
+```
+
+#### **Our Redis Storage Extension**
+```python
+# Our innovation - Redis storage
+from gunicorn_prometheus_exporter.storage import get_redis_storage_manager
+manager = get_redis_storage_manager()
+collector = manager.get_collector()
+registry.register(collector)
+# Stores metrics in Redis: gunicorn:*:metric:*
+```
+
+### **Architecture Benefits**
+
+| Aspect | Traditional | Redis Storage |
+|--------|-------------|---------------|
+| **Storage** | Local files | Redis server |
+| **Scalability** | Single instance | Multiple instances |
+| **Separation** | Coupled | Separated |
+| **Performance** | File I/O overhead | Direct Redis access |
+| **Availability** | Server-dependent | Redis-backed |
+
+## Quick Start
 
 ### Installation
 
@@ -13,7 +47,7 @@ pip install gunicorn-prometheus-exporter
 # With async worker support
 pip install gunicorn-prometheus-exporter[async]
 
-# With Redis forwarding
+# With Redis storage
 pip install gunicorn-prometheus-exporter[redis]
 
 # Complete installation with all features
@@ -55,7 +89,7 @@ gunicorn -c gunicorn.conf.py your_app:app
 curl http://0.0.0.0:9091/metrics
 ```
 
-## 📊 Supported Worker Types
+## Supported Worker Types
 
 | Worker Type | Installation | Usage |
 |-------------|-------------|-------|
@@ -63,7 +97,7 @@ curl http://0.0.0.0:9091/metrics
 | **Thread Worker** | `pip install gunicorn-prometheus-exporter` | `worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"` |
 | **Eventlet Worker** | `pip install gunicorn-prometheus-exporter[eventlet]` | `worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"` |
 | **Gevent Worker** | `pip install gunicorn-prometheus-exporter[gevent]` | `worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"` |
-| **Tornado Worker** | `pip install gunicorn-prometheus-exporter[tornado]` (⚠️ Not recommended) | `worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"` (⚠️ Not recommended) |
+| **Tornado Worker** | `pip install gunicorn-prometheus-exporter[tornado]` (Not recommended) | `worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"` (Not recommended) |
 
 ## 📈 Available Metrics
 
@@ -89,20 +123,20 @@ All worker types have been thoroughly tested and validated:
 
 | Worker Type | Status | Metrics | Master Signals | Load Distribution |
 |-------------|--------|---------|----------------|-------------------|
-| **Sync Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
-| **Thread Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
-| **Eventlet Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
-| **Gevent Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
-| **Tornado Worker** | ⚠️ Not recommended | ⚠️ Metrics endpoint issues | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Sync Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
+| **Thread Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
+| **Eventlet Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
+| **Gevent Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
+| **Tornado Worker** | Not recommended | Metrics endpoint issues | HUP, USR1, CHLD | Balanced |
 
 ### Validation Includes:
-- ✅ Request counting and distribution across workers
-- ✅ Memory and CPU usage tracking
-- ✅ Error handling with method/endpoint labels
-- ✅ Master process signal tracking (HUP, USR1, CHLD)
-- ✅ Worker state management with timestamps
-- ✅ Multiprocess metrics collection
-- ✅ Load balancing verification
+- Request counting and distribution across workers
+- Memory and CPU usage tracking
+- Error handling with method/endpoint labels
+- Master process signal tracking (HUP, USR1, CHLD)
+- Worker state management with timestamps
+- Multiprocess metrics collection
+- Load balancing verification
 
 ## 🔧 Configuration
 
@@ -117,9 +151,19 @@ All worker types have been thoroughly tested and validated:
 
 ### Redis Configuration (Optional)
 
+#### Redis Storage (No Files Created)
 ```bash
-# Enable Redis forwarding
+# Enable Redis storage (replaces file storage)
 export REDIS_ENABLED="true"
+export REDIS_HOST="localhost"
+export REDIS_PORT="6379"
+export REDIS_DB="0"
+```
+
+#### Redis Forwarding (Files + Redis)
+```bash
+# Enable Redis forwarding (keeps files + forwards to Redis)
+export REDIS_FORWARD_ENABLED="true"
 export REDIS_HOST="localhost"
 export REDIS_PORT="6379"
 export REDIS_DB="0"
@@ -169,28 +213,26 @@ os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "2")
 ```
 
-### Redis Integration
+### Redis Storage Configuration
 ```python
-# gunicorn_redis.conf.py
+# gunicorn_redis_storage.conf.py
 bind = "0.0.0.0:8000"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
 import os
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9092")  # Different port for Redis storage
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "2")
 
-# Redis configuration
+# Redis storage configuration (no files created)
 os.environ.setdefault("REDIS_ENABLED", "true")
 os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("REDIS_PORT", "6379")
 os.environ.setdefault("REDIS_DB", "0")
-os.environ.setdefault("REDIS_FORWARD_INTERVAL", "30")
 ```
 
-## 🛠️ Development
+## Development
 
 ### Setup
 ```bash
@@ -250,4 +292,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ for the Python community**
+**Made with dedication for the Python community**

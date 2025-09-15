@@ -9,7 +9,7 @@ Available hooks:
 - default_worker_int: Handle worker interrupts
 - default_on_exit: Cleanup on server exit
 - default_post_fork: Configure CLI options after worker fork
-- redis_when_ready: Start Prometheus metrics server with Redis forwarding
+- redis_when_ready: Start Prometheus metrics server with Redis storage
 """
 
 import logging
@@ -138,14 +138,30 @@ class MetricsServerManager:
         from .metrics import registry
         from .utils import get_multiprocess_dir
 
+        port = config.prometheus_metrics_port
+
+        # Try Redis collector first if Redis is enabled
+        if config.redis_enabled:
+            try:
+                from .storage import get_redis_storage_manager
+
+                manager = get_redis_storage_manager()
+                redis_collector = manager.get_collector()
+                if redis_collector:
+                    self.logger.info("Successfully initialized Redis-based collector")
+                    # Ensure the Redis collector is registered with the registry
+                    registry.register(redis_collector)
+                    return port, registry
+            except Exception as e:
+                self.logger.warning("Failed to initialize Redis collector: %s", e)
+
+        # Fallback to file-based multiprocess collector
         mp_dir = get_multiprocess_dir()
         if not mp_dir:
             self.logger.warning(
                 "PROMETHEUS_MULTIPROC_DIR not set; skipping metrics server"
             )
             return None
-
-        port = config.prometheus_metrics_port
 
         try:
             MultiProcessCollector(registry)
@@ -398,6 +414,15 @@ def default_on_exit(_server: Any) -> None:
         # Stop the metrics server
         _get_metrics_manager().stop_server()
 
+        # Cleanup Redis metrics if enabled
+        if config.redis_enabled:
+            from .storage import get_redis_storage_manager
+
+            manager = get_redis_storage_manager()
+            manager.cleanup_keys()
+            manager.teardown()
+            context.logger.info("Redis metrics cleanup completed")
+
         # Force cleanup of any remaining processes
         _get_process_manager().cleanup_processes()
 
@@ -412,8 +437,22 @@ def default_on_exit(_server: Any) -> None:
 
 
 def redis_when_ready(_server: Any) -> None:
-    """Redis-enabled when_ready hook with Prometheus metrics and Redis forwarding."""
+    """Redis-enabled when_ready hook with Prometheus metrics and Redis storage."""
     context = HookContext(server=_server, logger=_get_hook_manager().get_logger())
+
+    # Setup Redis metrics storage if enabled
+    if config.redis_enabled:
+        from .storage import get_redis_storage_manager
+
+        manager = get_redis_storage_manager()
+        if manager.setup():
+            context.logger.info(
+                "Redis metrics storage enabled - using Redis instead of files"
+            )
+        else:
+            context.logger.warning(
+                "Failed to setup Redis metrics, falling back to file-based storage"
+            )
 
     # Setup metrics server
     result = _get_metrics_manager().setup_server()
@@ -435,11 +474,11 @@ def redis_when_ready(_server: Any) -> None:
 def _start_redis_forwarder_if_enabled(logger: logging.Logger) -> None:
     """Start Redis forwarder if enabled in configuration."""
     if not config.redis_enabled:
-        logger.info("Redis forwarding disabled")
+        logger.info("Redis storage disabled")
         return
 
     try:
-        from .forwarder import get_forwarder_manager
+        from .storage.metrics_forwarder.manager import get_forwarder_manager
 
         manager = get_forwarder_manager()
         manager.start()

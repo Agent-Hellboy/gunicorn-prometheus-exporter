@@ -132,13 +132,24 @@ class ExporterConfig:
     # Redis properties
     @property
     def redis_enabled(self) -> bool:
-        """Check if Redis forwarding is enabled."""
+        """Check if Redis storage is enabled."""
         return os.environ.get(self.ENV_REDIS_ENABLED, "").lower() in (
             "true",
             "1",
             "yes",
             "on",
         )
+
+    @redis_enabled.setter
+    def redis_enabled(self, value: bool):
+        """Set Redis enabled status (for testing purposes)."""
+        os.environ[self.ENV_REDIS_ENABLED] = "true" if value else "false"
+
+    @redis_enabled.deleter
+    def redis_enabled(self):
+        """Delete Redis enabled status (for testing purposes)."""
+        if self.ENV_REDIS_ENABLED in os.environ:
+            del os.environ[self.ENV_REDIS_ENABLED]
 
     @property
     def redis_host(self) -> str:

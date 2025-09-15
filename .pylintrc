@@ -9,7 +9,8 @@ disable=
     unrecognized-option,
     import-error,
     django-not-configured,
-    django-not-available
+    django-not-available,
+    protected-access
 
 [FORMAT]
 max-line-length=88

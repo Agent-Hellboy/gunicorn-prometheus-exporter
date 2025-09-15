@@ -2,7 +2,7 @@
 
 This guide shows how to integrate the Gunicorn Prometheus Exporter with Django applications.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -214,7 +214,7 @@ volumes:
   static_files:
 ```
 
-## 📊 Prometheus Configuration
+## Prometheus Configuration
 
 ### prometheus.yml
 

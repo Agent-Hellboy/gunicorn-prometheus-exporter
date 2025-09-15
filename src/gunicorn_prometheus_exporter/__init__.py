@@ -77,7 +77,6 @@ import gunicorn.app.base
 import gunicorn.arbiter
 
 from .config import config, get_config
-from .forwarder import RedisForwarder, get_forwarder_manager
 from .master import PrometheusMaster
 from .metrics import registry
 
@@ -89,6 +88,7 @@ from .plugin import (
     get_prometheus_gevent_worker,
     get_prometheus_tornado_worker,
 )
+from .storage import RedisForwarder, get_forwarder_manager
 
 
 # Import async worker classes if available

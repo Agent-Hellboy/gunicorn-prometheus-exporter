@@ -32,7 +32,7 @@ export PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED="false"           # Require client ce
 
 > **Security Note**: For production deployments, consider enabling SSL/TLS to secure the metrics endpoint, especially if it's accessible over the network.
 
-## 🚀 Integration Guide
+## Integration Guide
 
 This section walks you through integrating Gunicorn Prometheus Exporter with Prometheus monitoring.
 
@@ -322,7 +322,7 @@ volumes:
   prometheus_storage:
 ```
 
-## ☸️ Kubernetes Deployment
+## Kubernetes Deployment
 
 ### Namespace and ConfigMap
 
@@ -657,7 +657,7 @@ spec:
         averageUtilization: 70
 ```
 
-## 📊 Monitoring Queries
+## Monitoring Queries
 
 ### Key Prometheus Queries
 

@@ -14,16 +14,52 @@ It also aims to replace request-level tracking, such as the number of requests
 made to a particular endpoint, for any framework (e.g., Flask, Django, and
 others) that conforms to the WSGI specification.
 
+## Redis Storage Architecture
+
+### Separating Storage from Compute
+
+We've extended the Prometheus Python client to support **Redis-based storage** as an alternative to traditional multiprocess files. This architectural innovation provides several key benefits:
+
+#### **Traditional Approach (File-Based)**
+- Metrics stored in local files (`/tmp/prometheus_multiproc/`)
+- Storage and compute are coupled on the same server
+- Limited scalability across multiple instances
+- File I/O overhead for metrics collection
+
+#### **New Redis Storage Approach**
+- Metrics stored directly in Redis (`gunicorn:*:metric:*` keys)
+- **Storage and compute are completely separated**
+- Shared metrics across multiple Gunicorn instances
+- No local files created - pure Redis storage
+- Better performance and scalability
+
+### **Key Benefits:**
+
+| Feature | File-Based | Redis Storage |
+|---------|------------|---------------|
+| **Storage Location** | Local files | Redis server |
+| **Scalability** | Single server | Multiple servers |
+| **File I/O** | High overhead | No file I/O |
+| **Shared Metrics** | No | Yes |
+| **Storage Separation** | Coupled | Separated |
+
+### **Use Cases:**
+- **Microservices Architecture**: Multiple services sharing metrics
+- **Container Orchestration**: Kubernetes pods with shared Redis
+- **High Availability**: Metrics survive server restarts
+- **Cost Optimization**: Separate storage and compute resources
+
 ## Features
 
 - **Worker Metrics**: Memory, CPU, request durations, error tracking
 - **Master Process Intelligence**: Signal tracking, restart analytics
 - **Multiprocess Support**: Full Prometheus multiprocess compatibility
-- **Redis Integration**: Forward metrics to Redis for external storage
+- **Redis Storage**: Store metrics directly in Redis (no files created)
+- **Redis Forwarding**: Forward metrics to Redis while keeping file storage
 - **Zero Configuration**: Works out-of-the-box with minimal setup
 - **Production Ready**: Retry logic, error handling, health monitoring
 
-## ⚠️ Compatibility Issues
+## Compatibility Issues
 
 ### TornadoWorker Compatibility
 
@@ -58,7 +94,7 @@ pip install gunicorn-prometheus-exporter[gevent]    # For gevent workers
 pip install gunicorn-prometheus-exporter[tornado]   # For tornado workers
 ```
 
-**With Redis forwarding:**
+**With Redis storage:**
 ```bash
 pip install gunicorn-prometheus-exporter[redis]
 ```
@@ -96,7 +132,7 @@ The exporter supports all major Gunicorn worker types:
 | `PrometheusThreadWorker` | Threads | I/O-bound apps, better concurrency | `pip install gunicorn-prometheus-exporter` |
 | `PrometheusEventletWorker` | Greenlets | Async I/O with eventlet | `pip install gunicorn-prometheus-exporter[eventlet]` |
 | `PrometheusGeventWorker` | Greenlets | Async I/O with gevent | `pip install gunicorn-prometheus-exporter[gevent]` |
-| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based async (⚠️ Not recommended) | `pip install gunicorn-prometheus-exporter[tornado]` |
+| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based async (Not recommended) | `pip install gunicorn-prometheus-exporter[tornado]` |
 
 ### Start Gunicorn
 
@@ -142,7 +178,7 @@ The documentation includes:
 - `gunicorn_master_worker_restarts_total`: Worker restart counts
 - `gunicorn_master_workers_current`: Current worker count
 
-### Redis Metrics (if enabled)
+### Redis Metrics (if Redis forwarding enabled)
 - `gunicorn_redis_forwarder_status`: Forwarder health status
 - `gunicorn_redis_forwarder_errors_total`: Forwarder error counts
 
@@ -153,12 +189,13 @@ See the `example/` directory for complete working examples with all worker types
 ### Basic Examples
 - `gunicorn_simple.conf.py`: Basic sync worker setup
 - `gunicorn_thread_worker.conf.py`: Threaded workers for I/O-bound apps
-- `gunicorn_redis_based.conf.py`: Redis forwarding setup
+- `gunicorn_redis_integration.conf.py`: Redis storage setup (no files)
+- `gunicorn_hybrid.conf.py`: Redis forwarding setup (files + Redis)
 
 ### Async Worker Examples
 - `gunicorn_eventlet_async.conf.py`: Eventlet workers with async app
 - `gunicorn_gevent_async.conf.py`: Gevent workers with async app
-- `gunicorn_tornado_async.conf.py`: Tornado workers with async app (⚠️ Not recommended)
+- `gunicorn_tornado_async.conf.py`: Tornado workers with async app (Not recommended)
 
 ### Test Applications
 - `app.py`: Simple Flask app for sync/thread workers
@@ -176,17 +213,17 @@ All worker types have been thoroughly tested and are production-ready:
 
 | Worker Type | Status | Metrics | Master Signals | Load Distribution |
 |-------------|--------|---------|----------------|-------------------|
-| **Sync Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
-| **Thread Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
-| **Eventlet Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
-| **Gevent Worker** | ✅ Working | ✅ All metrics | ✅ HUP, USR1, CHLD | ✅ Balanced |
-| **Tornado Worker** | ⚠️ Not recommended | ⚠️ Metrics endpoint issues | ✅ HUP, USR1, CHLD | ✅ Balanced |
+| **Sync Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
+| **Thread Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
+| **Eventlet Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
+| **Gevent Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
+
+**Note**: Tornado worker is not supported due to compatibility issues.
 
 All async workers require their respective dependencies:
 
 - Eventlet: `pip install eventlet`
 - Gevent: `pip install gevent`
-- Tornado: `pip install tornado` (⚠️ Not recommended - see compatibility issues)
 
 ## Configuration
 
@@ -198,7 +235,8 @@ All async workers require their respective dependencies:
 | `PROMETHEUS_BIND_ADDRESS` | `0.0.0.0` | Bind address for metrics |
 | `GUNICORN_WORKERS` | `1` | Number of workers |
 | `PROMETHEUS_MULTIPROC_DIR` | Auto-generated | Multiprocess directory |
-| `REDIS_ENABLED` | `false` | Enable Redis forwarding |
+| `REDIS_ENABLED` | `false` | Enable Redis storage (no files created) |
+| `REDIS_FORWARD_ENABLED` | `false` | Enable Redis forwarding (keeps files + forwards to Redis) |
 | `REDIS_URL` | `redis://127.0.0.1:6379` | Redis connection URL (configure for your environment) |
 
 ### Gunicorn Hooks
@@ -210,7 +248,7 @@ from gunicorn_prometheus_exporter.hooks import default_when_ready
 def when_ready(server):
     default_when_ready(server)
 
-# With Redis forwarding
+# With Redis storage (no files created)
 from gunicorn_prometheus_exporter.hooks import redis_when_ready
 
 def when_ready(server):

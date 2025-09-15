@@ -2,7 +2,7 @@
 
 Complete installation guide for the Gunicorn Prometheus Exporter with all options and environment variables.
 
-## 🚀 Installation Options
+## Installation Options
 
 ### Basic Installation
 
@@ -32,7 +32,7 @@ pip install gunicorn-prometheus-exporter[gevent]    # Gevent workers
 
 ### Redis Integration
 
-Install with Redis forwarding capabilities:
+Install with Redis storage and forwarding capabilities:
 
 ```bash
 pip install gunicorn-prometheus-exporter[redis]
@@ -40,7 +40,8 @@ pip install gunicorn-prometheus-exporter[redis]
 
 **Includes:**
 - All basic features
-- Redis metrics forwarding
+- Redis storage (no files created)
+- Redis forwarding (files + Redis)
 - Redis connection management
 - Metrics aggregation
 
@@ -236,9 +237,11 @@ os.environ.setdefault("CLEANUP_DB_FILES", "true")
 
 ### Redis Environment Variables
 
+#### Redis Storage Variables (No Files Created)
+
 #### `REDIS_ENABLED`
 
-**Description:** Enable Redis metrics forwarding.
+**Description:** Enable Redis storage (replaces file storage).
 
 **Type:** Boolean
 
@@ -255,6 +258,29 @@ export REDIS_ENABLED="true"
 ```python
 import os
 os.environ.setdefault("REDIS_ENABLED", "true")
+```
+
+#### Redis Forwarding Variables (Files + Redis)
+
+#### `REDIS_FORWARD_ENABLED`
+
+**Description:** Enable Redis forwarding (keeps files + forwards to Redis).
+
+**Type:** Boolean
+
+**Default:** `false`
+
+**Values:** `true`, `false`
+
+**Example:**
+```bash
+export REDIS_FORWARD_ENABLED="true"
+```
+
+**Usage in configuration:**
+```python
+import os
+os.environ.setdefault("REDIS_FORWARD_ENABLED", "true")
 ```
 
 #### `REDIS_HOST`
@@ -395,7 +421,7 @@ os.environ.setdefault("REDIS_FORWARD_INTERVAL", "60")
 |---------|---------|-------------|
 | `eventlet` | `>=0.30.0` | Eventlet worker |
 | `gevent` | `>=21.8.0` | Gevent worker |
-| `tornado` | `>=6.1.0` | Tornado worker (⚠️ Not recommended - see compatibility issues) |
+| `tornado` | `>=6.1.0` | Tornado worker (Not recommended - see compatibility issues) |
 
 #### Redis Dependencies
 
@@ -448,22 +474,43 @@ os.environ.setdefault("GUNICORN_WORKERS", "2")
 os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
 ```
 
-### Redis Integration Configuration
+### Redis Storage Configuration
 
 ```python
-# gunicorn_redis.conf.py
+# gunicorn_redis_storage.conf.py
+bind = "0.0.0.0:8000"
+workers = 2
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+
+import os
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9092")  # Different port for Redis storage
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
+os.environ.setdefault("GUNICORN_WORKERS", "2")
+
+# Redis storage configuration (no files created)
+os.environ.setdefault("REDIS_ENABLED", "true")
+os.environ.setdefault("REDIS_HOST", "localhost")
+os.environ.setdefault("REDIS_PORT", "6379")
+os.environ.setdefault("REDIS_DB", "0")
+os.environ.setdefault("REDIS_PASSWORD", "")
+```
+
+### Redis Forwarding Configuration
+
+```python
+# gunicorn_redis_forwarding.conf.py
 bind = "0.0.0.0:8000"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
 import os
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "2")
 
-# Redis configuration
-os.environ.setdefault("REDIS_ENABLED", "true")
+# Redis forwarding configuration (keeps files + forwards to Redis)
+os.environ.setdefault("REDIS_FORWARD_ENABLED", "true")
 os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("REDIS_PORT", "6379")
 os.environ.setdefault("REDIS_DB", "0")
@@ -525,8 +572,8 @@ python -c "import eventlet; print('Eventlet available')" 2>/dev/null && echo "Ev
 # Test gevent worker
 python -c "import gevent; print('Gevent available')" 2>/dev/null && echo "Gevent worker ready" || echo "Install gevent: pip install gunicorn-prometheus-exporter[gevent]"
 
-# Test tornado worker (⚠️ Not recommended - see compatibility issues)
-python -c "import tornado; print('Tornado available')" 2>/dev/null && echo "Tornado worker available (⚠️ Not recommended)" || echo "Install tornado: pip install gunicorn-prometheus-exporter[tornado] (⚠️ Not recommended)"
+# Test tornado worker (Not recommended - see compatibility issues)
+python -c "import tornado; print('Tornado available')" 2>/dev/null && echo "Tornado worker available (Not recommended)" || echo "Install tornado: pip install gunicorn-prometheus-exporter[tornado] (Not recommended)"
 ```
 
 ### Test Redis Integration

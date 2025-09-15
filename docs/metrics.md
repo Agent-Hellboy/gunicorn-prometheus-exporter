@@ -6,7 +6,7 @@ Complete reference for all metrics exposed by the Gunicorn Prometheus Exporter.
 
 ### TornadoWorker Compatibility Issues
 
-**⚠️ Important**: The `PrometheusTornadoWorker` has known compatibility issues and is **not recommended for production use**.
+**Important**: The `PrometheusTornadoWorker` has known compatibility issues and is **not recommended for production use**.
 
 #### Known Issues
 

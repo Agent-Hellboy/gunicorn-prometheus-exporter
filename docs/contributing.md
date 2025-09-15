@@ -321,7 +321,7 @@ Other approaches you've considered (optional).
 Any other context about the feature request.
 ```
 
-## 🔄 Pull Request Process
+## Pull Request Process
 
 ### Before Submitting a PR
 
@@ -367,7 +367,7 @@ Closes #123
 3. **Discussion**: Address any feedback or questions
 4. **Merge**: Once approved, the PR is merged
 
-## 🏷️ Release Process
+## Release Process
 
 ### Versioning
 

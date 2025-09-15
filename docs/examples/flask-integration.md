@@ -2,7 +2,7 @@
 
 This guide shows how to integrate the Gunicorn Prometheus Exporter with Flask applications.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -255,7 +255,7 @@ volumes:
   app_data:
 ```
 
-## 📊 Prometheus Configuration
+## Prometheus Configuration
 
 ### prometheus.yml
 

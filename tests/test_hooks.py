@@ -915,7 +915,7 @@ class TestRedisForwarder(unittest.TestCase):
             mock_config.redis_enabled = True
 
             with patch(
-                "gunicorn_prometheus_exporter.forwarder.get_forwarder_manager"
+                "gunicorn_prometheus_exporter.storage.metrics_forwarder.manager.get_forwarder_manager"
             ) as mock_get_manager:
                 mock_manager = MagicMock()
                 mock_get_manager.return_value = mock_manager
@@ -934,7 +934,7 @@ class TestRedisForwarder(unittest.TestCase):
 
             _start_redis_forwarder_if_enabled(mock_logger)
 
-            mock_logger.info.assert_called_once_with("Redis forwarding disabled")
+            mock_logger.info.assert_called_once_with("Redis storage disabled")
 
     def test_start_redis_forwarder_exception(self):
         """Test _start_redis_forwarder_if_enabled with exception."""
@@ -944,7 +944,7 @@ class TestRedisForwarder(unittest.TestCase):
             mock_config.redis_enabled = True
 
             with patch(
-                "gunicorn_prometheus_exporter.forwarder.get_forwarder_manager",
+                "gunicorn_prometheus_exporter.storage.metrics_forwarder.manager.get_forwarder_manager",
                 side_effect=Exception("Test error"),
             ):
                 _start_redis_forwarder_if_enabled(mock_logger)

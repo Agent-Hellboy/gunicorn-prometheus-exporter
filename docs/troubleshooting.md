@@ -66,7 +66,7 @@ pip install gunicorn-prometheus-exporter[eventlet]
 # For gevent workers
 pip install gunicorn-prometheus-exporter[gevent]
 
-# For tornado workers (⚠️ Not recommended)
+# For tornado workers (Not recommended)
 pip install gunicorn-prometheus-exporter[tornado]
 
 # Or install all async dependencies
@@ -123,7 +123,7 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"  # Sync
 worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"  # Thread
 worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"  # Eventlet
 worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"  # Gevent
-worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"  # Tornado (⚠️ Not recommended)
+worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"  # Tornado (Not recommended)
 ```
 
 2. Check if async dependencies are installed:
@@ -134,7 +134,7 @@ python -c "import eventlet"
 # For gevent workers
 python -c "import gevent"
 
-# For tornado workers (⚠️ Not recommended)
+# For tornado workers (Not recommended)
 python -c "import tornado"
 ```
 
@@ -267,7 +267,7 @@ gunicorn --config example/gunicorn_eventlet_async.conf.py example/async_app:app
 # Test gevent worker
 gunicorn --config example/gunicorn_gevent_async.conf.py example/async_app:app
 
-# Test tornado worker (⚠️ Not recommended)
+# Test tornado worker (Not recommended)
 gunicorn --config example/gunicorn_tornado_async.conf.py example/async_app:app
 ```
 
@@ -307,16 +307,16 @@ worker_connections = 1000
 app = "example.async_app:app"
 ```
 
-### Tornado Worker Problems (⚠️ Not Recommended)
+### Tornado Worker Problems (Not Recommended)
 
 **Common Issues:**
 1. **Import errors**: Install `tornado` package
 2. **IOLoop conflicts**: May conflict with other async libraries
 3. **Application compatibility**: Requires async-compatible app
-4. **⚠️ Metrics endpoint hanging**: Prometheus metrics endpoint may become unresponsive
-5. **⚠️ Thread safety issues**: Metrics collection can cause deadlocks
+4. **Metrics endpoint hanging**: Prometheus metrics endpoint may become unresponsive
+5. **Thread safety issues**: Metrics collection can cause deadlocks
 
-**⚠️ Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
+**Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
 
 **Alternative Solution:**
 ```python
@@ -403,7 +403,7 @@ import os
 os.environ.setdefault("REDIS_ENABLED", "true")
 ```
 
-## 🛠️ Recovery Procedures
+## Recovery Procedures
 
 ### Clean Restart
 

@@ -1,6 +1,6 @@
 [project]
 name = "gunicorn-prometheus-exporter"
-version = "0.1.4"
+version = "0.1.5"
 description = "A comprehensive Prometheus metrics exporter for Gunicorn with support for all worker types (sync, thread, eventlet, gevent, tornado)"
 readme = "README.md"
 authors = [

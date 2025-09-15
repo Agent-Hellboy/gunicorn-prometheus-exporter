@@ -1,114 +1,173 @@
-# Gunicorn Prometheus Exporter Examples
+# Gunicorn Prometheus Exporter - Configuration Examples
 
-This directory contains practical examples demonstrating how to use the `gunicorn-prometheus-exporter` with different worker types and configurations.
+This directory contains three different configuration approaches for storing Prometheus metrics with Gunicorn.
+
+## Redis Storage Innovation
+
+### Extended Prometheus Python Client
+
+This project **extends the Prometheus Python client** to support Redis-based storage, creating a new architecture that separates storage from compute:
+
+#### **Traditional Approach**
+```python
+# Standard Prometheus multiprocess - files only
+from prometheus_client import multiprocess
+multiprocess.MultiProcessCollector(registry)
+# Creates files in /tmp/prometheus_multiproc/
+```
+
+#### **Our Redis Storage Extension**
+```python
+# Our innovation - Redis storage
+from gunicorn_prometheus_exporter.storage import get_redis_storage_manager
+manager = get_redis_storage_manager()
+collector = manager.get_collector()
+registry.register(collector)
+# Stores metrics in Redis: gunicorn:*:metric:*
+```
+
+### **Key Innovation: Storage-Compute Separation**
+
+| Feature | Traditional | Redis Storage |
+|---------|-------------|---------------|
+| **Storage** | Local files | Redis server |
+| **Scalability** | Single server | Multiple servers |
+| **File I/O** | High overhead | No file I/O |
+| **Shared Metrics** | No | Yes |
+| **Architecture** | Coupled | Separated |
+
+## Redis Storage vs Redis Forwarding
+
+**Important**: There are two different Redis approaches:
+
+### Redis Storage (`gunicorn_redis_integration.conf.py`)
+- **Purpose**: Store metrics directly in Redis (replaces file storage)
+- **Behavior**: No multiprocess files created, all metrics stored in Redis
+- **Use Case**: Distributed deployments, multiple servers
+- **Redis Keys**: `gunicorn:*:metric:*` and `gunicorn:*:meta:*`
+
+### Redis Forwarding (`gunicorn_hybrid.conf.py`)
+- **Purpose**: Forward metrics to Redis while keeping file storage
+- **Behavior**: Creates multiprocess files AND forwards to Redis
+- **Use Case**: Migration scenarios, need metrics in both places
+- **Redis Keys**: `gunicorn_forwarder:latest`, `gunicorn_forwarder:metadata`
+
+## 📁 Configuration Files
+
+### 1. `gunicorn_basic.conf.py` - File-Based Storage
+**Standard Prometheus multiprocess storage using files.**
+
+- **Storage**: Files in `/tmp/prometheus_multiproc/`
+- **Metrics Endpoint**: `http://localhost:9091/metrics`
+- **Use Case**: Simple deployments, single server
+- **Pros**: Standard, reliable, no external dependencies
+- **Cons**: Files only, not shared across servers
+
+**Usage:**
+```bash
+gunicorn --config gunicorn_basic.conf.py app:app
+```
+
+### 2. `gunicorn_redis_integration.conf.py` - Redis Storage
+**Pure Redis-based storage (no files created).**
+
+- **Storage**: Redis keys `gunicorn:*:metric:*` and `gunicorn:*:meta:*`
+- **Metrics Endpoint**: `http://localhost:9092/metrics` (reads from Redis)
+- **Use Case**: Distributed deployments, multiple servers
+- **Pros**: Shared across servers, no files, scalable
+- **Cons**: Requires Redis server
+
+**Redis Flags:**
+- `REDIS_ENABLED=true`: Enable Redis integration
+- `REDIS_HOST`: Redis server host (default: 127.0.0.1)
+- `REDIS_PORT`: Redis server port (default: 6379)
+- `REDIS_DB`: Redis database number (default: 0)
+
+**Usage:**
+```bash
+gunicorn --config gunicorn_redis_integration.conf.py app:app
+```
+
+### 3. `gunicorn_hybrid.conf.py` - Hybrid Storage
+**Both file-based AND Redis storage simultaneously.**
+
+- **Storage**: Files + Redis (dual storage)
+- **Metrics Endpoint**: `http://localhost:9091/metrics` (reads from files)
+- **Redis Keys**: `gunicorn_forwarder:latest`, `gunicorn_forwarder:metadata`
+- **Use Case**: Migration scenarios, need metrics in both places
+- **Pros**: Best of both worlds, gradual migration
+- **Cons**: More complex, uses both storage types
+
+**Redis Forwarder Flags:**
+- `REDIS_FORWARD_ENABLED=true`: Enable Redis forwarding
+- `REDIS_HOST`: Redis server host (default: 127.0.0.1)
+- `REDIS_PORT`: Redis server port (default: 6379)
+- `REDIS_DB`: Redis database number (default: 0)
+- `REDIS_KEY_PREFIX`: Key prefix (default: gunicorn_forwarder:)
+- `REDIS_FORWARD_INTERVAL`: Forward interval in seconds (default: 5)
+
+**Usage:**
+```bash
+gunicorn --config gunicorn_hybrid.conf.py app:app
+```
 
 ## Quick Start
 
-1. **Install dependencies:**
+1. **Basic Setup (Files Only):**
    ```bash
-   pip install -r requirements.txt
+   gunicorn --config gunicorn_basic.conf.py app:app
    ```
 
-2. **Run a basic example:**
+2. **Redis Storage (No Files):**
    ```bash
-   gunicorn --config gunicorn_simple.conf.py app:app
+   # Start Redis server first
+   redis-server
+   
+   # Start Gunicorn with Redis storage
+   gunicorn --config gunicorn_redis_integration.conf.py app:app
    ```
 
-3. **Access metrics:**
+3. **Hybrid (Files + Redis):**
    ```bash
-   curl http://localhost:9090/metrics
+   # Start Redis server first
+   redis-server
+   
+   # Start Gunicorn with hybrid storage
+   gunicorn --config gunicorn_hybrid.conf.py app:app
    ```
 
-## Available Examples
+## Testing Metrics
 
-### Basic Configuration
-- **`gunicorn_simple.conf.py`** - Basic sync worker with Prometheus metrics
-  ```bash
-  gunicorn --config gunicorn_simple.conf.py app:app
-  ```
+After starting any configuration, test the metrics:
 
-### Worker Type Examples
-- **`gunicorn_thread_worker.conf.py`** - Thread-based workers
-  ```bash
-  gunicorn --config gunicorn_thread_worker.conf.py app:app
-  ```
+```bash
+# Test application (basic config)
+curl http://localhost:8200/
 
-- **`gunicorn_eventlet_async.conf.py`** - Eventlet workers with async app
-  ```bash
-  gunicorn --config gunicorn_eventlet_async.conf.py async_app:app
-  ```
+# Test application (Redis config)
+curl http://localhost:8008/
 
-- **`gunicorn_gevent_async.conf.py`** - Gevent workers with async app
-  ```bash
-  gunicorn --config gunicorn_gevent_async.conf.py async_app:app
-  ```
+# Test metrics endpoint (basic config)
+curl http://localhost:9091/metrics
 
-- **`gunicorn_tornado_async.conf.py`** - Tornado workers with async app (⚠️ Not recommended)
-  ```bash
-  gunicorn --config gunicorn_tornado_async.conf.py async_app:app
-  ```
+# Test metrics endpoint (Redis config)
+curl http://localhost:9092/metrics
 
-### Advanced Configuration
-- **`gunicorn_redis_based.conf.py`** - Redis forwarding enabled
-  ```bash
-  gunicorn --config gunicorn_redis_based.conf.py app:app
-  ```
+# Check Redis keys (for Redis configurations)
+redis-cli keys '*'
+```
 
-## Applications
+## 🔧 Environment Variables
 
-- **`app.py`** - Standard Flask application for sync/thread workers
-- **`async_app.py`** - Async-compatible Flask application for eventlet/gevent workers
+All configurations support these common flags:
 
-## Configuration
+- `PROMETHEUS_METRICS_PORT`: Metrics endpoint port (default: 9091)
+- `PROMETHEUS_BIND_ADDRESS`: Metrics endpoint bind address (default: 127.0.0.1)
+- `PROMETHEUS_MULTIPROC_DIR`: Directory for file-based storage (default: /tmp/prometheus_multiproc)
+- `GUNICORN_WORKERS`: Number of Gunicorn workers (default: 2)
 
-- **`prometheus.yml`** - Prometheus server configuration for scraping metrics
-- **`requirements.txt`** - Python dependencies for the examples
+## 🎯 Which Configuration Should I Use?
 
-## Metrics Endpoints
-
-Each configuration exposes Prometheus metrics on different ports:
-
-| Configuration | App Port | Metrics Port | Worker Type |
-|---------------|----------|--------------|-------------|
-| `gunicorn_simple.conf.py` | 8200 | 9090 | Sync |
-| `gunicorn_thread_worker.conf.py` | 8001 | 9091 | Thread |
-| `gunicorn_eventlet_async.conf.py` | 8005 | 9095 | Eventlet |
-| `gunicorn_gevent_async.conf.py` | 8006 | 9096 | Gevent |
-| `gunicorn_tornado_async.conf.py` | 8007 | 9097 | Tornado (⚠️ Not recommended) |
-| `gunicorn_redis_based.conf.py` | 8008 | 9098 | Sync + Redis |
-
-## Testing
-
-1. **Start a server:**
-   ```bash
-   gunicorn --config gunicorn_simple.conf.py app:app
-   ```
-
-2. **Generate traffic:**
-   ```bash
-   curl http://localhost:8200/
-   ```
-
-3. **Check metrics:**
-   ```bash
-   curl http://localhost:9090/metrics | grep gunicorn
-   ```
-
-## Worker Types Supported
-
-| Worker Class | Concurrency Model | Use Case |
-|--------------|-------------------|----------|
-| `PrometheusWorker` | Pre-fork | Simple, reliable, 1 request per worker |
-| `PrometheusThreadWorker` | Threads | Multi-threaded, good for I/O-bound apps |
-| `PrometheusEventletWorker` | Greenlets | Async, cooperative I/O |
-| `PrometheusGeventWorker` | Greenlets | Async, cooperative I/O |
-| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based async workers (⚠️ Not recommended) |
-
-## Features Demonstrated
-
-- ✅ **Worker Metrics:** Request counts, duration, memory, CPU, uptime
-- ✅ **Master Metrics:** Worker restart tracking, signal handling
-- ✅ **Multi-worker Support:** All Gunicorn worker types
-- ✅ **Redis Forwarding:** Metrics aggregation across processes
-- ✅ **Async Compatibility:** Works with async applications
-- ✅ **Production Ready:** Proper error handling and cleanup
+- **Single Server**: Use `gunicorn_basic.conf.py` (file-based storage)
+- **Multiple Servers**: Use `gunicorn_redis_integration.conf.py` (Redis storage)
+- **Migration/Testing**: Use `gunicorn_hybrid.conf.py` (Redis forwarding)

@@ -51,7 +51,7 @@ class BaseForwarder(ABC):
         try:
             from prometheus_client import generate_latest
 
-            from ..metrics import get_shared_registry
+            from ...metrics import get_shared_registry
 
             registry = get_shared_registry()
             metrics_data = generate_latest(registry).decode("utf-8")
@@ -72,7 +72,7 @@ class BaseForwarder(ABC):
             import glob
             import os
 
-            from ..config import config
+            from ...config import config
 
             # Check if cleanup is enabled
             if not config.cleanup_db_files:

@@ -6,7 +6,7 @@ import time
 
 from typing import Optional
 
-from ..config import config
+from ...config import config
 from .base import BaseForwarder
 
 

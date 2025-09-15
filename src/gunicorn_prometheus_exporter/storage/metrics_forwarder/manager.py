@@ -5,7 +5,7 @@ import logging
 from typing import Dict, List, Optional, Type
 
 from .base import BaseForwarder
-from .redis import RedisForwarder
+from .redis_forwarder import RedisForwarder
 
 
 logger = logging.getLogger(__name__)

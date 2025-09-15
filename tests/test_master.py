@@ -53,9 +53,40 @@ def master():
     return master
 
 
+def _create_mock_value_class():
+    """Create a mock value class that behaves like a simple float."""
+
+    class MockValueClass:
+        def __init__(self, *args, **kwargs):
+            self._value = 0.0
+            self._timestamp = 0.0
+            self.value = 0.0
+
+        def inc(self, amount=1):
+            self._value += amount
+            self.value = self._value
+
+        def set(self, value):
+            self._value = value
+            self.value = value
+
+        def get(self):
+            return self._value
+
+        def get_exemplar(self):
+            return None
+
+    return MockValueClass
+
+
 def test_master_hup(master):
     """Test that master HUP is tracked."""
-    with patch("os.fork", return_value=12345), patch("sys.exit") as exit_mock:
+    with (
+        patch("os.fork", return_value=12345),
+        patch("sys.exit") as exit_mock,
+        patch("prometheus_client.values.ValueClass") as mock_value_class,
+    ):
+        mock_value_class.return_value = _create_mock_value_class()()
         master.handle_hup()
 
         # Metric check
@@ -69,7 +100,12 @@ def test_master_hup(master):
 
 def test_master_ttin(master):
     """Test that master TTIN is tracked."""
-    with patch("os.fork", return_value=12345), patch("sys.exit") as exit_mock:
+    with (
+        patch("os.fork", return_value=12345),
+        patch("sys.exit") as exit_mock,
+        patch("prometheus_client.values.ValueClass") as mock_value_class,
+    ):
+        mock_value_class.return_value = _create_mock_value_class()()
         master.handle_ttin()
 
         # Metric check
@@ -83,7 +119,12 @@ def test_master_ttin(master):
 
 def test_master_ttou(master):
     """Test that master TTOU is tracked."""
-    with patch("os.fork", return_value=12345), patch("sys.exit") as exit_mock:
+    with (
+        patch("os.fork", return_value=12345),
+        patch("sys.exit") as exit_mock,
+        patch("prometheus_client.values.ValueClass") as mock_value_class,
+    ):
+        mock_value_class.return_value = _create_mock_value_class()()
         master.handle_ttou()
 
         # Metric check
@@ -114,7 +155,12 @@ def test_master_ttou(master):
 
 def test_master_usr1(master):
     """Test that master USR1 is tracked."""
-    with patch("os.fork", return_value=12345), patch("sys.exit") as exit_mock:
+    with (
+        patch("os.fork", return_value=12345),
+        patch("sys.exit") as exit_mock,
+        patch("prometheus_client.values.ValueClass") as mock_value_class,
+    ):
+        mock_value_class.return_value = _create_mock_value_class()()
         master.handle_usr1()
 
         # Metric check
@@ -128,7 +174,12 @@ def test_master_usr1(master):
 
 def test_master_usr2(master):
     """Test that master USR2 is tracked."""
-    with patch("os.fork", return_value=12345), patch("sys.exit") as exit_mock:
+    with (
+        patch("os.fork", return_value=12345),
+        patch("sys.exit") as exit_mock,
+        patch("prometheus_client.values.ValueClass") as mock_value_class,
+    ):
+        mock_value_class.return_value = _create_mock_value_class()()
         master.handle_usr2()
 
         # Metric check
@@ -148,7 +199,13 @@ def test_master_initialization(master):
 
 def test_multiple_signal_handlers(master):
     """Test that multiple signal handlers increment metrics correctly."""
-    with patch("os.fork", return_value=12345), patch("sys.exit"):
+    with (
+        patch("os.fork", return_value=12345),
+        patch("sys.exit"),
+        patch("prometheus_client.values.ValueClass") as mock_value_class,
+    ):
+        mock_value_class.return_value = _create_mock_value_class()()
+
         # Call multiple signal handlers
         master.handle_hup()
         master.handle_usr1()
@@ -172,7 +229,13 @@ def test_multiple_signal_handlers(master):
 
 def test_signal_handler_super_calls(master):
     """Test that signal handlers call their parent class methods."""
-    with patch("os.fork", return_value=12345), patch("sys.exit"):
+    with (
+        patch("os.fork", return_value=12345),
+        patch("sys.exit"),
+        patch("prometheus_client.values.ValueClass") as mock_value_class,
+    ):
+        mock_value_class.return_value = _create_mock_value_class()()
+
         # Mock all parent class methods using the correct import path
         with (
             patch.object(master.__class__.__bases__[0], "handle_hup") as mock_hup,
@@ -318,7 +381,13 @@ def test_signal_queuing_with_frame_parameter(master):
 
 def test_master_chld_signal_handling(master):
     """Test CHLD signal handling with proper parameters."""
-    with patch("os.fork", return_value=12345), patch("sys.exit") as exit_mock:
+    with (
+        patch("os.fork", return_value=12345),
+        patch("sys.exit") as exit_mock,
+        patch("prometheus_client.values.ValueClass") as mock_value_class,
+    ):
+        mock_value_class.return_value = _create_mock_value_class()()
+
         with patch.object(
             master.__class__.__bases__[0], "handle_chld"
         ) as mock_super_chld:
