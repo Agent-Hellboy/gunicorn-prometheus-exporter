@@ -25,6 +25,19 @@ class ConcreteForwarder(BaseForwarder):
         return True
 
 
+class FailingForwarder(BaseForwarder):
+    """Forwarder that fails to connect for testing."""
+
+    def _connect(self) -> bool:
+        return False
+
+    def _disconnect(self) -> None:
+        pass
+
+    def _forward_metrics(self, metrics_data: str) -> bool:
+        return False
+
+
 class TestBaseForwarder:
     """Test BaseForwarder abstract class."""
 
@@ -36,27 +49,260 @@ class TestBaseForwarder:
         assert forwarder.name == "ConcreteForwarder"
         assert forwarder._running is False
 
-    def test_start_not_implemented(self):
-        """Test start method works with concrete implementation."""
+    def test_init_custom_params(self):
+        """Test initialization with custom parameters."""
+        forwarder = ConcreteForwarder(forward_interval=60, name="CustomForwarder")
+
+        assert forwarder.forward_interval == 60
+        assert forwarder.name == "CustomForwarder"
+        assert forwarder._running is False
+
+    def test_generate_metrics_success(self):
+        """Test successful metrics generation."""
         forwarder = ConcreteForwarder()
 
-        result = forwarder.start()
-        assert result is True
+        with patch("prometheus_client.generate_latest") as mock_generate:
+            with patch(
+                "gunicorn_prometheus_exporter.metrics.get_shared_registry"
+            ) as mock_registry:
+                mock_registry.return_value = Mock()
+                mock_generate.return_value = b"test_metrics_data"
 
-    def test_stop_not_implemented(self):
-        """Test stop method works with concrete implementation."""
+                result = forwarder._generate_metrics()
+
+                assert result == "test_metrics_data"
+                mock_generate.assert_called_once()
+
+    def test_generate_metrics_empty(self):
+        """Test metrics generation with empty data."""
+        forwarder = ConcreteForwarder()
+
+        with patch("prometheus_client.generate_latest") as mock_generate:
+            with patch(
+                "gunicorn_prometheus_exporter.metrics.get_shared_registry"
+            ) as mock_registry:
+                mock_registry.return_value = Mock()
+                mock_generate.return_value = b"   \n  "
+
+                result = forwarder._generate_metrics()
+
+                assert result is None
+
+    def test_generate_metrics_exception(self):
+        """Test metrics generation with exception."""
+        forwarder = ConcreteForwarder()
+
+        with patch(
+            "prometheus_client.generate_latest", side_effect=Exception("Test error")
+        ):
+            result = forwarder._generate_metrics()
+
+            assert result is None
+
+    def test_cleanup_multiprocess_files_disabled(self):
+        """Test cleanup when disabled in config."""
+        forwarder = ConcreteForwarder()
+
+        with patch.dict("os.environ", {"CLEANUP_DB_FILES": "false"}):
+            result = forwarder._cleanup_multiprocess_files()
+
+            assert result is True
+
+    def test_cleanup_multiprocess_files_no_dir(self):
+        """Test cleanup when no multiprocess directory."""
+        forwarder = ConcreteForwarder()
+
+        with patch.dict("os.environ", {"CLEANUP_DB_FILES": "true"}):
+            with patch("os.environ", {}):
+                with patch("os.path.exists", return_value=False):
+                    result = forwarder._cleanup_multiprocess_files()
+
+                    assert result is True
+
+    def test_cleanup_multiprocess_files_no_files(self):
+        """Test cleanup when no DB files exist."""
+        forwarder = ConcreteForwarder()
+
+        with patch.dict("os.environ", {"CLEANUP_DB_FILES": "true"}):
+            with patch("os.environ", {"PROMETHEUS_MULTIPROC_DIR": "/tmp"}):
+                with patch("os.path.exists", return_value=True):
+                    with patch("glob.glob", return_value=[]):
+                        result = forwarder._cleanup_multiprocess_files()
+
+                        assert result is True
+
+    def test_cleanup_multiprocess_files_success(self):
+        """Test successful cleanup of DB files."""
+        forwarder = ConcreteForwarder()
+
+        with patch.dict("os.environ", {"CLEANUP_DB_FILES": "true"}):
+            with patch("os.environ", {"PROMETHEUS_MULTIPROC_DIR": "/tmp"}):
+                with patch("os.path.exists", return_value=True):
+                    with patch(
+                        "glob.glob", return_value=["/tmp/file1.db", "/tmp/file2.db"]
+                    ):
+                        with patch("os.remove") as mock_remove:
+                            result = forwarder._cleanup_multiprocess_files()
+
+                            assert result is True
+                            assert mock_remove.call_count == 2
+
+    def test_cleanup_multiprocess_files_remove_error(self):
+        """Test cleanup with file removal error."""
+        forwarder = ConcreteForwarder()
+
+        with patch.dict("os.environ", {"CLEANUP_DB_FILES": "true"}):
+            with patch("os.environ", {"PROMETHEUS_MULTIPROC_DIR": "/tmp"}):
+                with patch("os.path.exists", return_value=True):
+                    with patch("glob.glob", return_value=["/tmp/file1.db"]):
+                        with patch(
+                            "os.remove", side_effect=OSError("Permission denied")
+                        ):
+                            result = forwarder._cleanup_multiprocess_files()
+
+                            assert (
+                                result is True
+                            )  # Still returns True despite individual file errors
+
+    def test_cleanup_multiprocess_files_exception(self):
+        """Test cleanup with general exception."""
+        forwarder = ConcreteForwarder()
+
+        with patch.dict("os.environ", {"CLEANUP_DB_FILES": "true"}):
+            with patch("os.environ", side_effect=Exception("Config error")):
+                result = forwarder._cleanup_multiprocess_files()
+
+                # The method handles the exception gracefully and returns True
+                assert result is True
+
+    def test_start_success(self):
+        """Test successful start."""
+        forwarder = ConcreteForwarder()
+
+        with patch.object(forwarder, "_connect", return_value=True):
+            result = forwarder.start()
+
+            assert result is True
+            assert forwarder._running is True
+            assert forwarder._thread is not None
+
+    def test_start_already_running(self):
+        """Test start when already running."""
         forwarder = ConcreteForwarder()
         forwarder._running = True
 
-        forwarder.stop()
-        assert forwarder._running is False
+        result = forwarder.start()
 
-    def test_forward_not_implemented(self):
-        """Test _forward_metrics method works with concrete implementation."""
+        assert result is False
+
+    def test_start_connect_failure(self):
+        """Test start with connection failure."""
         forwarder = ConcreteForwarder()
 
-        result = forwarder._forward_metrics("test_data")
+        with patch.object(forwarder, "_connect", return_value=False):
+            result = forwarder.start()
+
+            assert result is False
+            assert forwarder._running is False
+
+    def test_stop_not_running(self):
+        """Test stop when not running."""
+        forwarder = ConcreteForwarder()
+
+        forwarder.stop()
+
+        assert forwarder._running is False
+
+    def test_stop_success(self):
+        """Test successful stop."""
+        forwarder = ConcreteForwarder()
+        forwarder._running = True
+        forwarder._thread = Mock()
+        forwarder._thread.is_alive.return_value = False
+
+        with patch.object(forwarder, "_disconnect"):
+            forwarder.stop()
+
+            assert forwarder._running is False
+
+    def test_stop_thread_timeout(self):
+        """Test stop with thread timeout."""
+        forwarder = ConcreteForwarder()
+        forwarder._running = True
+        forwarder._thread = Mock()
+        forwarder._thread.is_alive.return_value = True
+
+        with patch.object(forwarder, "_disconnect"):
+            forwarder.stop()
+
+            assert forwarder._running is False
+            forwarder._thread.join.assert_called_once_with(timeout=5)
+
+    def test_stop_disconnect_error(self):
+        """Test stop with disconnect error."""
+        forwarder = ConcreteForwarder()
+        forwarder._running = True
+        forwarder._thread = Mock()
+        forwarder._thread.is_alive.return_value = False
+
+        with patch.object(
+            forwarder, "_disconnect", side_effect=Exception("Disconnect error")
+        ):
+            forwarder.stop()
+
+            assert forwarder._running is False
+
+    def test_is_running_true(self):
+        """Test is_running when running."""
+        forwarder = ConcreteForwarder()
+        forwarder._running = True
+        forwarder._thread = Mock()
+        forwarder._thread.is_alive.return_value = True
+
+        result = forwarder.is_running()
+
         assert result is True
+
+    def test_is_running_false(self):
+        """Test is_running when not running."""
+        forwarder = ConcreteForwarder()
+        forwarder._running = False
+
+        result = forwarder.is_running()
+
+        assert result is False
+
+    def test_is_running_no_thread(self):
+        """Test is_running when no thread."""
+        forwarder = ConcreteForwarder()
+        forwarder._running = True
+        forwarder._thread = None
+
+        result = forwarder.is_running()
+
+        assert result is None
+
+    def test_get_status(self):
+        """Test get_status method."""
+        forwarder = ConcreteForwarder()
+        forwarder._thread = Mock()
+        forwarder._thread.is_alive.return_value = True
+
+        status = forwarder.get_status()
+
+        assert isinstance(status, dict)
+        assert status["name"] == "ConcreteForwarder"
+        assert status["forward_interval"] == 30
+        assert status["thread_alive"] is True
+
+    def test_get_status_no_thread(self):
+        """Test get_status when no thread."""
+        forwarder = ConcreteForwarder()
+        forwarder._thread = None
+
+        status = forwarder.get_status()
+
+        assert status["thread_alive"] is False
 
 
 class TestRedisForwarder:
@@ -223,15 +469,166 @@ class TestForwarderManager:
         assert manager._forwarders == {}
         assert manager._forwarders == {}
 
-    def test_register_forwarder(self):
-        """Test registering a forwarder."""
+    def test_add_forwarder_new(self):
+        """Test adding a new forwarder."""
         manager = ForwarderManager()
         mock_forwarder = Mock()
 
-        manager.add_forwarder("test", mock_forwarder)
+        result = manager.add_forwarder("test", mock_forwarder)
 
+        assert result is True
         assert "test" in manager._forwarders
         assert manager._forwarders["test"] == mock_forwarder
+
+    def test_add_forwarder_existing(self):
+        """Test adding a forwarder that already exists."""
+        manager = ForwarderManager()
+        mock_forwarder1 = Mock()
+        mock_forwarder2 = Mock()
+        manager._forwarders["test"] = mock_forwarder1
+
+        with patch.object(manager, "stop_forwarder") as mock_stop:
+            result = manager.add_forwarder("test", mock_forwarder2)
+
+            assert result is True
+            mock_stop.assert_called_once_with("test")
+            assert manager._forwarders["test"] == mock_forwarder2
+
+    def test_create_forwarder_success(self):
+        """Test creating a forwarder successfully."""
+        manager = ForwarderManager()
+
+        with patch.object(manager, "add_forwarder", return_value=True) as mock_add:
+            result = manager.create_forwarder(
+                "redis", "test_redis", redis_host="localhost"
+            )
+
+            assert result is True
+            mock_add.assert_called_once()
+
+    def test_create_forwarder_unknown_type(self):
+        """Test creating a forwarder with unknown type."""
+        manager = ForwarderManager()
+
+        result = manager.create_forwarder("unknown", "test")
+
+        assert result is False
+
+    def test_create_forwarder_exception(self):
+        """Test creating a forwarder with exception."""
+        manager = ForwarderManager()
+
+        with patch.object(
+            manager, "add_forwarder", side_effect=Exception("Test error")
+        ):
+            result = manager.create_forwarder("redis", "test")
+
+            assert result is False
+
+    def test_start_forwarder_success(self):
+        """Test starting a forwarder successfully."""
+        manager = ForwarderManager()
+        mock_forwarder = Mock()
+        mock_forwarder.start.return_value = True
+        manager._forwarders["test"] = mock_forwarder
+
+        result = manager.start_forwarder("test")
+
+        assert result is True
+        mock_forwarder.start.assert_called_once()
+
+    def test_start_forwarder_not_found(self):
+        """Test starting a non-existent forwarder."""
+        manager = ForwarderManager()
+
+        result = manager.start_forwarder("nonexistent")
+
+        assert result is False
+
+    def test_stop_forwarder_success(self):
+        """Test stopping a forwarder successfully."""
+        manager = ForwarderManager()
+        mock_forwarder = Mock()
+        manager._forwarders["test"] = mock_forwarder
+
+        result = manager.stop_forwarder("test")
+
+        assert result is True
+        mock_forwarder.stop.assert_called_once()
+
+    def test_stop_forwarder_not_found(self):
+        """Test stopping a non-existent forwarder."""
+        manager = ForwarderManager()
+
+        result = manager.stop_forwarder("nonexistent")
+
+        assert result is False
+
+    def test_remove_forwarder_success(self):
+        """Test removing a forwarder successfully."""
+        manager = ForwarderManager()
+        mock_forwarder = Mock()
+        manager._forwarders["test"] = mock_forwarder
+
+        with patch.object(manager, "stop_forwarder", return_value=True) as mock_stop:
+            result = manager.remove_forwarder("test")
+
+            assert result is True
+            mock_stop.assert_called_once_with("test")
+            assert "test" not in manager._forwarders
+
+    def test_remove_forwarder_not_found(self):
+        """Test removing a non-existent forwarder."""
+        manager = ForwarderManager()
+
+        result = manager.remove_forwarder("nonexistent")
+
+        assert result is False
+
+    def test_start_all_success(self):
+        """Test starting all forwarders successfully."""
+        manager = ForwarderManager()
+        mock_forwarder1 = Mock()
+        mock_forwarder1.start.return_value = True
+        mock_forwarder2 = Mock()
+        mock_forwarder2.start.return_value = True
+        manager._forwarders["test1"] = mock_forwarder1
+        manager._forwarders["test2"] = mock_forwarder2
+
+        result = manager.start_all()
+
+        assert result is True
+        mock_forwarder1.start.assert_called_once()
+        mock_forwarder2.start.assert_called_once()
+
+    def test_start_all_partial_failure(self):
+        """Test starting all forwarders with partial failure."""
+        manager = ForwarderManager()
+        mock_forwarder1 = Mock()
+        mock_forwarder1.start.return_value = True
+        mock_forwarder2 = Mock()
+        mock_forwarder2.start.return_value = False
+        manager._forwarders["test1"] = mock_forwarder1
+        manager._forwarders["test2"] = mock_forwarder2
+
+        result = manager.start_all()
+
+        assert result is False
+        mock_forwarder1.start.assert_called_once()
+        mock_forwarder2.start.assert_called_once()
+
+    def test_stop_all(self):
+        """Test stopping all forwarders."""
+        manager = ForwarderManager()
+        mock_forwarder1 = Mock()
+        mock_forwarder2 = Mock()
+        manager._forwarders["test1"] = mock_forwarder1
+        manager._forwarders["test2"] = mock_forwarder2
+
+        manager.stop_all()
+
+        mock_forwarder1.stop.assert_called_once()
+        mock_forwarder2.stop.assert_called_once()
 
     def test_get_forwarder(self):
         """Test getting a forwarder."""
@@ -250,33 +647,6 @@ class TestForwarderManager:
         result = manager.get_forwarder("nonexistent")
 
         assert result is None
-
-    def test_start_all(self):
-        """Test starting all forwarders."""
-        manager = ForwarderManager()
-        mock_forwarder1 = Mock()
-        mock_forwarder2 = Mock()
-        manager._forwarders["test1"] = mock_forwarder1
-        manager._forwarders["test2"] = mock_forwarder2
-
-        manager.start_all()
-
-        mock_forwarder1.start.assert_called_once()
-        mock_forwarder2.start.assert_called_once()
-
-    def test_stop_all(self):
-        """Test stopping all forwarders."""
-        manager = ForwarderManager()
-        mock_forwarder1 = Mock()
-        mock_forwarder2 = Mock()
-        manager._forwarders["test1"] = mock_forwarder1
-        manager._forwarders["test2"] = mock_forwarder2
-        manager._running = True
-
-        manager.stop_all()
-
-        mock_forwarder1.stop.assert_called_once()
-        mock_forwarder2.stop.assert_called_once()
 
     def test_list_forwarders(self):
         """Test listing forwarders."""
@@ -303,6 +673,30 @@ class TestForwarderManager:
 
         assert isinstance(status, dict)
         assert "test" in status
+        assert status["test"] == {"running": True}
+
+    def test_get_running_forwarders(self):
+        """Test getting running forwarders."""
+        manager = ForwarderManager()
+        mock_forwarder1 = Mock()
+        mock_forwarder1.is_running.return_value = True
+        mock_forwarder2 = Mock()
+        mock_forwarder2.is_running.return_value = False
+        manager._forwarders["running"] = mock_forwarder1
+        manager._forwarders["stopped"] = mock_forwarder2
+
+        running = manager.get_running_forwarders()
+
+        assert "running" in running
+        assert "stopped" not in running
+        assert len(running) == 1
+
+    def test_get_available_types(self):
+        """Test getting available forwarder types."""
+        types = ForwarderManager.get_available_types()
+
+        assert isinstance(types, list)
+        assert "redis" in types
 
 
 class TestModuleFunctions:
@@ -322,6 +716,55 @@ class TestModuleFunctions:
 
         assert isinstance(result, ForwarderManager)
         assert result._forwarders == {}
+
+    def test_get_forwarder_manager_singleton(self):
+        """Test that get_forwarder_manager returns singleton."""
+        manager1 = get_forwarder_manager()
+        manager2 = get_forwarder_manager()
+
+        assert manager1 is manager2
+
+    def test_create_redis_forwarder_success(self):
+        """Test create_redis_forwarder function success."""
+        from gunicorn_prometheus_exporter.storage.metrics_forwarder.manager import (
+            create_redis_forwarder,
+        )
+
+        with patch(
+            "gunicorn_prometheus_exporter.storage.metrics_forwarder.manager.get_forwarder_manager"
+        ) as mock_get_manager:
+            mock_manager = Mock()
+            mock_manager.create_forwarder.return_value = True
+            mock_get_manager.return_value = mock_manager
+
+            result = create_redis_forwarder(
+                "test_redis", redis_host="localhost", redis_port=6379
+            )
+
+            assert result is True
+            mock_manager.create_forwarder.assert_called_once_with(
+                "redis", "test_redis", redis_host="localhost", redis_port=6379
+            )
+
+    def test_create_redis_forwarder_default_name(self):
+        """Test create_redis_forwarder with default name."""
+        from gunicorn_prometheus_exporter.storage.metrics_forwarder.manager import (
+            create_redis_forwarder,
+        )
+
+        with patch(
+            "gunicorn_prometheus_exporter.storage.metrics_forwarder.manager.get_forwarder_manager"
+        ) as mock_get_manager:
+            mock_manager = Mock()
+            mock_manager.create_forwarder.return_value = True
+            mock_get_manager.return_value = mock_manager
+
+            result = create_redis_forwarder()
+
+            assert result is True
+            mock_manager.create_forwarder.assert_called_once_with(
+                "redis", "redis", **{}
+            )
 
 
 class TestMetricsForwarderIntegration:

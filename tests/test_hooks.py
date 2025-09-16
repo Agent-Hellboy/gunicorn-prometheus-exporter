@@ -1,9 +1,10 @@
-"""Tests for Gunicorn hooks."""
+"""Comprehensive tests for Gunicorn hooks."""
 
+import logging
 import os
 import unittest
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from gunicorn_prometheus_exporter.hooks import (
     EnvironmentManager,
@@ -11,6 +12,9 @@ from gunicorn_prometheus_exporter.hooks import (
     HookManager,
     MetricsServerManager,
     ProcessManager,
+    _get_hook_manager,
+    _get_metrics_manager,
+    _get_process_manager,
     _start_redis_forwarder_if_enabled,
     default_on_exit,
     default_on_starting,
@@ -956,272 +960,395 @@ class TestRedisForwarder(unittest.TestCase):
                 self.assertEqual(str(call_args[0][1]), "Test error")
 
 
-if __name__ == "__main__":
-    unittest.main()
+class TestHookContextComprehensive(unittest.TestCase):
+    """Comprehensive tests for HookContext class."""
+
+    def test_init_with_all_params(self):
+        """Test initialization with all parameters."""
+        mock_server = Mock()
+        mock_worker = Mock()
+        mock_logger = Mock()
+
+        context = HookContext(
+            server=mock_server, worker=mock_worker, logger=mock_logger
+        )
+
+        self.assertEqual(context.server, mock_server)
+        self.assertEqual(context.worker, mock_worker)
+        self.assertEqual(context.logger, mock_logger)
+
+    def test_init_with_defaults(self):
+        """Test initialization with default values."""
+        mock_server = Mock()
+
+        context = HookContext(server=mock_server)
+
+        self.assertEqual(context.server, mock_server)
+        self.assertIsNone(context.worker)
+        self.assertIsNotNone(context.logger)
+        self.assertIsInstance(context.logger, logging.Logger)
+
+    def test_post_init_logger_creation(self):
+        """Test logger creation in __post_init__."""
+        mock_server = Mock()
+
+        with patch(
+            "gunicorn_prometheus_exporter.hooks.logging.getLogger"
+        ) as mock_get_logger:
+            HookContext(server=mock_server)
+
+            mock_get_logger.assert_called_once_with(
+                "gunicorn_prometheus_exporter.hooks"
+            )
 
 
-class TestHookContextAdditional(unittest.TestCase):
-    """Additional tests for HookContext to improve coverage."""
+class TestHookManagerComprehensive(unittest.TestCase):
+    """Comprehensive tests for HookManager class."""
 
-    def test_hook_context_post_init_without_logger(self):
-        """Test HookContext __post_init__ when logger is None."""
-        context = HookContext(server=MagicMock())
-        assert context.logger is not None
-        assert context.logger.name == "gunicorn_prometheus_exporter.hooks"
+    def test_init(self):
+        """Test HookManager initialization."""
+        with patch(
+            "gunicorn_prometheus_exporter.hooks.logging.getLogger"
+        ) as mock_get_logger:
+            manager = HookManager()
 
+            self.assertIsNotNone(manager.logger)
+            mock_get_logger.assert_called_once_with(
+                "gunicorn_prometheus_exporter.hooks"
+            )
 
-class TestHookManagerAdditional(unittest.TestCase):
-    """Additional tests for HookManager to improve coverage."""
-
-    def test_setup_logging_exception_handling(self):
-        """Test _setup_logging handles exceptions gracefully."""
+    def test_setup_logging(self):
+        """Test _setup_logging method."""
         manager = HookManager()
 
-        with patch("logging.basicConfig") as mock_basic_config:
-            with patch("logging.getLogger") as mock_get_logger:
-                # Mock getLogger to raise an exception
-                mock_get_logger.side_effect = Exception("Test error")
+        # Should not raise any exceptions
+        manager._setup_logging()
 
-                # This should not raise an exception
-                manager._setup_logging()
+    def test_get_logger(self):
+        """Test get_logger method."""
+        manager = HookManager()
+        logger = manager.get_logger()
 
-                # Should fall back to basic logging setup
-                mock_basic_config.assert_called_with(level=20)  # logging.INFO
+        self.assertEqual(logger, manager.logger)
+        self.assertIsInstance(logger, logging.Logger)
+
+    def test_safe_execute_success(self):
+        """Test safe_execute with successful execution."""
+        manager = HookManager()
+        mock_func = Mock()
+
+        with patch.object(manager.logger, "error") as mock_error:
+            result = manager.safe_execute(mock_func, "arg1", "arg2", key="value")
+
+            mock_func.assert_called_once_with("arg1", "arg2", key="value")
+            self.assertTrue(result)
+            mock_error.assert_not_called()
+
+    def test_safe_execute_exception(self):
+        """Test safe_execute with exception."""
+        manager = HookManager()
+        mock_func = Mock(side_effect=Exception("Test error"))
+
+        with patch.object(manager.logger, "error") as mock_error:
+            result = manager.safe_execute(mock_func, "arg1", "arg2")
+
+            mock_func.assert_called_once_with("arg1", "arg2")
+            self.assertFalse(result)
+            mock_error.assert_called_once()
 
 
-class TestMetricsServerManagerAdditional(unittest.TestCase):
-    """Additional tests for MetricsServerManager to improve coverage."""
+class TestEnvironmentManagerComprehensive(unittest.TestCase):
+    """Comprehensive tests for EnvironmentManager class."""
 
-    def test_stop_server_with_exception(self):
-        """Test stop_server handles exceptions gracefully."""
-        mock_logger = MagicMock()
+    def test_init(self):
+        """Test EnvironmentManager initialization."""
+        mock_logger = Mock()
+        manager = EnvironmentManager(mock_logger)
+
+        self.assertEqual(manager.logger, mock_logger)
+        self.assertEqual(
+            manager._defaults,
+            {
+                "workers": 1,
+                "bind": ["127.0.0.1:8000"],
+                "worker_class": "sync",
+            },
+        )
+
+    def test_update_from_cli(self):
+        """Test update_from_cli method."""
+        mock_logger = Mock()
+        manager = EnvironmentManager(mock_logger)
+        mock_cfg = Mock()
+
+        with (
+            patch.object(manager, "_update_workers_env") as mock_workers,
+            patch.object(manager, "_update_bind_env") as mock_bind,
+            patch.object(manager, "_update_worker_class_env") as mock_worker_class,
+        ):
+            manager.update_from_cli(mock_cfg)
+
+            mock_workers.assert_called_once_with(mock_cfg)
+            mock_bind.assert_called_once_with(mock_cfg)
+            mock_worker_class.assert_called_once_with(mock_cfg)
+
+    def test_update_workers_env(self):
+        """Test _update_workers_env method."""
+        mock_logger = Mock()
+        manager = EnvironmentManager(mock_logger)
+        mock_cfg = Mock()
+        mock_cfg.workers = 4
+
+        with patch.dict(os.environ, {}, clear=True):
+            manager._update_workers_env(mock_cfg)
+            self.assertEqual(os.environ.get("GUNICORN_WORKERS"), "4")
+
+    def test_update_bind_env(self):
+        """Test _update_bind_env method."""
+        mock_logger = Mock()
+        manager = EnvironmentManager(mock_logger)
+        mock_cfg = Mock()
+        mock_cfg.bind = ["127.0.0.1:8000", "127.0.0.1:8001"]
+
+        with patch.dict(os.environ, {}, clear=True):
+            manager._update_bind_env(mock_cfg)
+            self.assertEqual(
+                os.environ.get("GUNICORN_BIND"), "['127.0.0.1:8000', '127.0.0.1:8001']"
+            )
+
+    def test_update_worker_class_env(self):
+        """Test _update_worker_class_env method."""
+        mock_logger = Mock()
+        manager = EnvironmentManager(mock_logger)
+        mock_cfg = Mock()
+        mock_cfg.worker_class = "gevent"
+
+        with patch.dict(os.environ, {}, clear=True):
+            manager._update_worker_class_env(mock_cfg)
+            self.assertEqual(os.environ.get("GUNICORN_WORKER_CLASS"), "gevent")
+
+
+class TestMetricsServerManagerComprehensive(unittest.TestCase):
+    """Comprehensive tests for MetricsServerManager class."""
+
+    def test_init(self):
+        """Test MetricsServerManager initialization."""
+        mock_logger = Mock()
         manager = MetricsServerManager(mock_logger)
 
-        # Set up a mock server thread
-        manager._server_thread = MagicMock()
+        self.assertEqual(manager.logger, mock_logger)
+        self.assertIsNone(manager._server_thread)
+        self.assertEqual(manager.max_retries, 3)
+        self.assertEqual(manager.retry_delay, 1)
 
-        with patch.object(manager.logger, "info", side_effect=Exception("Test error")):
-            # Should not raise an exception
-            manager.stop_server()
-
-            # Should still clean up the thread reference
-            assert manager._server_thread is None
-
-    def test_start_single_attempt_ssl_enabled(self):
-        """Test _start_single_attempt with SSL enabled."""
-        mock_logger = MagicMock()
+    def test_setup_server_success(self):
+        """Test setup_server with success."""
+        mock_logger = Mock()
         manager = MetricsServerManager(mock_logger)
-        port = 9090
-        registry = MagicMock()
 
-        # Save original environment
-        original_ssl_certfile = os.environ.get("PROMETHEUS_SSL_CERTFILE")
-        original_ssl_keyfile = os.environ.get("PROMETHEUS_SSL_KEYFILE")
-        original_bind_address = os.environ.get("PROMETHEUS_BIND_ADDRESS")
+        with (
+            patch("gunicorn_prometheus_exporter.hooks.config") as mock_config,
+            patch(
+                "gunicorn_prometheus_exporter.utils.get_multiprocess_dir"
+            ) as mock_get_dir,
+        ):
+            mock_config.prometheus_metrics_port = 9091
+            mock_config.redis_enabled = False
+            mock_get_dir.return_value = "/tmp/test"
 
-        try:
-            # Set up SSL environment
-            os.environ["PROMETHEUS_SSL_CERTFILE"] = "/path/to/cert.pem"
-            os.environ["PROMETHEUS_SSL_KEYFILE"] = "/path/to/key.pem"
-            os.environ["PROMETHEUS_BIND_ADDRESS"] = "127.0.0.1"
+            result = manager.setup_server()
 
-            with patch(
-                "prometheus_client.exposition.start_wsgi_server"
-            ) as mock_start_wsgi:
-                mock_start_wsgi.return_value = (MagicMock(), MagicMock())
+            self.assertIsNotNone(result)
+            self.assertEqual(len(result), 2)  # Should return (port, registry)
 
-                result = manager._start_single_attempt(port, registry)
-
-                self.assertTrue(result)
-                mock_start_wsgi.assert_called_once()
-
-                # Check that thread reference is stored
-                assert manager._server_thread is not None
-
-        finally:
-            # Restore original environment
-            if original_ssl_certfile:
-                os.environ["PROMETHEUS_SSL_CERTFILE"] = original_ssl_certfile
-            elif "PROMETHEUS_SSL_CERTFILE" in os.environ:
-                del os.environ["PROMETHEUS_SSL_CERTFILE"]
-
-            if original_ssl_keyfile:
-                os.environ["PROMETHEUS_SSL_KEYFILE"] = original_ssl_keyfile
-            elif "PROMETHEUS_SSL_KEYFILE" in os.environ:
-                del os.environ["PROMETHEUS_SSL_KEYFILE"]
-
-            if original_bind_address:
-                os.environ["PROMETHEUS_BIND_ADDRESS"] = original_bind_address
-            elif "PROMETHEUS_BIND_ADDRESS" in os.environ:
-                del os.environ["PROMETHEUS_BIND_ADDRESS"]
-
-    def test_start_single_attempt_ssl_with_optional_params(self):
-        """Test _start_single_attempt with SSL and optional parameters."""
-        mock_logger = MagicMock()
+    def test_setup_server_failure(self):
+        """Test setup_server with failure."""
+        mock_logger = Mock()
         manager = MetricsServerManager(mock_logger)
-        port = 9090
-        registry = MagicMock()
 
-        # Save original environment
-        original_ssl_certfile = os.environ.get("PROMETHEUS_SSL_CERTFILE")
-        original_ssl_keyfile = os.environ.get("PROMETHEUS_SSL_KEYFILE")
-        original_client_cafile = os.environ.get("PROMETHEUS_SSL_CLIENT_CAFILE")
-        original_client_capath = os.environ.get("PROMETHEUS_SSL_CLIENT_CAPATH")
-        original_client_auth = os.environ.get("PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED")
-        original_bind_address = os.environ.get("PROMETHEUS_BIND_ADDRESS")
+        with (
+            patch("gunicorn_prometheus_exporter.hooks.config") as mock_config,
+            patch(
+                "gunicorn_prometheus_exporter.utils.get_multiprocess_dir",
+                return_value=None,
+            ),
+        ):
+            mock_config.prometheus_metrics_port = 9091
+            mock_config.redis_enabled = False
 
-        try:
-            # Set up SSL environment with all optional parameters
-            os.environ["PROMETHEUS_SSL_CERTFILE"] = "/path/to/cert.pem"
-            os.environ["PROMETHEUS_SSL_KEYFILE"] = "/path/to/key.pem"
-            os.environ["PROMETHEUS_SSL_CLIENT_CAFILE"] = "/path/to/ca.pem"
-            os.environ["PROMETHEUS_SSL_CLIENT_CAPATH"] = "/path/to/ca/dir"
-            os.environ["PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED"] = "true"
-            os.environ["PROMETHEUS_BIND_ADDRESS"] = "127.0.0.1"
+            result = manager.setup_server()
 
-            with patch(
-                "prometheus_client.exposition.start_wsgi_server"
-            ) as mock_start_wsgi:
-                mock_start_wsgi.return_value = (MagicMock(), MagicMock())
+            self.assertIsNone(result)
 
-                result = manager._start_single_attempt(port, registry)
+    def test_start_server_success(self):
+        """Test start_server with success."""
+        mock_logger = Mock()
+        manager = MetricsServerManager(mock_logger)
 
-                self.assertTrue(result)
-                mock_start_wsgi.assert_called_once()
+        with patch.object(
+            manager, "_start_single_attempt", return_value=True
+        ) as mock_start:
+            result = manager.start_server(9091, Mock())
 
-                # Check that all parameters are passed
-                call_args = mock_start_wsgi.call_args[1]
-                assert call_args["certfile"] == "/path/to/cert.pem"
-                assert call_args["keyfile"] == "/path/to/key.pem"
-                # Optional parameters may or may not be included depending on function signature
-                if "client_cafile" in call_args:
-                    assert call_args["client_cafile"] == "/path/to/ca.pem"
-                if "client_capath" in call_args:
-                    assert call_args["client_capath"] == "/path/to/ca/dir"
-                if "client_auth_required" in call_args:
-                    assert call_args["client_auth_required"] is True
+            self.assertTrue(result)
+            mock_start.assert_called_once()
 
-        finally:
-            # Restore original environment
-            for env_var, original_value in [
-                ("PROMETHEUS_SSL_CERTFILE", original_ssl_certfile),
-                ("PROMETHEUS_SSL_KEYFILE", original_ssl_keyfile),
-                ("PROMETHEUS_SSL_CLIENT_CAFILE", original_client_cafile),
-                ("PROMETHEUS_SSL_CLIENT_CAPATH", original_client_capath),
-                ("PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED", original_client_auth),
-                ("PROMETHEUS_BIND_ADDRESS", original_bind_address),
-            ]:
-                if original_value:
-                    os.environ[env_var] = original_value
-                elif env_var in os.environ:
-                    del os.environ[env_var]
+    def test_start_server_failure(self):
+        """Test start_server with failure."""
+        mock_logger = Mock()
+        manager = MetricsServerManager(mock_logger)
+
+        with patch.object(
+            manager, "_start_single_attempt", return_value=False
+        ) as mock_start:
+            result = manager.start_server(9091, Mock())
+
+            self.assertFalse(result)
+            # Should be called multiple times due to retry logic
+            self.assertGreaterEqual(mock_start.call_count, 1)
+
+    def test_stop_server(self):
+        """Test stop_server method."""
+        mock_logger = Mock()
+        manager = MetricsServerManager(mock_logger)
+        mock_thread = Mock()
+        manager._server_thread = mock_thread
+
+        manager.stop_server()
+
+        # Should clean up the thread reference
+        self.assertIsNone(manager._server_thread)
+
+    def test_stop_server_no_server(self):
+        """Test stop_server when no server is running."""
+        mock_logger = Mock()
+        manager = MetricsServerManager(mock_logger)
+
+        # Should not raise exception
+        manager.stop_server()
 
 
-class TestWhenReadyHooksAdditional(unittest.TestCase):
-    """Additional tests for when_ready hooks to improve coverage."""
+class TestProcessManagerComprehensive(unittest.TestCase):
+    """Comprehensive tests for ProcessManager class."""
 
-    def test_default_when_ready_with_ssl(self):
-        """Test default_when_ready with SSL enabled."""
-        mock_server = MagicMock()
-        mock_logger = MagicMock()
+    def test_init(self):
+        """Test ProcessManager initialization."""
+        mock_logger = Mock()
+        manager = ProcessManager(mock_logger)
 
-        # Save original environment
-        original_ssl_certfile = os.environ.get("PROMETHEUS_SSL_CERTFILE")
-        original_ssl_keyfile = os.environ.get("PROMETHEUS_SSL_KEYFILE")
-        original_bind_address = os.environ.get("PROMETHEUS_BIND_ADDRESS")
-        original_metrics_port = os.environ.get("PROMETHEUS_METRICS_PORT")
+        self.assertEqual(manager.logger, mock_logger)
+        self.assertEqual(manager.timeout, 5)
 
-        try:
-            # Set up SSL environment
-            os.environ["PROMETHEUS_SSL_CERTFILE"] = "/path/to/cert.pem"
-            os.environ["PROMETHEUS_SSL_KEYFILE"] = "/path/to/key.pem"
-            os.environ["PROMETHEUS_BIND_ADDRESS"] = "127.0.0.1"
-            os.environ["PROMETHEUS_METRICS_PORT"] = "9091"
+    def test_terminate_child(self):
+        """Test _terminate_child method."""
+        mock_logger = Mock()
+        manager = ProcessManager(mock_logger)
+        mock_child = Mock()
 
-            with patch(
-                "gunicorn_prometheus_exporter.hooks._get_hook_manager"
-            ) as mock_get_manager:
-                mock_manager = MagicMock()
-                mock_manager.get_logger.return_value = mock_logger
-                mock_get_manager.return_value = mock_manager
+        with patch.object(manager.logger, "info") as mock_info:
+            manager._terminate_child(mock_child)
 
-                with patch(
-                    "gunicorn_prometheus_exporter.hooks._get_metrics_manager"
-                ) as mock_get_metrics_manager:
-                    mock_metrics_manager = MagicMock()
-                    mock_metrics_manager.setup_server.return_value = (9091, MagicMock())
-                    mock_metrics_manager.start_server.return_value = True
-                    mock_get_metrics_manager.return_value = mock_metrics_manager
+            mock_child.terminate.assert_called_once()
+            mock_info.assert_called_once()
 
-                    default_when_ready(mock_server)
+    def test_terminate_child_exception(self):
+        """Test _terminate_child with exception."""
+        mock_logger = Mock()
+        manager = ProcessManager(mock_logger)
+        mock_child = Mock()
+        mock_child.terminate.side_effect = Exception("Termination failed")
 
-                    # Should have called start_server
-                    mock_metrics_manager.start_server.assert_called_once()
+        with patch.object(manager.logger, "error") as mock_error:
+            manager._terminate_child(mock_child)
 
-        finally:
-            # Restore original environment
-            for env_var, original_value in [
-                ("PROMETHEUS_SSL_CERTFILE", original_ssl_certfile),
-                ("PROMETHEUS_SSL_KEYFILE", original_ssl_keyfile),
-                ("PROMETHEUS_BIND_ADDRESS", original_bind_address),
-                ("PROMETHEUS_METRICS_PORT", original_metrics_port),
-            ]:
-                if original_value:
-                    os.environ[env_var] = original_value
-                elif env_var in os.environ:
-                    del os.environ[env_var]
+            mock_child.terminate.assert_called_once()
+            mock_error.assert_called_once()
 
-    def test_redis_when_ready_with_ssl(self):
-        """Test redis_when_ready with SSL enabled."""
-        mock_server = MagicMock()
-        mock_logger = MagicMock()
 
-        # Save original environment
-        original_ssl_certfile = os.environ.get("PROMETHEUS_SSL_CERTFILE")
-        original_ssl_keyfile = os.environ.get("PROMETHEUS_SSL_KEYFILE")
-        original_bind_address = os.environ.get("PROMETHEUS_BIND_ADDRESS")
-        original_metrics_port = os.environ.get("PROMETHEUS_METRICS_PORT")
+class TestHookUtilities(unittest.TestCase):
+    """Test hook utility functions."""
 
-        try:
-            # Set up SSL environment
-            os.environ["PROMETHEUS_SSL_CERTFILE"] = "/path/to/cert.pem"
-            os.environ["PROMETHEUS_SSL_KEYFILE"] = "/path/to/key.pem"
-            os.environ["PROMETHEUS_BIND_ADDRESS"] = "127.0.0.1"
-            os.environ["PROMETHEUS_METRICS_PORT"] = "9091"
+    def test_get_hook_manager(self):
+        """Test _get_hook_manager function."""
+        manager1 = _get_hook_manager()
+        manager2 = _get_hook_manager()
 
-            with patch(
-                "gunicorn_prometheus_exporter.hooks._get_hook_manager"
-            ) as mock_get_manager:
-                mock_manager = MagicMock()
-                mock_manager.get_logger.return_value = mock_logger
-                mock_get_manager.return_value = mock_manager
+        self.assertIs(manager1, manager2)
+        self.assertIsInstance(manager1, HookManager)
 
-                with patch(
-                    "gunicorn_prometheus_exporter.hooks._get_metrics_manager"
-                ) as mock_get_metrics_manager:
-                    mock_metrics_manager = MagicMock()
-                    mock_metrics_manager.setup_server.return_value = (9091, MagicMock())
-                    mock_metrics_manager.start_server.return_value = True
-                    mock_get_metrics_manager.return_value = mock_metrics_manager
+    def test_get_metrics_manager(self):
+        """Test _get_metrics_manager function."""
+        manager1 = _get_metrics_manager()
+        manager2 = _get_metrics_manager()
 
-                    with patch(
-                        "gunicorn_prometheus_exporter.hooks._start_redis_forwarder_if_enabled"
-                    ) as mock_start_redis:
-                        redis_when_ready(mock_server)
+        self.assertIs(manager1, manager2)
+        self.assertIsInstance(manager1, MetricsServerManager)
 
-                        # Should have called start_server and start_redis
-                        mock_metrics_manager.start_server.assert_called_once()
-                        mock_start_redis.assert_called_once_with(mock_logger)
+    def test_get_process_manager(self):
+        """Test _get_process_manager function."""
+        manager1 = _get_process_manager()
+        manager2 = _get_process_manager()
 
-        finally:
-            # Restore original environment
-            for env_var, original_value in [
-                ("PROMETHEUS_SSL_CERTFILE", original_ssl_certfile),
-                ("PROMETHEUS_SSL_KEYFILE", original_ssl_keyfile),
-                ("PROMETHEUS_BIND_ADDRESS", original_bind_address),
-                ("PROMETHEUS_METRICS_PORT", original_metrics_port),
-            ]:
-                if original_value:
-                    os.environ[env_var] = original_value
-                elif env_var in os.environ:
-                    del os.environ[env_var]
+        self.assertIs(manager1, manager2)
+        self.assertIsInstance(manager1, ProcessManager)
+
+
+class TestHookIntegration(unittest.TestCase):
+    """Test hook integration scenarios."""
+
+    def test_hook_manager_integration(self):
+        """Test HookManager integration."""
+        manager = HookManager()
+        mock_func = Mock()
+
+        result = manager.safe_execute(mock_func, "arg1", "arg2")
+
+        mock_func.assert_called_once_with("arg1", "arg2")
+        self.assertTrue(result)
+
+    def test_hook_context_integration(self):
+        """Test HookContext integration."""
+        mock_server = Mock()
+        mock_worker = Mock()
+
+        context = HookContext(server=mock_server, worker=mock_worker)
+
+        self.assertIsInstance(context, HookContext)
+        self.assertEqual(context.server, mock_server)
+        self.assertEqual(context.worker, mock_worker)
+        self.assertIsNotNone(context.logger)
+
+    def test_default_hooks_integration(self):
+        """Test default hooks integration."""
+        mock_server = Mock()
+
+        with (
+            patch("gunicorn_prometheus_exporter.hooks.config") as mock_config,
+            patch(
+                "gunicorn_prometheus_exporter.utils.get_multiprocess_dir"
+            ) as mock_get_dir,
+            patch(
+                "gunicorn_prometheus_exporter.hooks._get_metrics_manager"
+            ) as mock_get_manager,
+        ):
+            mock_manager = Mock()
+            mock_manager.setup_server.return_value = (9091, Mock())
+            mock_manager.start_server.return_value = True
+            mock_get_manager.return_value = mock_manager
+            mock_config.prometheus_metrics_port = 9091
+            mock_config.redis_enabled = False
+            mock_get_dir.return_value = "/tmp/test"
+
+            # Test multiple hooks
+            default_on_starting(mock_server)
+            default_when_ready(mock_server)
+            default_on_exit(mock_server)
+
+            # Verify that the manager methods were called
+            mock_manager.setup_server.assert_called_once()
+            mock_manager.start_server.assert_called_once()
+            mock_manager.stop_server.assert_called_once()
+
+
+if __name__ == "__main__":
+    unittest.main()

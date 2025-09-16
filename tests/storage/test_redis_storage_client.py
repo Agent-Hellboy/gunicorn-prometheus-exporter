@@ -1,0 +1,439 @@
+"""Tests for Redis storage client module."""
+
+from typing import Dict, Optional, Tuple
+from unittest.mock import Mock, patch
+
+import pytest
+
+from gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client import (
+    RedisStorageClient,
+    RedisStorageDict,
+    RedisValueClass,
+    get_redis_value_class,
+    mark_process_dead_redis,
+)
+
+
+class TestRedisClientProtocol:
+    """Test Redis client protocol."""
+
+    def test_protocol_methods(self):
+        """Test that protocol methods raise NotImplementedError."""
+
+        # Protocols cannot be instantiated, so we test the methods directly
+        class TestRedisClient:
+            def ping(self) -> bool:
+                raise NotImplementedError
+
+            def hget(self, name: str, key: str) -> Optional[bytes]:
+                raise NotImplementedError
+
+            def hset(
+                self,
+                name: str,
+                key: str = None,
+                value: str = None,
+                mapping: Dict[str, str] = None,
+            ) -> int:
+                raise NotImplementedError
+
+            def hgetall(self, name: str) -> Dict[bytes, bytes]:
+                raise NotImplementedError
+
+            def keys(self, pattern: str) -> list[bytes]:
+                raise NotImplementedError
+
+            def delete(self, *keys: str) -> int:
+                raise NotImplementedError
+
+        client = TestRedisClient()
+
+        with pytest.raises(NotImplementedError):
+            client.ping()
+
+        with pytest.raises(NotImplementedError):
+            client.hget("name", "key")
+
+        with pytest.raises(NotImplementedError):
+            client.hset("name", "key", "value")
+
+        with pytest.raises(NotImplementedError):
+            client.hgetall("name")
+
+        with pytest.raises(NotImplementedError):
+            client.keys("pattern")
+
+        with pytest.raises(NotImplementedError):
+            client.delete("key1", "key2")
+
+
+class TestStorageDictProtocol:
+    """Test storage dictionary protocol."""
+
+    def test_protocol_methods(self):
+        """Test that protocol methods raise NotImplementedError."""
+
+        # Protocols cannot be instantiated, so we test the methods directly
+        class TestStorageDict:
+            def read_value(self, key: str) -> Tuple[float, float]:
+                raise NotImplementedError
+
+            def write_value(self, key: str, value: float, timestamp: float) -> None:
+                raise NotImplementedError
+
+        storage_dict = TestStorageDict()
+
+        with pytest.raises(NotImplementedError):
+            storage_dict.read_value("key")
+
+        with pytest.raises(NotImplementedError):
+            storage_dict.write_value("key", 1.0, 1234567890.0)
+
+
+class TestRedisStorageDict:
+    """Test Redis storage dictionary."""
+
+    def test_init(self):
+        """Test initialization."""
+        mock_redis = Mock()
+        storage_dict = RedisStorageDict(mock_redis, "test_prefix")
+
+        assert storage_dict._redis is mock_redis
+        assert storage_dict._key_prefix == "test_prefix"
+        assert isinstance(storage_dict._lock, type(storage_dict._lock))
+
+    def test_init_default_prefix(self):
+        """Test initialization with default prefix."""
+        mock_redis = Mock()
+        storage_dict = RedisStorageDict(mock_redis)
+
+        assert storage_dict._key_prefix == "prometheus"
+
+    def test_get_metric_key(self):
+        """Test metric key generation."""
+        mock_redis = Mock()
+        storage_dict = RedisStorageDict(mock_redis, "test_prefix")
+
+        key = storage_dict._get_metric_key("test_key")
+        assert key == "test_prefix:metric:test_key"
+
+    def test_get_metadata_key(self):
+        """Test metadata key generation."""
+        mock_redis = Mock()
+        storage_dict = RedisStorageDict(mock_redis, "test_prefix")
+
+        key = storage_dict._get_metadata_key("test_key")
+        assert key == "test_prefix:meta:test_key"
+
+    def test_read_value_existing(self):
+        """Test reading existing value."""
+        mock_redis = Mock()
+        mock_redis.hget.side_effect = [b"1.5", b"1234567890"]
+
+        storage_dict = RedisStorageDict(mock_redis, "test_prefix")
+        value, timestamp = storage_dict.read_value("test_key")
+
+        assert value == 1.5
+        assert timestamp == 1234567890.0
+
+        # Verify Redis calls
+        expected_metric_key = "test_prefix:metric:test_key"
+        assert mock_redis.hget.call_count == 2
+        mock_redis.hget.assert_any_call(expected_metric_key, "value")
+        mock_redis.hget.assert_any_call(expected_metric_key, "timestamp")
+
+    def test_read_value_missing(self):
+        """Test reading missing value (initializes with defaults)."""
+        mock_redis = Mock()
+        mock_redis.hget.side_effect = [None, None]  # Both value and timestamp missing
+
+        storage_dict = RedisStorageDict(mock_redis, "test_prefix")
+
+        with patch.object(storage_dict, "_init_value_unlocked") as mock_init:
+            value, timestamp = storage_dict.read_value("test_key")
+
+            assert value == 0.0
+            assert timestamp == 0.0
+            mock_init.assert_called_once_with("test_key")
+
+    def test_read_value_partial_missing(self):
+        """Test reading value with missing timestamp."""
+        mock_redis = Mock()
+        mock_redis.hget.side_effect = [b"1.5", None]  # Value exists, timestamp missing
+
+        storage_dict = RedisStorageDict(mock_redis, "test_prefix")
+
+        with patch.object(storage_dict, "_init_value_unlocked") as mock_init:
+            value, timestamp = storage_dict.read_value("test_key")
+
+            assert value == 0.0
+            assert timestamp == 0.0
+            mock_init.assert_called_once_with("test_key")
+
+    def test_write_value(self):
+        """Test writing value."""
+        mock_redis = Mock()
+        storage_dict = RedisStorageDict(mock_redis, "test_prefix")
+
+        with patch("time.time", return_value=1234567890.0):
+            storage_dict.write_value("test_key", 1.5, 987654321.0)
+
+        # Verify Redis calls
+        expected_metric_key = "test_prefix:metric:test_key"
+        expected_metadata_key = "test_prefix:meta:test_key"
+
+        assert mock_redis.hset.call_count == 2
+
+        # Check metric data
+        mock_redis.hset.assert_any_call(
+            expected_metric_key,
+            mapping={
+                "value": 1.5,
+                "timestamp": 987654321.0,
+                "updated_at": 1234567890.0,
+            },
+        )
+
+        # Check metadata
+        mock_redis.hset.assert_any_call(
+            expected_metadata_key,
+            mapping={"original_key": "test_key", "created_at": 1234567890.0},
+        )
+
+    def test_init_value(self):
+        """Test initializing value."""
+        mock_redis = Mock()
+        storage_dict = RedisStorageDict(mock_redis, "test_prefix")
+
+        with patch.object(storage_dict, "_init_value_unlocked") as mock_init_unlocked:
+            storage_dict._init_value("test_key")
+            mock_init_unlocked.assert_called_once_with("test_key")
+
+    def test_init_value_unlocked(self):
+        """Test initializing value without lock."""
+        mock_redis = Mock()
+        storage_dict = RedisStorageDict(mock_redis, "test_prefix")
+
+        with patch("time.time", return_value=1234567890.0):
+            storage_dict._init_value_unlocked("test_key")
+
+        # Verify Redis calls
+        expected_metric_key = "test_prefix:metric:test_key"
+        expected_metadata_key = "test_prefix:meta:test_key"
+
+        assert mock_redis.hset.call_count == 2
+
+        # Check metric data
+        mock_redis.hset.assert_any_call(
+            expected_metric_key,
+            mapping={"value": 0.0, "timestamp": 0.0, "updated_at": 1234567890.0},
+        )
+
+        # Check metadata
+        mock_redis.hset.assert_any_call(
+            expected_metadata_key,
+            mapping={"original_key": "test_key", "created_at": 1234567890.0},
+        )
+
+
+class TestRedisValueClass:
+    """Test Redis value class."""
+
+    def test_init(self):
+        """Test initialization."""
+        mock_redis = Mock()
+        value_class = RedisValueClass(mock_redis, "test_prefix")
+
+        assert value_class._redis_dict._redis is mock_redis
+        assert value_class._redis_dict._key_prefix == "test_prefix"
+
+    def test_init_default_prefix(self):
+        """Test initialization with default prefix."""
+        mock_redis = Mock()
+        value_class = RedisValueClass(mock_redis)
+
+        assert value_class._redis_dict._key_prefix == "prometheus"
+
+    def test_call(self):
+        """Test creating RedisValue instance."""
+        mock_redis = Mock()
+        value_class = RedisValueClass(mock_redis, "test_prefix")
+
+        # Test that the call method works by calling it directly
+        # The actual RedisValue import happens inside the method
+        result = value_class(
+            "counter", "test_metric", "test_key", [], [], "Test metric"
+        )
+
+        # Verify that a RedisValue instance was created
+        assert result is not None
+        assert hasattr(result, "_redis_dict")
+        # The RedisValue creates its own RedisDict, so we just verify it exists
+        assert result._redis_dict is not None
+
+
+class TestRedisStorageClient:
+    """Test Redis storage client."""
+
+    def test_init(self):
+        """Test initialization."""
+        mock_redis = Mock()
+        client = RedisStorageClient(mock_redis, "test_prefix")
+
+        assert client._redis_client is mock_redis
+        assert client._key_prefix == "test_prefix"
+        assert isinstance(client._value_class, RedisValueClass)
+
+    def test_init_default_prefix(self):
+        """Test initialization with default prefix."""
+        mock_redis = Mock()
+        client = RedisStorageClient(mock_redis)
+
+        assert client._key_prefix == "prometheus"
+
+    def test_get_value_class(self):
+        """Test getting value class."""
+        mock_redis = Mock()
+        client = RedisStorageClient(mock_redis, "test_prefix")
+
+        value_class = client.get_value_class()
+        assert isinstance(value_class, RedisValueClass)
+
+    def test_cleanup_process_keys_success(self):
+        """Test successful cleanup of process keys."""
+        mock_redis = Mock()
+        mock_redis.keys.return_value = [b"key1", b"key2", b"key3"]
+        mock_redis.delete.return_value = 3
+
+        client = RedisStorageClient(mock_redis, "test_prefix")
+
+        with patch(
+            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.logger"
+        ) as mock_logger:
+            client.cleanup_process_keys(12345)
+
+        # Verify Redis calls
+        expected_pattern = "test_prefix:*:*:12345"
+        mock_redis.keys.assert_called_once_with(expected_pattern)
+        mock_redis.delete.assert_called_once_with(b"key1", b"key2", b"key3")
+
+        # Verify logging
+        mock_logger.debug.assert_called_once_with(
+            "Cleaned up %d Redis keys for process %d", 3, 12345
+        )
+
+    def test_cleanup_process_keys_no_keys(self):
+        """Test cleanup when no keys exist."""
+        mock_redis = Mock()
+        mock_redis.keys.return_value = []
+
+        client = RedisStorageClient(mock_redis, "test_prefix")
+
+        with patch(
+            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.logger"
+        ) as mock_logger:
+            client.cleanup_process_keys(12345)
+
+        # Verify Redis calls
+        expected_pattern = "test_prefix:*:*:12345"
+        mock_redis.keys.assert_called_once_with(expected_pattern)
+        mock_redis.delete.assert_not_called()
+
+        # Verify no debug logging
+        mock_logger.debug.assert_not_called()
+
+    def test_cleanup_process_keys_exception(self):
+        """Test cleanup with exception."""
+        mock_redis = Mock()
+        mock_redis.keys.side_effect = Exception("Redis error")
+
+        client = RedisStorageClient(mock_redis, "test_prefix")
+
+        with patch(
+            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.logger"
+        ) as mock_logger:
+            client.cleanup_process_keys(12345)
+
+        # Verify warning logging - the exception object is passed, not the string
+        mock_logger.warning.assert_called_once()
+        call_args = mock_logger.warning.call_args
+        assert call_args[0][0] == "Failed to cleanup Redis keys for process %d: %s"
+        assert call_args[0][1] == 12345
+        assert str(call_args[0][2]) == "Redis error"
+
+    def test_get_client(self):
+        """Test getting Redis client."""
+        mock_redis = Mock()
+        client = RedisStorageClient(mock_redis, "test_prefix")
+
+        returned_client = client.get_client()
+        assert returned_client is mock_redis
+
+
+class TestFactoryFunctions:
+    """Test factory functions."""
+
+    def test_get_redis_value_class(self):
+        """Test get_redis_value_class factory function."""
+        mock_redis = Mock()
+
+        with patch(
+            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.RedisStorageClient"
+        ) as mock_client_class:
+            mock_client = Mock()
+            mock_value_class = Mock()
+            mock_client.get_value_class.return_value = mock_value_class
+            mock_client_class.return_value = mock_client
+
+            result = get_redis_value_class(mock_redis, "test_prefix")
+
+            mock_client_class.assert_called_once_with(mock_redis, "test_prefix")
+            mock_client.get_value_class.assert_called_once()
+            assert result is mock_value_class
+
+    def test_get_redis_value_class_default_prefix(self):
+        """Test get_redis_value_class with default prefix."""
+        mock_redis = Mock()
+
+        with patch(
+            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.RedisStorageClient"
+        ) as mock_client_class:
+            mock_client = Mock()
+            mock_value_class = Mock()
+            mock_client.get_value_class.return_value = mock_value_class
+            mock_client_class.return_value = mock_client
+
+            result = get_redis_value_class(mock_redis)
+
+            mock_client_class.assert_called_once_with(mock_redis, "prometheus")
+            assert result is mock_value_class
+
+    def test_mark_process_dead_redis(self):
+        """Test mark_process_dead_redis factory function."""
+        mock_redis = Mock()
+
+        with patch(
+            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.RedisStorageClient"
+        ) as mock_client_class:
+            mock_client = Mock()
+            mock_client_class.return_value = mock_client
+
+            mark_process_dead_redis(12345, mock_redis, "test_prefix")
+
+            mock_client_class.assert_called_once_with(mock_redis, "test_prefix")
+            mock_client.cleanup_process_keys.assert_called_once_with(12345)
+
+    def test_mark_process_dead_redis_default_prefix(self):
+        """Test mark_process_dead_redis with default prefix."""
+        mock_redis = Mock()
+
+        with patch(
+            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.RedisStorageClient"
+        ) as mock_client_class:
+            mock_client = Mock()
+            mock_client_class.return_value = mock_client
+
+            mark_process_dead_redis(12345, mock_redis)
+
+            mock_client_class.assert_called_once_with(mock_redis, "prometheus")
+            mock_client.cleanup_process_keys.assert_called_once_with(12345)

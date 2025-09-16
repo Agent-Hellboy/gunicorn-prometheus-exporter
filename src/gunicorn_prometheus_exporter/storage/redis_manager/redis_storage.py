@@ -34,7 +34,7 @@ def setup_redis_metrics() -> bool:
         # Import prometheus-redis-client from local copy
         import redis
 
-        from .redis_storage_client import get_redis_value_class
+        from ..redis_backend.redis_storage_client import get_redis_value_class
 
         # Create Redis client
         redis_url = f"redis://{config.redis_host}:{config.redis_port}/{config.redis_db}"
@@ -112,7 +112,7 @@ def cleanup_redis_keys():
         return
 
     try:
-        from .redis_storage_client import mark_process_dead_redis
+        from ..redis_backend.redis_storage_client import mark_process_dead_redis
 
         # Clean up keys for current process
         pid = os.getpid()
@@ -129,8 +129,8 @@ def get_redis_collector():
         return None
 
     try:
-        from .metrics import get_shared_registry
-        from .redis_storage_client import RedisMultiProcessCollector
+        from ...metrics import get_shared_registry
+        from ..redis_backend.storage_collector import RedisMultiProcessCollector
 
         registry = get_shared_registry()
         return RedisMultiProcessCollector(registry, _redis_client, "gunicorn")
