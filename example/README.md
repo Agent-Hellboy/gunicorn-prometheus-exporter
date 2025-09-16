@@ -1,6 +1,6 @@
 # Gunicorn Prometheus Exporter - Configuration Examples
 
-This directory contains three different configuration approaches for storing Prometheus metrics with Gunicorn.
+This directory contains different configuration approaches for storing Prometheus metrics with Gunicorn.
 
 ## Redis Storage Innovation
 
@@ -36,23 +36,7 @@ registry.register(collector)
 | **Shared Metrics** | No | Yes |
 | **Architecture** | Coupled | Separated |
 
-## Redis Storage vs Redis Forwarding
-
-**Important**: There are two different Redis approaches:
-
-### Redis Storage (`gunicorn_redis_integration.conf.py`)
-- **Purpose**: Store metrics directly in Redis (replaces file storage)
-- **Behavior**: No multiprocess files created, all metrics stored in Redis
-- **Use Case**: Distributed deployments, multiple servers
-- **Redis Keys**: `gunicorn:*:metric:*` and `gunicorn:*:meta:*`
-
-### Redis Forwarding (`gunicorn_hybrid.conf.py`)
-- **Purpose**: Forward metrics to Redis while keeping file storage
-- **Behavior**: Creates multiprocess files AND forwards to Redis
-- **Use Case**: Migration scenarios, need metrics in both places
-- **Redis Keys**: `gunicorn_forwarder:latest`, `gunicorn_forwarder:metadata`
-
-## 📁 Configuration Files
+## Configuration Files
 
 ### 1. `gunicorn_basic.conf.py` - File-Based Storage
 **Standard Prometheus multiprocess storage using files.**
@@ -88,29 +72,6 @@ gunicorn --config gunicorn_basic.conf.py app:app
 gunicorn --config gunicorn_redis_integration.conf.py app:app
 ```
 
-### 3. `gunicorn_hybrid.conf.py` - Hybrid Storage
-**Both file-based AND Redis storage simultaneously.**
-
-- **Storage**: Files + Redis (dual storage)
-- **Metrics Endpoint**: `http://localhost:9091/metrics` (reads from files)
-- **Redis Keys**: `gunicorn_forwarder:latest`, `gunicorn_forwarder:metadata`
-- **Use Case**: Migration scenarios, need metrics in both places
-- **Pros**: Best of both worlds, gradual migration
-- **Cons**: More complex, uses both storage types
-
-**Redis Forwarder Flags:**
-- `REDIS_FORWARD_ENABLED=true`: Enable Redis forwarding
-- `REDIS_HOST`: Redis server host (default: 127.0.0.1)
-- `REDIS_PORT`: Redis server port (default: 6379)
-- `REDIS_DB`: Redis database number (default: 0)
-- `REDIS_KEY_PREFIX`: Key prefix (default: gunicorn_forwarder:)
-- `REDIS_FORWARD_INTERVAL`: Forward interval in seconds (default: 5)
-
-**Usage:**
-```bash
-gunicorn --config gunicorn_hybrid.conf.py app:app
-```
-
 ## Quick Start
 
 1. **Basic Setup (Files Only):**
@@ -125,15 +86,6 @@ gunicorn --config gunicorn_hybrid.conf.py app:app
    
    # Start Gunicorn with Redis storage
    gunicorn --config gunicorn_redis_integration.conf.py app:app
-   ```
-
-3. **Hybrid (Files + Redis):**
-   ```bash
-   # Start Redis server first
-   redis-server
-   
-   # Start Gunicorn with hybrid storage
-   gunicorn --config gunicorn_hybrid.conf.py app:app
    ```
 
 ## Testing Metrics
@@ -157,7 +109,7 @@ curl http://localhost:9092/metrics
 redis-cli keys '*'
 ```
 
-## 🔧 Environment Variables
+## Environment Variables
 
 All configurations support these common flags:
 
@@ -166,8 +118,7 @@ All configurations support these common flags:
 - `PROMETHEUS_MULTIPROC_DIR`: Directory for file-based storage (default: /tmp/prometheus_multiproc)
 - `GUNICORN_WORKERS`: Number of Gunicorn workers (default: 2)
 
-## 🎯 Which Configuration Should I Use?
+## Which Configuration Should I Use?
 
 - **Single Server**: Use `gunicorn_basic.conf.py` (file-based storage)
 - **Multiple Servers**: Use `gunicorn_redis_integration.conf.py` (Redis storage)
-- **Migration/Testing**: Use `gunicorn_hybrid.conf.py` (Redis forwarding)

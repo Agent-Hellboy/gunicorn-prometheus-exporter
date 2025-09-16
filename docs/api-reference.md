@@ -319,7 +319,7 @@ def when_ready(server):
 
 **What it does:**
 - Sets up Prometheus metrics server (same as `default_when_ready`)
-- Initializes Redis forwarder if enabled
+- Initializes Redis storage if enabled
 - Handles Redis connection failures gracefully
 - Provides detailed logging for debugging
 

@@ -178,9 +178,9 @@ The documentation includes:
 - `gunicorn_master_worker_restarts_total`: Worker restart counts
 - `gunicorn_master_workers_current`: Current worker count
 
-### Redis Metrics (if Redis forwarding enabled)
-- `gunicorn_redis_forwarder_status`: Forwarder health status
-- `gunicorn_redis_forwarder_errors_total`: Forwarder error counts
+### Redis Metrics (if Redis storage enabled)
+- `gunicorn_redis_connection_status`: Redis connection health status
+- `gunicorn_redis_errors_total`: Redis operation error counts
 
 ## Examples
 
@@ -190,7 +190,6 @@ See the `example/` directory for complete working examples with all worker types
 - `gunicorn_simple.conf.py`: Basic sync worker setup
 - `gunicorn_thread_worker.conf.py`: Threaded workers for I/O-bound apps
 - `gunicorn_redis_integration.conf.py`: Redis storage setup (no files)
-- `gunicorn_hybrid.conf.py`: Redis forwarding setup (files + Redis)
 
 ### Async Worker Examples
 - `gunicorn_eventlet_async.conf.py`: Eventlet workers with async app

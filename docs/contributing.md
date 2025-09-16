@@ -11,7 +11,7 @@ Thank you for your interest in contributing to the Gunicorn Prometheus Exporter!
 - **`src/gunicorn_prometheus_exporter/config.py`**: Configuration management
 - **`src/gunicorn_prometheus_exporter/hooks.py`**: Modular hooks system with manager classes
 - **`src/gunicorn_prometheus_exporter/master.py`**: Master process handling
-- **`src/gunicorn_prometheus_exporter/forwarder/`**: Redis integration
+- **`src/gunicorn_prometheus_exporter/storage/`**: Redis storage integration
 
 ### **Testing Structure**
 

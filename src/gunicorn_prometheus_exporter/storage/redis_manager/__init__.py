@@ -1,14 +1,11 @@
 """Redis Storage Package for Gunicorn Prometheus Exporter.
 
-This package provides Redis-based storage and forwarding capabilities for
-Prometheus metrics. It includes improved design patterns for better testability
-and maintainability.
+This package provides Redis-based storage capabilities for Prometheus metrics.
+It includes improved design patterns for better testability and maintainability.
 
 Modules:
 - redis_storage_manager: Main Redis storage manager with lifecycle management
-- redis_storage_client: Redis client and storage operations
 - redis_storage: Legacy compatibility module
-- forwarder_factory: Factory pattern for creating and managing forwarders
 """
 
 from ..redis_backend.redis_storage_client import (
@@ -17,13 +14,6 @@ from ..redis_backend.redis_storage_client import (
     RedisValueClass,
     get_redis_value_class,
     mark_process_dead_redis,
-)
-from .forwarder_factory import (
-    ForwarderConfig,
-    ForwarderFactory,
-    ForwarderManager,
-    create_redis_forwarder,
-    get_forwarder_manager,
 )
 
 # Legacy compatibility imports
@@ -51,15 +41,11 @@ __version__ = "0.1.0"
 __all__ = [
     # Main classes
     "RedisStorageManager",
-    "ForwarderFactory",
-    "ForwarderManager",
-    "ForwarderConfig",
     "RedisStorageClient",
     "RedisStorageDict",
     "RedisValueClass",
     # Manager functions
     "get_redis_storage_manager",
-    "get_forwarder_manager",
     # Convenience functions
     "setup_redis_metrics",
     "teardown_redis_metrics",
@@ -67,7 +53,6 @@ __all__ = [
     "get_redis_client",
     "cleanup_redis_keys",
     "get_redis_collector",
-    "create_redis_forwarder",
     # Client functions
     "get_redis_value_class",
     "mark_process_dead_redis",

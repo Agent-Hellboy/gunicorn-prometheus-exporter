@@ -467,21 +467,22 @@ def redis_when_ready(_server: Any) -> None:
         context.logger.error("Failed to start metrics server")
         return
 
-    # Start Redis forwarder if enabled
-    _start_redis_forwarder_if_enabled(context.logger)
+    # Setup Redis storage if enabled
+    _setup_redis_storage_if_enabled(context.logger)
 
 
-def _start_redis_forwarder_if_enabled(logger: logging.Logger) -> None:
-    """Start Redis forwarder if enabled in configuration."""
+def _setup_redis_storage_if_enabled(logger: logging.Logger) -> None:
+    """Setup Redis storage if enabled in configuration."""
     if not config.redis_enabled:
         logger.info("Redis storage disabled")
         return
 
     try:
-        from .storage.metrics_forwarder.manager import get_forwarder_manager
-
-        manager = get_forwarder_manager()
-        manager.start()
-        logger.info("Redis forwarder started")
+        from .storage import setup_redis_metrics
+        
+        if setup_redis_metrics():
+            logger.info("Redis storage enabled - using Redis instead of files")
+        else:
+            logger.warning("Failed to setup Redis storage, falling back to file storage")
     except Exception as e:
-        logger.error("Failed to start Redis forwarder: %s", e)
+        logger.error("Failed to setup Redis storage: %s", e)

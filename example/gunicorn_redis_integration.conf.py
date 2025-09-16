@@ -23,14 +23,12 @@ import os  # noqa: E402
 
 
 # Environment variables must be set before imports
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9092")  # Changed from 9091 to 9092
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9093")  # Changed from 9091 to 9092
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # nosec B104  # noqa: E501
 os.environ.setdefault("REDIS_ENABLED", "true")  # noqa: E501
 os.environ.setdefault("REDIS_HOST", "127.0.0.1")  # Configure for your environment  # noqa: E501
 os.environ.setdefault("REDIS_PORT", "6379")  # noqa: E501
 os.environ.setdefault("REDIS_DB", "0")  # noqa: E501
-os.environ.setdefault("REDIS_FORWARD_INTERVAL", "5")  # noqa: E501
-os.environ.setdefault("CLEANUP_DB_FILES", "false")  # noqa: E501
 
 from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
     default_on_exit,
@@ -41,7 +39,7 @@ from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
 
 
 # Gunicorn settings
-bind = "0.0.0.0:8008"
+bind = "0.0.0.0:8088"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 

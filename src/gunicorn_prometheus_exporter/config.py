@@ -39,7 +39,6 @@ class ExporterConfig:
     ENV_REDIS_DB = "REDIS_DB"
     ENV_REDIS_PASSWORD = "REDIS_PASSWORD"  # nosec - environment variable name
     ENV_REDIS_KEY_PREFIX = "REDIS_KEY_PREFIX"
-    ENV_REDIS_FORWARD_INTERVAL = "REDIS_FORWARD_INTERVAL"
 
     # Cleanup environment variables
     ENV_CLEANUP_DB_FILES = "CLEANUP_DB_FILES"
@@ -177,11 +176,6 @@ class ExporterConfig:
     def redis_key_prefix(self) -> str:
         """Get Redis key prefix."""
         return os.environ.get(self.ENV_REDIS_KEY_PREFIX, "gunicorn:metrics:")
-
-    @property
-    def redis_forward_interval(self) -> int:
-        """Get Redis forward interval in seconds."""
-        return int(os.environ.get(self.ENV_REDIS_FORWARD_INTERVAL, "30"))
 
     @property
     def cleanup_db_files(self) -> bool:
