@@ -479,10 +479,12 @@ def _setup_redis_storage_if_enabled(logger: logging.Logger) -> None:
 
     try:
         from .storage import setup_redis_metrics
-        
+
         if setup_redis_metrics():
             logger.info("Redis storage enabled - using Redis instead of files")
         else:
-            logger.warning("Failed to setup Redis storage, falling back to file storage")
+            logger.warning(
+                "Failed to setup Redis storage, falling back to file storage"
+            )
     except Exception as e:
         logger.error("Failed to setup Redis storage: %s", e)

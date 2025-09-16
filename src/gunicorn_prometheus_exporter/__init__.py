@@ -71,7 +71,7 @@ THE SOLUTION:
 - This ensures our PrometheusMaster is always used regardless of import paths
 """
 
-import logging
+import logging  # noqa: I001
 
 import gunicorn.app.base
 import gunicorn.arbiter
@@ -79,8 +79,6 @@ import gunicorn.arbiter
 from .config import config, get_config
 from .master import PrometheusMaster
 from .metrics import registry
-
-# Import worker classes
 from .plugin import (
     PrometheusThreadWorker,
     PrometheusWorker,

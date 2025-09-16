@@ -15,7 +15,7 @@ from gunicorn_prometheus_exporter.hooks import (
     _get_hook_manager,
     _get_metrics_manager,
     _get_process_manager,
-    _start_redis_forwarder_if_enabled,
+    _setup_redis_storage_if_enabled,
     default_on_exit,
     default_on_starting,
     default_post_fork,
@@ -849,7 +849,7 @@ class TestRedisWhenReadyHook(unittest.TestCase):
                 mock_get_metrics_manager.return_value = mock_metrics_manager
 
                 with patch(
-                    "gunicorn_prometheus_exporter.hooks._start_redis_forwarder_if_enabled"
+                    "gunicorn_prometheus_exporter.hooks._setup_redis_storage_if_enabled"
                 ) as mock_start_redis:
                     redis_when_ready(mock_server)
 
@@ -912,50 +912,51 @@ class TestRedisForwarder(unittest.TestCase):
     """Test Redis forwarder functionality."""
 
     def test_start_redis_forwarder_enabled(self):
-        """Test _start_redis_forwarder_if_enabled when Redis is enabled."""
+        """Test _setup_redis_storage_if_enabled when Redis is enabled."""
         mock_logger = MagicMock()
 
         with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
             mock_config.redis_enabled = True
 
             with patch(
-                "gunicorn_prometheus_exporter.storage.metrics_forwarder.manager.get_forwarder_manager"
-            ) as mock_get_manager:
-                mock_manager = MagicMock()
-                mock_get_manager.return_value = mock_manager
+                "gunicorn_prometheus_exporter.storage.setup_redis_metrics"
+            ) as mock_setup_redis:
+                mock_setup_redis.return_value = True
 
-                _start_redis_forwarder_if_enabled(mock_logger)
+                _setup_redis_storage_if_enabled(mock_logger)
 
-                mock_manager.start.assert_called_once()
-                mock_logger.info.assert_called_once_with("Redis forwarder started")
+                mock_setup_redis.assert_called_once()
+                mock_logger.info.assert_called_once_with(
+                    "Redis storage enabled - using Redis instead of files"
+                )
 
     def test_start_redis_forwarder_disabled(self):
-        """Test _start_redis_forwarder_if_enabled when Redis is disabled."""
+        """Test _setup_redis_storage_if_enabled when Redis is disabled."""
         mock_logger = MagicMock()
 
         with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
             mock_config.redis_enabled = False
 
-            _start_redis_forwarder_if_enabled(mock_logger)
+            _setup_redis_storage_if_enabled(mock_logger)
 
             mock_logger.info.assert_called_once_with("Redis storage disabled")
 
     def test_start_redis_forwarder_exception(self):
-        """Test _start_redis_forwarder_if_enabled with exception."""
+        """Test _setup_redis_storage_if_enabled with exception."""
         mock_logger = MagicMock()
 
         with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
             mock_config.redis_enabled = True
 
             with patch(
-                "gunicorn_prometheus_exporter.storage.metrics_forwarder.manager.get_forwarder_manager",
+                "gunicorn_prometheus_exporter.storage.setup_redis_metrics",
                 side_effect=Exception("Test error"),
             ):
-                _start_redis_forwarder_if_enabled(mock_logger)
+                _setup_redis_storage_if_enabled(mock_logger)
 
                 mock_logger.error.assert_called_once()
                 call_args = mock_logger.error.call_args
-                self.assertEqual(call_args[0][0], "Failed to start Redis forwarder: %s")
+                self.assertEqual(call_args[0][0], "Failed to setup Redis storage: %s")
                 self.assertIsInstance(call_args[0][1], Exception)
                 self.assertEqual(str(call_args[0][1]), "Test error")
 
