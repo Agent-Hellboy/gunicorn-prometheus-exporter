@@ -4,7 +4,7 @@ import os
 
 from unittest.mock import Mock, patch
 
-from gunicorn_prometheus_exporter.storage.redis_manager import (
+from gunicorn_prometheus_exporter.backend.service import (
     RedisStorageManager,
     cleanup_redis_keys,
     get_redis_client,
@@ -33,9 +33,7 @@ class TestRedisStorageManager:
         os.environ.pop("REDIS_PORT", None)
         os.environ.pop("REDIS_DB", None)
 
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
-    )
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_init_success(self, mock_redis):
         """Test successful initialization."""
         mock_client = Mock()
@@ -51,9 +49,7 @@ class TestRedisStorageManager:
         assert manager._redis_client is not None
         assert manager._is_initialized is True
 
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
-    )
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_init_connection_failure(self, mock_redis):
         """Test initialization with connection failure."""
         mock_redis.Redis.side_effect = Exception("Connection failed")
@@ -64,9 +60,7 @@ class TestRedisStorageManager:
         # Just test that it doesn't raise an exception
         assert manager is not None
 
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
-    )
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_get_client(self, mock_redis):
         """Test getting Redis client."""
         mock_client = Mock()
@@ -81,9 +75,7 @@ class TestRedisStorageManager:
         client = manager.get_client()
         assert client == mock_client
 
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
-    )
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_get_collector(self, mock_redis):
         """Test getting Redis collector."""
         mock_client = Mock()
@@ -99,9 +91,7 @@ class TestRedisStorageManager:
         # Collector may be None if there's an import error
         assert collector is None or collector is not None
 
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
-    )
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_cleanup_keys(self, mock_redis):
         """Test cleanup of Redis keys."""
         mock_client = Mock()
@@ -126,9 +116,7 @@ class TestRedisStorageManager:
         mock_client.keys.assert_called_once()
         mock_client.delete.assert_called_once()
 
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
-    )
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_cleanup_keys_no_keys(self, mock_redis):
         """Test cleanup when no keys exist."""
         mock_client = Mock()
@@ -148,9 +136,7 @@ class TestRedisStorageManager:
         # The actual key pattern includes more parts, so just test that keys was called
         mock_client.keys.assert_called_once()
 
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
-    )
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_cleanup_keys_error(self, mock_redis):
         """Test cleanup with Redis error."""
         mock_client = Mock()
@@ -180,9 +166,7 @@ class TestRedisStorageManagerFunctions:
         """Clean up test environment."""
         os.environ.pop("REDIS_ENABLED", None)
 
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
-    )
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_is_redis_enabled_true(self, mock_redis):
         """Test is_redis_enabled returns True when enabled."""
         mock_client = Mock()
@@ -284,9 +268,7 @@ class TestRedisStorageManagerIntegration:
         os.environ.pop("REDIS_PORT", None)
         os.environ.pop("REDIS_DB", None)
 
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
-    )
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_manager_lifecycle(self, mock_redis):
         """Test complete manager lifecycle."""
         mock_client = Mock()
@@ -315,9 +297,7 @@ class TestRedisStorageManagerIntegration:
         # cleanup_keys returns None, just test it doesn't raise
         assert result is None
 
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
-    )
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_error_handling(self, mock_redis):
         """Test error handling in manager."""
         mock_client = Mock()

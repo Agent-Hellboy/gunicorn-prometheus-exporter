@@ -32,16 +32,16 @@ pip install gunicorn-prometheus-exporter[gevent]    # Gevent workers
 
 ### Redis Integration
 
-Install with Redis storage and forwarding capabilities:
+Install with Redis storage capabilities:
 
 ```bash
 pip install gunicorn-prometheus-exporter[redis]
 ```
 
 **Includes:**
+
 - All basic features
 - Redis storage (no files created)
-- Redis forwarding (files + Redis)
 - Redis connection management
 - Metrics aggregation
 
@@ -54,6 +54,7 @@ pip install gunicorn-prometheus-exporter[dev]
 ```
 
 **Includes:**
+
 - All basic features
 - Testing dependencies (pytest, coverage)
 - Linting tools (ruff, mypy)
@@ -68,6 +69,7 @@ pip install gunicorn-prometheus-exporter[all]
 ```
 
 **Includes:**
+
 - All async worker types
 - Redis integration
 - Development tools
@@ -111,6 +113,7 @@ os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
 ```
 
 **Requirements:**
+
 - Directory must be writable by the Gunicorn process
 - Directory should be cleaned up periodically
 - Must be unique per Gunicorn instance
@@ -137,6 +140,7 @@ os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
 ```
 
 **Requirements:**
+
 - Port must be available (not in use by another process)
 - Port must be accessible for metrics collection
 - Consider firewall rules for production environments
@@ -150,17 +154,20 @@ os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
 **Default:** `0.0.0.0`
 
 **Example:**
+
 ```bash
 export PROMETHEUS_BIND_ADDRESS="0.0.0.0"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 ```
 
 **Common values:**
+
 - `0.0.0.0` - Bind to all interfaces (default)
 - `127.0.0.1` - Bind to localhost only
 - `192.168.1.100` - Bind to specific IP address
@@ -176,17 +183,20 @@ os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 **Range:** 1-1000
 
 **Example:**
+
 ```bash
 export GUNICORN_WORKERS="4"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("GUNICORN_WORKERS", "4")
 ```
 
 **Recommendations:**
+
 - Set to match your actual worker count
 - Used for metrics aggregation and calculation
 - Should match the `workers` setting in Gunicorn config
@@ -209,6 +219,7 @@ export GUNICORN_KEEPALIVE="5"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
@@ -230,6 +241,7 @@ export CLEANUP_DB_FILES="true"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("CLEANUP_DB_FILES", "true")
@@ -250,157 +262,16 @@ os.environ.setdefault("CLEANUP_DB_FILES", "true")
 **Values:** `true`, `false`
 
 **Example:**
+
 ```bash
 export REDIS_ENABLED="true"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("REDIS_ENABLED", "true")
-```
-
-#### Redis Forwarding Variables (Files + Redis)
-
-#### `REDIS_FORWARD_ENABLED`
-
-**Description:** Enable Redis forwarding (keeps files + forwards to Redis).
-
-**Type:** Boolean
-
-**Default:** `false`
-
-**Values:** `true`, `false`
-
-**Example:**
-```bash
-export REDIS_FORWARD_ENABLED="true"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_FORWARD_ENABLED", "true")
-```
-
-#### `REDIS_HOST`
-
-**Description:** Redis server hostname.
-
-**Type:** String
-
-**Default:** `localhost`
-
-**Example:**
-```bash
-export REDIS_HOST="redis.example.com"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_HOST", "redis.example.com")
-```
-
-#### `REDIS_PORT`
-
-**Description:** Redis server port.
-
-**Type:** Integer
-
-**Default:** `6379`
-
-**Range:** 1-65535
-
-**Example:**
-```bash
-export REDIS_PORT="6379"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_PORT", "6379")
-```
-
-#### `REDIS_DB`
-
-**Description:** Redis database number.
-
-**Type:** Integer
-
-**Default:** `0`
-
-**Range:** 0-15
-
-**Example:**
-```bash
-export REDIS_DB="1"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_DB", "1")
-```
-
-#### `REDIS_PASSWORD`
-
-**Description:** Redis authentication password.
-
-**Type:** String
-
-**Default:** `None` (no authentication)
-
-**Example:**
-```bash
-export REDIS_PASSWORD="your_redis_password"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_PASSWORD", "your_redis_password")
-```
-
-#### `REDIS_KEY_PREFIX`
-
-**Description:** Prefix for Redis keys.
-
-**Type:** String
-
-**Default:** `gunicorn_metrics`
-
-**Example:**
-```bash
-export REDIS_KEY_PREFIX="myapp_metrics"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_KEY_PREFIX", "myapp_metrics")
-```
-
-#### `REDIS_FORWARD_INTERVAL`
-
-**Description:** Metrics forwarding interval in seconds.
-
-**Type:** Integer
-
-**Default:** `30`
-
-**Range:** 1-3600
-
-**Example:**
-```bash
-export REDIS_FORWARD_INTERVAL="60"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_FORWARD_INTERVAL", "60")
 ```
 
 ## 📦 Package Dependencies
@@ -495,30 +366,6 @@ os.environ.setdefault("REDIS_DB", "0")
 os.environ.setdefault("REDIS_PASSWORD", "")
 ```
 
-### Redis Forwarding Configuration
-
-```python
-# gunicorn_redis_forwarding.conf.py
-bind = "0.0.0.0:8000"
-workers = 2
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-
-import os
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
-os.environ.setdefault("GUNICORN_WORKERS", "2")
-
-# Redis forwarding configuration (keeps files + forwards to Redis)
-os.environ.setdefault("REDIS_FORWARD_ENABLED", "true")
-os.environ.setdefault("REDIS_HOST", "localhost")
-os.environ.setdefault("REDIS_PORT", "6379")
-os.environ.setdefault("REDIS_DB", "0")
-os.environ.setdefault("REDIS_PASSWORD", "")
-os.environ.setdefault("REDIS_KEY_PREFIX", "gunicorn_metrics")
-os.environ.setdefault("REDIS_FORWARD_INTERVAL", "30")
-```
-
 ### Production Configuration
 
 ```python
@@ -547,7 +394,6 @@ os.environ.setdefault("REDIS_PORT", "6379")
 os.environ.setdefault("REDIS_DB", "0")
 os.environ.setdefault("REDIS_PASSWORD", "production_password")
 os.environ.setdefault("REDIS_KEY_PREFIX", "prod_gunicorn_metrics")
-os.environ.setdefault("REDIS_FORWARD_INTERVAL", "60")
 ```
 
 ## 🧪 Installation Verification

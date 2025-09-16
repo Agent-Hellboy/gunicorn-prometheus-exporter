@@ -160,15 +160,8 @@ export REDIS_PORT="6379"
 export REDIS_DB="0"
 ```
 
-#### Redis Forwarding (Files + Redis)
-```bash
-# Enable Redis forwarding (keeps files + forwards to Redis)
-export REDIS_FORWARD_ENABLED="true"
-export REDIS_HOST="localhost"
-export REDIS_PORT="6379"
-export REDIS_DB="0"
-export REDIS_FORWARD_INTERVAL="30"
-```
+> **🏗️ Redis Backend Architecture**: The Redis backend provides a sophisticated storage system with `backend.service` for high-level management and `backend.core` for low-level operations. See the [API Reference](api-reference.md#-redis-backend-architecture) for detailed documentation.
+
 
 ## 🌐 Understanding the Three URLs
 

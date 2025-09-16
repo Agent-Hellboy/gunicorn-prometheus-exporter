@@ -160,7 +160,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) forma
 
 **Examples**:
 ```
-feat: add Redis metrics forwarding support
+feat: add Redis storage backend support
 
 fix(worker/hooks/metric): handle worker restart gracefully
 

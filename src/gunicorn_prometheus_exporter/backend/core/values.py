@@ -1,8 +1,4 @@
-import os
-
-import redis
-
-from .dict import RedisDict, redis_key
+from .dict import redis_key
 
 
 class RedisValue:
@@ -26,7 +22,7 @@ class RedisValue:
         **_kwargs,
     ):
         """Initialize RedisValue with RedisStorageDict.
-        
+
         Args:
             redis_dict: RedisStorageDict instance for storage operations
             typ: Metric type (counter, gauge, histogram, summary)
@@ -39,7 +35,7 @@ class RedisValue:
         """
         if not hasattr(redis_dict, "read_value"):
             raise ValueError("redis_dict must be a RedisStorageDict instance")
-            
+
         self._redis_dict = redis_dict
         self._params = (
             typ,
@@ -52,7 +48,6 @@ class RedisValue:
         )
         self._key = redis_key(metric_name, name, labelnames, labelvalues, help_text)
         self._value, self._timestamp = self._redis_dict.read_value(self._key)
-
 
     def inc(self, amount):
         """Increment the value by amount."""
@@ -83,16 +78,16 @@ class RedisValue:
 
 def get_redis_value_class(redis_client, redis_key_prefix="prometheus"):
     """Returns a RedisValue class configured with Redis client.
-    
+
     Args:
         redis_client: Redis client instance
         redis_key_prefix: Prefix for Redis keys
-        
+
     Returns:
         Configured RedisValue class
     """
     from .client import RedisStorageClient
-    
+
     storage_client = RedisStorageClient(redis_client, redis_key_prefix)
     redis_dict = storage_client._redis_dict
 
@@ -125,13 +120,13 @@ def get_redis_value_class(redis_client, redis_key_prefix="prometheus"):
 
 def mark_process_dead_redis(pid, redis_client, redis_key_prefix="prometheus"):
     """Do bookkeeping for when one process dies in a Redis multi-process setup.
-    
+
     Args:
         pid: Process ID to clean up
         redis_client: Redis client instance
         redis_key_prefix: Prefix for Redis keys
     """
     from .client import RedisStorageClient
-    
+
     storage_client = RedisStorageClient(redis_client, redis_key_prefix)
     storage_client.cleanup_process_keys(pid)

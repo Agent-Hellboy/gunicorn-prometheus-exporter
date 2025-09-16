@@ -349,5 +349,3 @@ class RedisMultiProcessCollector:
             logger = logging.getLogger(__name__)
             logger.warning("Redis collector error: %s", e)
             return []
-
-

@@ -2,7 +2,7 @@
 
 from unittest.mock import Mock, patch
 
-from gunicorn_prometheus_exporter.storage.redis_manager import RedisStorageManager
+from gunicorn_prometheus_exporter.backend.service import RedisStorageManager
 
 
 class TestRedisStorageManager:
@@ -17,13 +17,13 @@ class TestRedisStorageManager:
         if self.manager.is_enabled():
             self.manager.teardown()
 
-    @patch("gunicorn_prometheus_exporter.storage.redis_manager.config")
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.config")
     def test_setup_redis_metrics_disabled(self, mock_config):
         """Test setup when Redis is disabled."""
         mock_config.redis_enabled = False
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_manager.logger"
+            "gunicorn_prometheus_exporter.backend.service.manager.logger"
         ) as mock_logger:
             result = self.manager.setup()
 
@@ -32,14 +32,11 @@ class TestRedisStorageManager:
                 "Redis is not enabled, skipping Redis metrics setup"
             )
 
-    @patch("gunicorn_prometheus_exporter.storage.redis_manager.config")
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.config")
     @patch("redis.from_url")
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.get_redis_value_class"
-    )
     @patch("prometheus_client.values")
     def test_setup_redis_metrics_success(
-        self, mock_values, mock_get_value_class, mock_redis_from_url, mock_config
+        self, mock_values, mock_redis_from_url, mock_config
     ):
         """Test successful Redis setup."""
         # Configure mocks
@@ -54,13 +51,13 @@ class TestRedisStorageManager:
         mock_redis_from_url.return_value = mock_client
 
         mock_value_class = Mock()
-        mock_get_value_class.return_value = mock_value_class
+        self.manager._value_class_factory = Mock(return_value=mock_value_class)
 
         mock_original_value_class = Mock()
         mock_values.ValueClass = mock_original_value_class
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_manager.logger"
+            "gunicorn_prometheus_exporter.backend.service.manager.logger"
         ) as mock_logger:
             result = self.manager.setup()
 
@@ -73,7 +70,9 @@ class TestRedisStorageManager:
             mock_client.ping.assert_called_once()
 
             # Verify value class was replaced
-            mock_get_value_class.assert_called_once_with(mock_client, "gunicorn")
+            self.manager._value_class_factory.assert_called_once_with(
+                mock_client, "gunicorn"
+            )
             assert mock_values.ValueClass is mock_value_class
 
             # Verify logging
@@ -81,7 +80,7 @@ class TestRedisStorageManager:
                 "Redis metrics storage enabled - using Redis instead of files"
             )
 
-    @patch("gunicorn_prometheus_exporter.storage.redis_manager.config")
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.config")
     @patch("redis.from_url")
     def test_setup_redis_metrics_connection_error(
         self, mock_redis_from_url, mock_config
@@ -98,21 +97,19 @@ class TestRedisStorageManager:
         mock_redis_from_url.return_value = mock_client
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_manager.logger"
+            "gunicorn_prometheus_exporter.backend.service.manager.logger"
         ) as mock_logger:
             result = self.manager.setup()
 
             assert result is False
             assert self.manager.is_enabled() is False
             mock_logger.error.assert_called_once_with(
-                "Failed to setup Redis metrics: Connection failed"
+                "Failed to setup Redis metrics: %s", mock_client.ping.side_effect
             )
 
     def test_teardown_when_not_initialized(self):
         """Test teardown when not initialized."""
-        with patch(
-            "gunicorn_prometheus_exporter.storage.redis_manager.logger"
-        ) as mock_logger:
+        with patch("gunicorn_prometheus_exporter.backend.service.manager.logger"):
             self.manager.teardown()
             # Should not log anything when not initialized
 
@@ -122,11 +119,12 @@ class TestRedisStorageManager:
         # Setup manager state
         self.manager._is_initialized = True
         self.manager._redis_client = Mock()
-        self.manager._original_value_class = Mock()
+        original_value_class = Mock()
+        self.manager._original_value_class = original_value_class
         mock_values.ValueClass = Mock()
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_manager.logger"
+            "gunicorn_prometheus_exporter.backend.service.manager.logger"
         ) as mock_logger:
             self.manager.teardown()
 
@@ -135,11 +133,9 @@ class TestRedisStorageManager:
             assert self.manager._original_value_class is None
 
             # Verify original value class was restored
-            assert mock_values.ValueClass is self.manager._original_value_class
+            assert mock_values.ValueClass is original_value_class
 
-            mock_logger.info.assert_called_with(
-                "Redis storage teardown completed"
-            )
+            mock_logger.info.assert_called_with("Redis storage teardown completed")
 
     def test_is_enabled(self):
         """Test is_enabled method."""
@@ -157,7 +153,7 @@ class TestRedisStorageManager:
         self.manager._redis_client = mock_client
         assert self.manager.get_client() is mock_client
 
-    @patch("gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.mark_process_dead_redis")
+    @patch("gunicorn_prometheus_exporter.backend.core.mark_process_dead_redis")
     def test_cleanup_keys(self, mock_mark_dead):
         """Test cleanup_keys method."""
         mock_client = Mock()
@@ -165,25 +161,23 @@ class TestRedisStorageManager:
 
         with patch("os.getpid", return_value=12345):
             with patch(
-                "gunicorn_prometheus_exporter.storage.redis_manager.logger"
+                "gunicorn_prometheus_exporter.backend.service.manager.logger"
             ) as mock_logger:
                 self.manager.cleanup_keys()
 
                 mock_mark_dead.assert_called_once_with(12345, mock_client, "gunicorn")
                 mock_logger.debug.assert_called_once_with(
-                    "Cleaned up Redis keys for process 12345"
+                    "Cleaned up Redis keys for process %d", 12345
                 )
 
     def test_cleanup_keys_no_client(self):
         """Test cleanup_keys when no client."""
-        with patch(
-            "gunicorn_prometheus_exporter.storage.redis_manager.logger"
-        ) as mock_logger:
+        with patch("gunicorn_prometheus_exporter.backend.service.manager.logger"):
             self.manager.cleanup_keys()
             # Should not do anything when no client
 
-    @patch("gunicorn_prometheus_exporter.storage.redis_backend.storage_collector.RedisMultiProcessCollector")
-    @patch("gunicorn_prometheus_exporter.storage.redis_manager.metrics.get_shared_registry")
+    @patch("gunicorn_prometheus_exporter.backend.core.RedisMultiProcessCollector")
+    @patch("gunicorn_prometheus_exporter.metrics.get_shared_registry")
     def test_get_collector_success(self, mock_get_registry, mock_collector_class):
         """Test successful collector creation."""
         mock_client = Mock()
@@ -198,15 +192,17 @@ class TestRedisStorageManager:
         result = self.manager.get_collector()
 
         assert result is mock_collector
-        mock_collector_class.assert_called_once_with(mock_registry, mock_client, "gunicorn")
+        mock_collector_class.assert_called_once_with(
+            mock_registry, mock_client, "gunicorn"
+        )
 
     def test_get_collector_not_enabled(self):
         """Test get_collector when not enabled."""
         result = self.manager.get_collector()
         assert result is None
 
-    @patch("gunicorn_prometheus_exporter.storage.redis_backend.storage_collector.RedisMultiProcessCollector")
-    @patch("gunicorn_prometheus_exporter.storage.redis_manager.metrics.get_shared_registry")
+    @patch("gunicorn_prometheus_exporter.backend.core.RedisMultiProcessCollector")
+    @patch("gunicorn_prometheus_exporter.metrics.get_shared_registry")
     def test_get_collector_error(self, mock_get_registry, mock_collector_class):
         """Test collector creation with error."""
         mock_client = Mock()
@@ -216,11 +212,11 @@ class TestRedisStorageManager:
         mock_get_registry.side_effect = Exception("Registry error")
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_manager.logger"
+            "gunicorn_prometheus_exporter.backend.service.manager.logger"
         ) as mock_logger:
             result = self.manager.get_collector()
 
             assert result is None
             mock_logger.error.assert_called_once_with(
-                "Failed to create Redis collector: Registry error"
+                "Failed to create Redis collector: %s", mock_get_registry.side_effect
             )

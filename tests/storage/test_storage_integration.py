@@ -4,7 +4,7 @@ import os
 
 from unittest.mock import Mock, patch
 
-from gunicorn_prometheus_exporter.storage import (
+from gunicorn_prometheus_exporter.backend import (
     RedisStorageClient,
     RedisStorageDict,
     RedisStorageManager,
@@ -13,13 +13,15 @@ from gunicorn_prometheus_exporter.storage import (
     get_redis_client,
     get_redis_collector,
     get_redis_storage_manager,
-    get_redis_value_class,
     is_redis_enabled,
-    mark_process_dead_redis,
     setup_redis_metrics,
     teardown_redis_metrics,
 )
-from gunicorn_prometheus_exporter.storage.redis_backend import RedisDict
+from gunicorn_prometheus_exporter.backend.core import RedisDict
+from gunicorn_prometheus_exporter.backend.core.values import (
+    get_redis_value_class,
+    mark_process_dead_redis,
+)
 
 
 class TestStorageModuleIntegration:
@@ -39,9 +41,7 @@ class TestStorageModuleIntegration:
         os.environ.pop("REDIS_PORT", None)
         os.environ.pop("REDIS_DB", None)
 
-    @patch(
-        "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
-    )
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_redis_storage_manager_integration(self, mock_redis):
         """Test RedisStorageManager integration."""
         mock_client = Mock()
@@ -66,7 +66,7 @@ class TestStorageModuleIntegration:
         """Test module-level functions integration."""
         # Test setup function
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
+            "gunicorn_prometheus_exporter.backend.service.manager.redis"
         ) as mock_redis:
             mock_client = Mock()
             mock_redis.from_url.return_value = mock_client
@@ -108,7 +108,7 @@ class TestStorageModuleIntegration:
         """Test error handling across the storage module."""
         # Test Redis connection failure
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_manager.redis_storage_manager.redis"
+            "gunicorn_prometheus_exporter.backend.service.manager.redis"
         ) as mock_redis:
             mock_redis.from_url.side_effect = Exception("Connection failed")
 

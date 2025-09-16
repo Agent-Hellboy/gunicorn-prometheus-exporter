@@ -174,7 +174,11 @@ class RedisValueClass:
 
     def __call__(self, *args, **kwargs):
         """Create a RedisValue instance."""
-        from .values import RedisValue
+        # Use dynamic import to avoid cyclic import
+        import importlib
+
+        values_module = importlib.import_module(".values", package=__package__)
+        RedisValue = values_module.RedisValue
 
         return RedisValue(self._redis_dict, *args, **kwargs)
 
@@ -193,6 +197,7 @@ class RedisStorageClient:
         """
         self._redis_client = redis_client
         self._key_prefix = key_prefix
+        self._redis_dict = RedisStorageDict(redis_client, key_prefix)
         self._value_class = RedisValueClass(redis_client, key_prefix)
         logger.debug("Initialized Redis storage client with prefix: %s", key_prefix)
 
@@ -222,5 +227,3 @@ class RedisStorageClient:
     def get_client(self) -> RedisClientProtocol:
         """Get the Redis client."""
         return self._redis_client
-
-

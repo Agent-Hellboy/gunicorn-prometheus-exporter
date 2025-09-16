@@ -140,8 +140,8 @@ class RedisStorageManager:
             return None
 
         try:
+            from ...metrics import get_shared_registry
             from ..core import RedisMultiProcessCollector
-            from .metrics import get_shared_registry
 
             registry = get_shared_registry()
             return RedisMultiProcessCollector(registry, self._redis_client, "gunicorn")

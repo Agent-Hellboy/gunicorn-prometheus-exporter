@@ -919,7 +919,7 @@ class TestRedisForwarder(unittest.TestCase):
             mock_config.redis_enabled = True
 
             with patch(
-                "gunicorn_prometheus_exporter.storage.setup_redis_metrics"
+                "gunicorn_prometheus_exporter.backend.setup_redis_metrics"
             ) as mock_setup_redis:
                 mock_setup_redis.return_value = True
 
@@ -949,7 +949,7 @@ class TestRedisForwarder(unittest.TestCase):
             mock_config.redis_enabled = True
 
             with patch(
-                "gunicorn_prometheus_exporter.storage.setup_redis_metrics",
+                "gunicorn_prometheus_exporter.backend.setup_redis_metrics",
                 side_effect=Exception("Test error"),
             ):
                 _setup_redis_storage_if_enabled(mock_logger)

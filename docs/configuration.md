@@ -31,16 +31,79 @@ Complete configuration guide for the Gunicorn Prometheus Exporter with all optio
 | `REDIS_DB` | Integer | `0` | Redis database number | `1` |
 | `REDIS_PASSWORD` | String | `None` | Redis password | `secret123` |
 
-#### Redis Forwarding (Files + Redis)
-| Variable | Type | Default | Description | Example |
-|----------|------|---------|-------------|---------|
-| `REDIS_FORWARD_ENABLED` | Boolean | `false` | Enable Redis forwarding (keeps files + forwards to Redis) | `true` |
-| `REDIS_HOST` | String | `localhost` | Redis server host | `redis.example.com` |
-| `REDIS_PORT` | Integer | `6379` | Redis server port | `6380` |
-| `REDIS_DB` | Integer | `0` | Redis database number | `1` |
-| `REDIS_PASSWORD` | String | `None` | Redis password | `secret123` |
-| `REDIS_KEY_PREFIX` | String | `gunicorn_metrics` | Redis key prefix | `myapp_metrics` |
-| `REDIS_FORWARD_INTERVAL` | Integer | `30` | Forwarding interval | `60` |
+## Redis Backend Configuration
+
+The Redis backend provides a sophisticated architecture for metrics storage with two main components:
+
+### Architecture Components
+
+#### `backend.service` - High-Level Management
+- **`RedisStorageManager`**: Centralized lifecycle management
+- **`setup_redis_metrics()`**: Initialize Redis storage
+- **`teardown_redis_metrics()`**: Clean shutdown
+- **`get_redis_storage_manager()`**: Global manager access
+
+#### `backend.core` - Low-Level Operations  
+- **`RedisStorageClient`**: Main Redis operations client
+- **`RedisStorageDict`**: Dictionary-like Redis interface
+- **`RedisValue`**: Redis-backed metric values
+- **`RedisMultiProcessCollector`**: Metrics collection from Redis
+- **`RedisDict`**: Low-level Redis operations
+
+### Redis Backend Setup
+
+**Use Case:** Production deployment with Redis storage backend.
+
+```python
+# gunicorn_redis_backend.conf.py
+import os
+
+# Environment variables must be set before imports
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
+os.environ.setdefault("GUNICORN_WORKERS", "4")
+
+# Redis backend configuration
+os.environ.setdefault("REDIS_ENABLED", "true")
+os.environ.setdefault("REDIS_HOST", "localhost")
+os.environ.setdefault("REDIS_PORT", "6379")
+os.environ.setdefault("REDIS_DB", "0")
+os.environ.setdefault("REDIS_PASSWORD", "")
+os.environ.setdefault("REDIS_KEY_PREFIX", "gunicorn")
+
+# Import Redis hooks
+from gunicorn_prometheus_exporter.hooks import (
+    redis_when_ready,
+    default_on_starting,
+    default_worker_int,
+    default_on_exit,
+)
+
+# Gunicorn settings
+bind = "0.0.0.0:8000"
+workers = 4
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+worker_connections = 1000
+max_requests = 1000
+max_requests_jitter = 50
+timeout = 60
+keepalive = 5
+
+# Use Redis hooks
+when_ready = redis_when_ready
+on_starting = default_on_starting
+worker_int = default_worker_int
+on_exit = default_on_exit
+```
+
+### Benefits of Redis Backend
+
+1. **No File System Dependencies**: Eliminates multiproc directory requirements
+2. **Better Scalability**: Redis handles concurrent access efficiently  
+3. **Storage-Compute Separation**: Metrics storage independent of application servers
+4. **Centralized Aggregation**: All metrics accessible from a single Redis instance
+5. **Automatic Cleanup**: Dead process keys are automatically cleaned up
+6. **High Performance**: Redis provides sub-millisecond latency for metric operations
 
 ## Configuration Scenarios
 
@@ -174,40 +237,6 @@ os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("REDIS_PORT", "6379")
 os.environ.setdefault("REDIS_DB", "0")
 os.environ.setdefault("REDIS_PASSWORD", "")
-
-# Gunicorn settings
-bind = "0.0.0.0:8000"
-workers = 4
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-worker_connections = 1000
-max_requests = 1000
-max_requests_jitter = 50
-timeout = 60
-keepalive = 5
-```
-
-### Redis Forwarding Setup
-
-**Use Case:** Migration scenario with both file storage and Redis forwarding.
-
-```python
-# gunicorn_redis_forwarding.conf.py
-import os
-
-# Environment variables must be set before imports
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
-os.environ.setdefault("GUNICORN_WORKERS", "4")
-
-# Redis forwarding configuration (keeps files + forwards to Redis)
-os.environ.setdefault("REDIS_FORWARD_ENABLED", "true")
-os.environ.setdefault("REDIS_HOST", "localhost")
-os.environ.setdefault("REDIS_PORT", "6379")
-os.environ.setdefault("REDIS_DB", "0")
-os.environ.setdefault("REDIS_PASSWORD", "")
-os.environ.setdefault("REDIS_KEY_PREFIX", "gunicorn_metrics")
-os.environ.setdefault("REDIS_FORWARD_INTERVAL", "30")
 
 # Gunicorn settings
 bind = "0.0.0.0:8000"

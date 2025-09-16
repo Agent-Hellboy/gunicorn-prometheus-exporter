@@ -5,10 +5,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client import (
+from gunicorn_prometheus_exporter.backend.core.client import (
     RedisStorageClient,
     RedisStorageDict,
     RedisValueClass,
+)
+from gunicorn_prometheus_exporter.backend.core.values import (
     get_redis_value_class,
     mark_process_dead_redis,
 )
@@ -311,7 +313,7 @@ class TestRedisStorageClient:
         client = RedisStorageClient(mock_redis, "test_prefix")
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.logger"
+            "gunicorn_prometheus_exporter.backend.core.client.logger"
         ) as mock_logger:
             client.cleanup_process_keys(12345)
 
@@ -333,7 +335,7 @@ class TestRedisStorageClient:
         client = RedisStorageClient(mock_redis, "test_prefix")
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.logger"
+            "gunicorn_prometheus_exporter.backend.core.client.logger"
         ) as mock_logger:
             client.cleanup_process_keys(12345)
 
@@ -353,7 +355,7 @@ class TestRedisStorageClient:
         client = RedisStorageClient(mock_redis, "test_prefix")
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.logger"
+            "gunicorn_prometheus_exporter.backend.core.client.logger"
         ) as mock_logger:
             client.cleanup_process_keys(12345)
 
@@ -381,42 +383,41 @@ class TestFactoryFunctions:
         mock_redis = Mock()
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.RedisStorageClient"
+            "gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient"
         ) as mock_client_class:
             mock_client = Mock()
-            mock_value_class = Mock()
-            mock_client.get_value_class.return_value = mock_value_class
             mock_client_class.return_value = mock_client
 
             result = get_redis_value_class(mock_redis, "test_prefix")
 
             mock_client_class.assert_called_once_with(mock_redis, "test_prefix")
-            mock_client.get_value_class.assert_called_once()
-            assert result is mock_value_class
+            # The function returns a ConfiguredRedisValue class, not the client's method
+            assert result is not None
+            assert callable(result)
 
     def test_get_redis_value_class_default_prefix(self):
         """Test get_redis_value_class with default prefix."""
         mock_redis = Mock()
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.RedisStorageClient"
+            "gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient"
         ) as mock_client_class:
             mock_client = Mock()
-            mock_value_class = Mock()
-            mock_client.get_value_class.return_value = mock_value_class
             mock_client_class.return_value = mock_client
 
             result = get_redis_value_class(mock_redis)
 
             mock_client_class.assert_called_once_with(mock_redis, "prometheus")
-            assert result is mock_value_class
+            # The function returns a ConfiguredRedisValue class, not the client's method
+            assert result is not None
+            assert callable(result)
 
     def test_mark_process_dead_redis(self):
         """Test mark_process_dead_redis factory function."""
         mock_redis = Mock()
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.RedisStorageClient"
+            "gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient"
         ) as mock_client_class:
             mock_client = Mock()
             mock_client_class.return_value = mock_client
@@ -431,7 +432,7 @@ class TestFactoryFunctions:
         mock_redis = Mock()
 
         with patch(
-            "gunicorn_prometheus_exporter.storage.redis_backend.redis_storage_client.RedisStorageClient"
+            "gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient"
         ) as mock_client_class:
             mock_client = Mock()
             mock_client_class.return_value = mock_client

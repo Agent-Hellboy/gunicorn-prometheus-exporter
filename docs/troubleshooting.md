@@ -7,11 +7,13 @@ Common issues and solutions for the Gunicorn Prometheus Exporter.
 ### Port Already in Use
 
 **Error:**
+
 ```
 OSError: [Errno 98] Address already in use
 ```
 
 **Solution:**
+
 1. Change the metrics port in your configuration:
 ```python
 # In gunicorn.conf.py
@@ -394,13 +396,6 @@ def worker_int(worker):
             return
     worker._last_metrics_update = time.time()
     worker.update_worker_metrics()
-```
-
-2. **Use Redis forwarding for aggregation:**
-```python
-# Enable Redis forwarding
-import os
-os.environ.setdefault("REDIS_ENABLED", "true")
 ```
 
 ## Recovery Procedures
