@@ -257,6 +257,9 @@ class TestRedisValueClass:
     def test_call(self):
         """Test creating RedisValue instance."""
         mock_redis = Mock()
+        # Mock the Redis responses to return proper byte strings
+        mock_redis.hget.side_effect = [b"0.0", b"0.0"]  # value, timestamp
+
         value_class = RedisValueClass(mock_redis, "test_prefix")
 
         # Test that the call method works by calling it directly

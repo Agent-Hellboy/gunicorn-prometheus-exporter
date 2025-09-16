@@ -15,49 +15,71 @@ class RedisValue:
 
     def __init__(
         self,
-        typ,
-        metric_name,
-        name,
-        labelnames,
-        labelvalues,
-        help_text,
+        redis_dict=None,
+        typ=None,
+        metric_name=None,
+        name=None,
+        labelnames=None,
+        labelvalues=None,
+        help_text=None,
         multiprocess_mode="",
         redis_client=None,
         redis_key_prefix="prometheus",
         **_kwargs,
     ):
-        self._params = (
-            typ,
-            metric_name,
-            name,
-            labelnames,
-            labelvalues,
-            help_text,
-            multiprocess_mode,
-        )
-        self._redis_client = redis_client or self._get_default_redis_client()
-        self._redis_key_prefix = redis_key_prefix
+        # Handle both new interface (redis_dict) and legacy interface (redis_client)
+        # Check if redis_dict is actually a RedisStorageDict instance
+        if redis_dict is not None and hasattr(redis_dict, "read_value"):
+            # New interface: redis_dict is provided directly
+            self._redis_dict = redis_dict
+            self._params = (
+                typ,
+                metric_name,
+                name,
+                labelnames,
+                labelvalues,
+                help_text,
+                multiprocess_mode,
+            )
+            self._key = redis_key(metric_name, name, labelnames, labelvalues, help_text)
+            self._value, self._timestamp = self._redis_dict.read_value(self._key)
+        else:
+            # Legacy interface: create redis_dict from redis_client
+            # If redis_dict is provided but not a RedisStorageDict, treat it as typ
+            if redis_dict is not None and not hasattr(redis_dict, "read_value"):
+                typ = redis_dict
+            self._params = (
+                typ,
+                metric_name,
+                name,
+                labelnames,
+                labelvalues,
+                help_text,
+                multiprocess_mode,
+            )
+            self._redis_client = redis_client or self._get_default_redis_client()
+            self._redis_key_prefix = redis_key_prefix
 
-        # Initialize Redis connection if not provided
-        if self._redis_client is None:
-            raise ValueError(
-                "Redis client must be provided or PROMETHEUS_REDIS_URL must be set"
+            # Initialize Redis connection if not provided
+            if self._redis_client is None:
+                raise ValueError(
+                    "Redis client must be provided or PROMETHEUS_REDIS_URL must be set"
+                )
+
+            # Create RedisDict instance
+            if typ == "gauge":
+                file_prefix = typ + "_" + multiprocess_mode
+            else:
+                file_prefix = typ
+
+            # Use process ID to create unique keys per process
+            pid = os.getpid()
+            self._redis_dict = RedisDict(
+                self._redis_client, f"{self._redis_key_prefix}:{file_prefix}:{pid}"
             )
 
-        # Create RedisDict instance
-        if typ == "gauge":
-            file_prefix = typ + "_" + multiprocess_mode
-        else:
-            file_prefix = typ
-
-        # Use process ID to create unique keys per process
-        pid = os.getpid()
-        self._redis_dict = RedisDict(
-            self._redis_client, f"{self._redis_key_prefix}:{file_prefix}:{pid}"
-        )
-
-        self._key = redis_key(metric_name, name, labelnames, labelvalues, help_text)
-        self._value, self._timestamp = self._redis_dict.read_value(self._key)
+            self._key = redis_key(metric_name, name, labelnames, labelvalues, help_text)
+            self._value, self._timestamp = self._redis_dict.read_value(self._key)
 
     def _get_default_redis_client(self):
         """Get default Redis client from environment variables."""
