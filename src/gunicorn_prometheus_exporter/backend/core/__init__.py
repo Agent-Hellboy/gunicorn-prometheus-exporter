@@ -5,14 +5,14 @@ This package provides Redis-based storage for Prometheus metrics in multi-proces
 environments, replacing the default file-based storage mechanism.
 """
 
-from .redis_storage_client import (
+from .client import (
     RedisStorageClient,
     RedisStorageDict,
     RedisValueClass,
 )
-from .storage_collector import RedisMultiProcessCollector
-from .storage_dict import RedisDict, redis_key
-from .storage_values import RedisValue, get_redis_value_class, mark_process_dead_redis
+from .collector import RedisMultiProcessCollector
+from .dict import RedisDict, redis_key
+from .values import RedisValue, get_redis_value_class, mark_process_dead_redis
 
 
 __version__ = "0.1.0"

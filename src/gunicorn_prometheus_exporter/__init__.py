@@ -86,7 +86,7 @@ from .plugin import (
     get_prometheus_gevent_worker,
     get_prometheus_tornado_worker,
 )
-from .storage import (
+from .backend import (
     RedisStorageManager,
     get_redis_storage_manager,
     setup_redis_metrics,

@@ -125,7 +125,7 @@ class RedisStorageManager:
             return
 
         try:
-            from ..redis_backend import mark_process_dead_redis
+            from ..core import mark_process_dead_redis
 
             pid = os.getpid()
             mark_process_dead_redis(pid, self._redis_client, "gunicorn")
@@ -140,7 +140,7 @@ class RedisStorageManager:
             return None
 
         try:
-            from ..redis_backend import RedisMultiProcessCollector
+            from ..core import RedisMultiProcessCollector
             from .metrics import get_shared_registry
 
             registry = get_shared_registry()
@@ -164,7 +164,7 @@ class RedisStorageManager:
 
     def _create_value_class(self, client: RedisClientProtocol, prefix: str):
         """Create Redis value class."""
-        from ..redis_backend import get_redis_value_class
+        from ..core import get_redis_value_class
 
         return get_redis_value_class(client, prefix)
 

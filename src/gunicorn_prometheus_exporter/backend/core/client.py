@@ -174,7 +174,7 @@ class RedisValueClass:
 
     def __call__(self, *args, **kwargs):
         """Create a RedisValue instance."""
-        from .storage_values import RedisValue
+        from .values import RedisValue
 
         return RedisValue(self._redis_dict, *args, **kwargs)
 
@@ -224,32 +224,3 @@ class RedisStorageClient:
         return self._redis_client
 
 
-# Factory functions for backward compatibility
-def get_redis_value_class(
-    redis_client: RedisClientProtocol, key_prefix: str = "prometheus"
-):
-    """Get Redis value class for Prometheus metrics.
-
-    Args:
-        redis_client: Redis client instance
-        key_prefix: Prefix for Redis keys
-
-    Returns:
-        Redis value class
-    """
-    client = RedisStorageClient(redis_client, key_prefix)
-    return client.get_value_class()
-
-
-def mark_process_dead_redis(
-    pid: int, redis_client: RedisClientProtocol, key_prefix: str = "prometheus"
-) -> None:
-    """Mark a process as dead and clean up its Redis keys.
-
-    Args:
-        pid: Process ID
-        redis_client: Redis client instance
-        key_prefix: Prefix for Redis keys
-    """
-    client = RedisStorageClient(redis_client, key_prefix)
-    client.cleanup_process_keys(pid)

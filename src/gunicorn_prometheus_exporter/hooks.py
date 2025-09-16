@@ -143,7 +143,7 @@ class MetricsServerManager:
         # Try Redis collector first if Redis is enabled
         if config.redis_enabled:
             try:
-                from .storage import get_redis_storage_manager
+                from .backend import get_redis_storage_manager
 
                 manager = get_redis_storage_manager()
                 redis_collector = manager.get_collector()
@@ -416,7 +416,7 @@ def default_on_exit(_server: Any) -> None:
 
         # Cleanup Redis metrics if enabled
         if config.redis_enabled:
-            from .storage import get_redis_storage_manager
+            from .backend import get_redis_storage_manager
 
             manager = get_redis_storage_manager()
             manager.cleanup_keys()
@@ -442,7 +442,7 @@ def redis_when_ready(_server: Any) -> None:
 
     # Setup Redis metrics storage if enabled
     if config.redis_enabled:
-        from .storage import get_redis_storage_manager
+        from .backend import get_redis_storage_manager
 
         manager = get_redis_storage_manager()
         if manager.setup():
@@ -478,7 +478,7 @@ def _setup_redis_storage_if_enabled(logger: logging.Logger) -> None:
         return
 
     try:
-        from .storage import setup_redis_metrics
+        from .backend import setup_redis_metrics
 
         if setup_redis_metrics():
             logger.info("Redis storage enabled - using Redis instead of files")

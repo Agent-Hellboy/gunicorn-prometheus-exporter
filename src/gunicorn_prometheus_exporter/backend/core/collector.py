@@ -159,9 +159,14 @@ class RedisMultiProcessCollector:
         """Extract metric type from Redis key structure."""
         key_parts = metric_key.decode("utf-8").split(":")
         if len(key_parts) >= 3:
-            # Key format: gunicorn:histogram:36680:metric:hash
-            # Extract type from the second part (e.g., "histogram")
-            return key_parts[1]  # This should be "histogram", "counter", "gauge", etc.
+            # Key format: gunicorn:gauge_all:36680:metric:hash
+            # Extract type from the second part and normalize it
+            raw_type = key_parts[1]
+            if raw_type == "gauge_all":
+                return "gauge"  # Normalize gauge_all to gauge
+            if raw_type in ["counter", "gauge", "histogram", "summary"]:
+                return raw_type
+            return "counter"  # Default fallback
         return "counter"  # Default type
 
     @staticmethod
@@ -173,9 +178,11 @@ class RedisMultiProcessCollector:
             # Extract PID from Redis key
             key_parts = metric_key.decode("utf-8").split(":")
             pid = key_parts[-1] if len(key_parts) > 3 else "unknown"
-            metric._multiprocess_mode = (
-                key_parts[2].split("_")[1] if "_" in key_parts[2] else "all"
-            )
+            # Set multiprocess mode based on the key structure
+            if len(key_parts) >= 3 and "_" in key_parts[2]:
+                metric._multiprocess_mode = key_parts[2].split("_")[1]
+            else:
+                metric._multiprocess_mode = "all"  # Default for gauge_all
             metric.add_sample(name, labels_key + (("pid", pid),), value, timestamp)
         else:
             metric.add_sample(name, labels_key, value)
@@ -344,18 +351,3 @@ class RedisMultiProcessCollector:
             return []
 
 
-def mark_process_dead_redis(pid, redis_client=None, redis_key_prefix="prometheus"):
-    """Do bookkeeping for when one process dies in a Redis multi-process setup."""
-    if redis_client is None:
-        redis_url = os.environ.get("PROMETHEUS_REDIS_URL")
-        if redis_url:
-            redis_client = redis.from_url(redis_url)
-        else:
-            redis_client = redis.Redis(host="localhost", port=6379, db=0)
-
-    # Remove all keys for the dead process
-    pattern = f"{redis_key_prefix}:*:*:{pid}"
-    keys_to_delete = redis_client.keys(pattern)
-
-    if keys_to_delete:
-        redis_client.delete(*keys_to_delete)

@@ -5,8 +5,8 @@ replacing traditional file-based storage with Redis for better scalability and
 storage-compute separation.
 
 Package Structure:
-- redis_manager: Redis storage management and lifecycle
-- redis_backend: Low-level Redis operations and storage
+- service: Redis storage management and lifecycle
+- core: Low-level Redis operations and storage
 
 Design Patterns:
 - Manager Pattern: Centralized management of storage systems
@@ -14,14 +14,12 @@ Design Patterns:
 - Dependency Injection: Testable and maintainable code
 """
 
-from .redis_backend import (
+from .core import (
     RedisStorageClient,
     RedisStorageDict,
     RedisValueClass,
-    get_redis_value_class,
-    mark_process_dead_redis,
 )
-from .redis_manager import (
+from .service import (
     RedisStorageManager,
     cleanup_redis_keys,
     get_redis_client,
@@ -48,6 +46,4 @@ __all__ = [
     "RedisStorageClient",
     "RedisStorageDict",
     "RedisValueClass",
-    "get_redis_value_class",
-    "mark_process_dead_redis",
 ]

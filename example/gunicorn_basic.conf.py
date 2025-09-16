@@ -12,7 +12,6 @@ Features:
 Usage:
     gunicorn --config gunicorn_basic.conf.py app:app
 """
-print("Starting gunicorn_basic.conf.py")  # noqa: T201
 import os  # noqa: E402
 
 
