@@ -12,7 +12,13 @@ from .client import (
 )
 from .collector import RedisMultiProcessCollector
 from .dict import RedisDict, redis_key
-from .values import RedisValue, get_redis_value_class, mark_process_dead_redis, cleanup_process_keys_for_pid, CleanupUtilsMixin
+from .values import (
+    CleanupUtilsMixin,
+    RedisValue,
+    cleanup_process_keys_for_pid,
+    get_redis_value_class,
+    mark_process_dead_redis,
+)
 
 
 __version__ = "0.1.0"

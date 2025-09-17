@@ -89,10 +89,10 @@ class RedisMultiProcessCollector:
         return metrics
 
     @staticmethod
-    def _process_metric_key(metric_key, redis_client, metrics, _parse_key):
+    def _process_metric_key(metric_key, redis_client, metrics, _parse_key):  # pylint: disable=too-many-locals
         """Process a single metric key from Redis."""
         try:
-            # Get metadata and validate
+            # Get and validate metadata
             metadata = RedisMultiProcessCollector._get_metadata(
                 metric_key, redis_client
             )
@@ -104,7 +104,7 @@ class RedisMultiProcessCollector:
                 return
 
             # Parse key and get metric info
-            metric_name, name, labels, labels_key, help_text = _parse_key(original_key)
+            metric_name, name, _labels, labels_key, help_text = _parse_key(original_key)
             typ = RedisMultiProcessCollector._extract_metric_type(metric_key)
 
             # Get and validate values

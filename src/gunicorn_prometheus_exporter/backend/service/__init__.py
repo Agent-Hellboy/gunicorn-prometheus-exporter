@@ -8,8 +8,8 @@ Modules:
 """
 
 from .manager import (
-    RedisStorageManager,
     FactoryUtilsMixin,
+    RedisStorageManager,
     cleanup_redis_keys,
     get_redis_client,
     get_redis_collector,

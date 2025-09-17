@@ -49,7 +49,7 @@ jobs:
 
     - name: Upload test artifacts
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-logs
         path: |
@@ -82,7 +82,7 @@ jobs:
 
     - name: Upload test artifacts
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-logs-macos
         path: |
@@ -110,12 +110,13 @@ jobs:
     - name: Run system test (Windows)
       shell: bash
       run: |
-        cd ${{ github.workspace }}
-        ./system_test.sh
+        cd ${{ github.workspace }}/system-test
+        chmod +x system_test.sh
+        ./system_test.sh --ci
 
     - name: Upload test artifacts
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-logs-windows
         path: |

@@ -129,7 +129,7 @@ def cleanup_process_keys_for_pid(
         redis_key_prefix: Prefix for Redis keys
     """
     from .client import RedisStorageClient
-    
+
     storage_client = RedisStorageClient(redis_client, redis_key_prefix)
     storage_client.cleanup_process_keys(pid)
 

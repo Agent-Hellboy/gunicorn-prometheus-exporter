@@ -219,7 +219,7 @@ class TestRedisMultiProcessCollector:
         metrics = list(collector.collect())
 
         assert metrics == []
-        mock_client.keys.assert_called_with("prometheus:*:metric:*")
+        mock_client.keys.assert_called_with("prometheus:metric:*")
 
     @patch("gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient")
     def test_collect_with_metrics(self, mock_client_class):
@@ -237,7 +237,7 @@ class TestRedisMultiProcessCollector:
         metrics = list(collector.collect())
 
         assert len(metrics) > 0
-        mock_client.keys.assert_called_with("prometheus:*:metric:*")
+        mock_client.keys.assert_called_with("prometheus:metric:*")
 
     @patch("gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient")
     def test_collect_error_handling(self, mock_client_class):
