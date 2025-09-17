@@ -101,23 +101,23 @@ print_warning() {
 # Cleanup function
 cleanup() {
     echo -e "${YELLOW}Cleaning up processes...${NC}"
-    
+
     if [ ! -z "$GUNICORN_PID" ]; then
         echo "Stopping Gunicorn (PID: $GUNICORN_PID)"
         kill -TERM "$GUNICORN_PID" 2>/dev/null || true
         sleep 2
         kill -KILL "$GUNICORN_PID" 2>/dev/null || true
     fi
-    
+
     # Clean up any remaining processes
     pkill -f "gunicorn.*basic" 2>/dev/null || true
-    
-    # Clean up multiprocess files
-    cleanup_multiproc_files
-    
+
+    # Clean up multiprocess files (with error handling)
+    cleanup_multiproc_files || true
+
     # Clean up log files
     rm -f gunicorn.log 2>/dev/null || true
-    
+
     echo -e "${GREEN}Cleanup completed${NC}"
 }
 
@@ -127,10 +127,10 @@ trap cleanup EXIT INT TERM
 # Function to cleanup multiprocess files
 cleanup_multiproc_files() {
     print_status "Cleaning up multiprocess files..."
-    
+
     # Remove multiprocess directory if it exists
     if [ -d "/tmp/prometheus_multiproc" ]; then
-        rm -rf /tmp/prometheus_multiproc
+        rm -rf /tmp/prometheus_multiproc || true
         print_success "Multiprocess directory cleaned"
     else
         print_warning "No multiprocess directory found"
@@ -218,17 +218,17 @@ start_gunicorn() {
     # Set environment variables for file-based multiprocess
     export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
     export GUNICORN_WORKERS="2"
-    
+
     # Create multiprocess directory
     mkdir -p "$PROMETHEUS_MULTIPROC_DIR"
     print_status "Created multiprocess directory: $PROMETHEUS_MULTIPROC_DIR"
-    
+
     # Activate virtual environment and start Gunicorn in background
     if [ "$DOCKER_MODE" != true ]; then
         source test_venv/bin/activate
     fi
     cd ../example
-    
+
     # Use different startup method based on mode
     if [ "$CI_MODE" = true ]; then
         nohup gunicorn --config gunicorn_basic.conf.py app:app > ../system-test/gunicorn.log 2>&1 &
@@ -258,7 +258,7 @@ wait_for_service() {
     local attempt=0
 
     print_status "Waiting for service at $url..."
-    
+
     while [ $attempt -lt $max_attempts ]; do
         if curl -s "$url" >/dev/null 2>&1; then
             print_success "Service is ready at $url"
@@ -268,7 +268,7 @@ wait_for_service() {
         attempt=$((attempt + 1))
         echo -n "."
     done
-    
+
     echo ""
     print_error "Service at $url is not ready after $max_attempts seconds"
     return 1
@@ -314,7 +314,7 @@ verify_metrics() {
         print_error "Failed to fetch metrics from $metrics_url"
         return 1
     fi
-    
+
     # Define expected metrics
     local expected_metrics=(
         "gunicorn_worker_requests_total"
@@ -324,14 +324,14 @@ verify_metrics() {
         "gunicorn_worker_uptime_seconds"
         "gunicorn_worker_state"
     )
-    
+
     # Optional metrics (may not have values)
     local optional_metrics=(
         "gunicorn_master_worker_restart_total"
     )
-    
+
     local failed_checks=0
-    
+
     # Check each expected metric
     for metric in "${expected_metrics[@]}"; do
         local metric_line=$(echo "$metrics_output" | grep "$metric.*[0-9]" | head -1)
@@ -342,7 +342,7 @@ verify_metrics() {
             failed_checks=$((failed_checks + 1))
         fi
     done
-    
+
     # Check optional metrics (don't fail if they have no values)
     for metric in "${optional_metrics[@]}"; do
         local metric_line=$(echo "$metrics_output" | grep "$metric.*[0-9]" | head -1)
@@ -352,7 +352,7 @@ verify_metrics() {
             print_warning "Optional metric $metric has no values (this is normal)"
         fi
     done
-    
+
     # Check for specific metric types
     if echo "$metrics_output" | grep -q "# TYPE.*counter"; then
         print_success "Counter metrics found"
@@ -386,7 +386,7 @@ verify_metrics() {
     # Check for request metrics with actual values
     if echo "$metrics_output" | grep -q "gunicorn_worker_requests_total.*[1-9]"; then
         print_success "Request metrics are being captured"
-        
+
         # Show specific request metric values
         print_status "Request metric values:"
         echo "$metrics_output" | grep "gunicorn_worker_requests_total.*[0-9]" | while read line; do
@@ -400,7 +400,7 @@ verify_metrics() {
     # Count total metric samples
     local sample_count=$(echo "$metrics_output" | grep -c "^[^#]" || echo "0")
     print_status "Total metric samples: $sample_count"
-    
+
     if [ "$sample_count" -gt 50 ]; then
         print_success "Sufficient metric samples found ($sample_count)"
     else
@@ -411,7 +411,7 @@ verify_metrics() {
     # Check for memory metrics
     if echo "$metrics_output" | grep -q "gunicorn_worker_memory_bytes.*[0-9]"; then
         print_success "Memory metrics are being captured"
-        
+
         # Show memory metric values
         print_status "Memory metric values:"
         echo "$metrics_output" | grep "gunicorn_worker_memory_bytes.*[0-9]" | head -2 | while read line; do
@@ -425,7 +425,7 @@ verify_metrics() {
     # Check for CPU metrics
     if echo "$metrics_output" | grep -q "gunicorn_worker_cpu_percent.*[0-9]"; then
         print_success "CPU metrics are being captured"
-        
+
         # Show CPU metric values
         print_status "CPU metric values:"
         echo "$metrics_output" | grep "gunicorn_worker_cpu_percent.*[0-9]" | head -2 | while read line; do
@@ -439,7 +439,7 @@ verify_metrics() {
     # Check for uptime metrics
     if echo "$metrics_output" | grep -q "gunicorn_worker_uptime_seconds.*[0-9]"; then
         print_success "Uptime metrics are being captured"
-        
+
         # Show uptime metric values
         print_status "Uptime metric values:"
         echo "$metrics_output" | grep "gunicorn_worker_uptime_seconds.*[0-9]" | head -2 | while read line; do
@@ -453,7 +453,7 @@ verify_metrics() {
     # Check for request duration metrics
     if echo "$metrics_output" | grep -q "gunicorn_worker_request_duration_seconds.*[0-9]"; then
         print_success "Request duration metrics are being captured"
-        
+
         # Show request duration metric values
         print_status "Request duration metric values:"
         echo "$metrics_output" | grep "gunicorn_worker_request_duration_seconds.*[0-9]" | head -3 | while read line; do
@@ -467,7 +467,7 @@ verify_metrics() {
     # Check for worker state metrics
     if echo "$metrics_output" | grep -q "gunicorn_worker_state.*[0-9]"; then
         print_success "Worker state metrics are being captured"
-        
+
         # Show worker state metric values
         print_status "Worker state metric values:"
         echo "$metrics_output" | grep "gunicorn_worker_state.*[0-9]" | head -2 | while read line; do
@@ -486,27 +486,27 @@ verify_multiproc_files() {
     print_status "Verifying multiprocess files..."
 
     local multiproc_dir="$PROMETHEUS_MULTIPROC_DIR"
-    
+
     if [ ! -d "$multiproc_dir" ]; then
         print_error "Multiprocess directory not found: $multiproc_dir"
         return 1
     fi
-    
+
     print_success "Multiprocess directory exists: $multiproc_dir"
-    
+
     # Count files in multiprocess directory
     local file_count=$(find "$multiproc_dir" -type f 2>/dev/null | wc -l)
-    
+
     if [ "$file_count" -gt 0 ]; then
         print_success "Found $file_count files in multiprocess directory"
-        
+
         # Show sample files
         print_status "Sample multiprocess files:"
         find "$multiproc_dir" -type f 2>/dev/null | head -5 | while read file; do
             local file_size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo "unknown")
             echo "  - $(basename "$file") (${file_size} bytes)"
         done
-        
+
         # Check for specific metric files
         local metric_files=$(find "$multiproc_dir" -name "*gunicorn_worker_requests_total*" 2>/dev/null | wc -l)
         if [ "$metric_files" -gt 0 ]; then
@@ -514,7 +514,7 @@ verify_multiproc_files() {
         else
             print_warning "No request metric files found"
         fi
-        
+
         return 0
     else
         print_error "No files found in multiprocess directory"
@@ -525,19 +525,19 @@ verify_multiproc_files() {
 # Function to test signal handling
 test_signal_handling() {
     print_status "Testing signal handling (Ctrl+C simulation)..."
-    
+
     # Send SIGINT to Gunicorn process
     if [ ! -z "$GUNICORN_PID" ] && kill -0 "$GUNICORN_PID" 2>/dev/null; then
         kill -INT "$GUNICORN_PID" 2>/dev/null || true
         sleep 2
-        
+
         # Check if process is still running
         if kill -0 "$GUNICORN_PID" 2>/dev/null; then
             print_warning "Process still running after SIGINT, sending SIGTERM"
             kill -TERM "$GUNICORN_PID" 2>/dev/null || true
             sleep 2
         fi
-        
+
         print_success "Signal handling working correctly"
     else
         print_warning "Gunicorn process not running, skipping signal test"
@@ -559,19 +559,19 @@ main() {
     fi
     echo -e "${BLUE}========================================${NC}"
     echo
-    
+
     # Step 1: Install dependencies
     install_dependencies
-    
+
     # Step 2: Clean up multiprocess files for clean test
     cleanup_multiproc_files
-    
+
     # Step 3: Start Gunicorn
     start_gunicorn
-    
+
     # Step 4: Generate requests
     generate_requests
-    
+
     # Step 5: Verify metrics
     if verify_metrics; then
         print_success "All metrics verification passed!"
@@ -579,7 +579,7 @@ main() {
         print_error "Some metrics verification failed!"
         exit 1
     fi
-    
+
     # Step 6: Verify multiprocess files
     if verify_multiproc_files; then
         print_success "Multiprocess files verification passed!"
@@ -587,10 +587,10 @@ main() {
         print_error "Multiprocess files verification failed!"
         exit 1
     fi
-    
+
     # Step 7: Test signal handling
     test_signal_handling
-    
+
     echo
     echo -e "${GREEN}========================================${NC}"
     echo -e "${GREEN}  Basic System Test Completed Successfully!${NC}"

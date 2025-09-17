@@ -94,31 +94,33 @@ REDIS_PID=""
 # Cleanup function
 cleanup() {
     echo -e "${YELLOW}Cleaning up processes...${NC}"
-    
+
+    # Stop Gunicorn process
     if [ ! -z "$GUNICORN_PID" ]; then
         echo "Stopping Gunicorn (PID: $GUNICORN_PID)"
         kill -TERM "$GUNICORN_PID" 2>/dev/null || true
         sleep 2
         kill -KILL "$GUNICORN_PID" 2>/dev/null || true
     fi
-    
+
+    # Stop Redis process
     if [ ! -z "$REDIS_PID" ]; then
         echo "Stopping Redis (PID: $REDIS_PID)"
         kill -TERM "$REDIS_PID" 2>/dev/null || true
         sleep 2
         kill -KILL "$REDIS_PID" 2>/dev/null || true
     fi
-    
+
     # Clean up any remaining processes
     pkill -f "gunicorn.*redis_integration" 2>/dev/null || true
     pkill -f "redis-server" 2>/dev/null || true
-    
-    # Clean up Redis database
-    cleanup_redis
-    
+
+    # Clean up Redis database (with error handling)
+    cleanup_redis || true
+
     # Clean up log files
     rm -f gunicorn.log 2>/dev/null || true
-    
+
     echo -e "${GREEN}Cleanup completed${NC}"
 }
 
@@ -156,7 +158,7 @@ check_port() {
 kill_port_processes() {
     local port=$1
     local pids=$(lsof -ti :$port 2>/dev/null || true)
-    
+
     if [ ! -z "$pids" ]; then
         print_warning "Killing processes on port $port: $pids"
         echo "$pids" | xargs kill -TERM 2>/dev/null || true
@@ -176,20 +178,20 @@ wait_for_service() {
     local url=$1
     local max_attempts=30
     local attempt=1
-    
+
     print_status "Waiting for service at $url..."
-    
+
     while [ $attempt -le $max_attempts ]; do
         if curl -s "$url" >/dev/null 2>&1; then
             print_success "Service is ready at $url"
             return 0
         fi
-        
+
         echo -n "."
         sleep 1
         attempt=$((attempt + 1))
     done
-    
+
     print_error "Service failed to start at $url after $max_attempts attempts"
     return 1
 }
@@ -206,7 +208,7 @@ check_redis() {
 # Function to flush Redis database
 flush_redis() {
     print_status "Flushing Redis database for clean test..."
-    
+
     if command -v redis-cli >/dev/null 2>&1; then
         redis-cli FLUSHDB >/dev/null 2>&1
         print_success "Redis database flushed"
@@ -218,56 +220,61 @@ flush_redis() {
 # Function to verify Redis contains metrics
 verify_redis_metrics() {
     print_status "Verifying metrics are stored in Redis..."
-    
+
     if ! command -v redis-cli >/dev/null 2>&1; then
         print_warning "redis-cli not available, skipping Redis verification"
         return 0
     fi
-    
+
     # Check if Redis has any keys
     local key_count=$(redis-cli DBSIZE 2>/dev/null || echo "0")
-    
+
     if [ "$key_count" -eq 0 ]; then
         print_error "Redis database is empty - no metrics stored"
         return 1
     fi
-    
+
     print_success "Redis contains $key_count keys"
-    
+
     # Check for specific metric patterns
     local metric_keys=$(redis-cli KEYS "*metric*" 2>/dev/null | wc -l)
     local meta_keys=$(redis-cli KEYS "*meta*" 2>/dev/null | wc -l)
-    
+
     if [ "$metric_keys" -gt 0 ]; then
         print_success "Found $metric_keys metric keys in Redis"
     else
         print_error "No metric keys found in Redis"
         return 1
     fi
-    
+
     if [ "$meta_keys" -gt 0 ]; then
         print_success "Found $meta_keys metadata keys in Redis"
     else
         print_error "No metadata keys found in Redis"
         return 1
     fi
-    
+
     # Show sample keys
     print_status "Sample Redis keys:"
     redis-cli KEYS "*" 2>/dev/null | head -5 | while read key; do
         echo "  - $key"
     done
-    
+
     return 0
 }
 
 # Function to clean up Redis
 cleanup_redis() {
     print_status "Cleaning up Redis database..."
-    
+
     if command -v redis-cli >/dev/null 2>&1; then
-        redis-cli FLUSHDB >/dev/null 2>&1
-        print_success "Redis database cleaned"
+        # Try to connect to Redis and flush database
+        if redis-cli ping >/dev/null 2>&1; then
+            redis-cli FLUSHDB >/dev/null 2>&1 || true
+            print_success "Redis database cleaned"
+        else
+            print_warning "Redis not responding, skipping cleanup"
+        fi
     else
         print_warning "redis-cli not available, skipping Redis cleanup"
     fi
@@ -314,20 +321,20 @@ start_redis() {
             return 1
         fi
     fi
-    
+
     print_status "Starting Redis server..."
-    
+
     # Check if Redis is already running
     if check_redis; then
         print_warning "Redis is already running"
         return 0
     fi
-    
+
     # Try to start Redis server
     if command -v redis-server >/dev/null 2>&1; then
         redis-server --port $REDIS_PORT --daemonize yes
         sleep 2
-        
+
         if check_redis; then
             print_success "Redis server started on port $REDIS_PORT"
             REDIS_PID=$(pgrep redis-server)
@@ -344,14 +351,14 @@ start_redis() {
 # Function to start Gunicorn server
 start_gunicorn() {
     print_status "Starting Gunicorn server with Redis integration..."
-    
+
     # Kill existing processes if --force flag is used
     if [ "$FORCE_KILL" = true ]; then
         print_status "Force killing existing processes on ports $APP_PORT and $METRICS_PORT..."
         kill_port_processes $APP_PORT
         kill_port_processes $METRICS_PORT
     fi
-    
+
     # Check if ports are available
     if ! check_port $APP_PORT; then
         if [ "$FORCE_KILL" = true ]; then
@@ -362,7 +369,7 @@ start_gunicorn() {
             return 1
         fi
     fi
-    
+
     if ! check_port $METRICS_PORT; then
         if [ "$FORCE_KILL" = true ]; then
             print_error "Port $METRICS_PORT is still in use after force kill"
@@ -372,7 +379,7 @@ start_gunicorn() {
             return 1
         fi
     fi
-    
+
     # Set environment variables
     export PROMETHEUS_METRICS_PORT=$METRICS_PORT
     export PROMETHEUS_BIND_ADDRESS="127.0.0.1"
@@ -381,39 +388,39 @@ start_gunicorn() {
     export REDIS_PORT=$REDIS_PORT
     export REDIS_DB="0"
     export GUNICORN_WORKERS="2"
-    
+
     # Start Gunicorn in background
     if [ "$DOCKER_MODE" != true ]; then
         source test_venv/bin/activate
     fi
     cd ../example
-    
+
     # Use different startup method based on mode
     if [ "$CI_MODE" = true ]; then
         nohup gunicorn --config gunicorn_redis_integration.conf.py app:app > ../system-test/gunicorn.log 2>&1 &
     else
         gunicorn --config gunicorn_redis_integration.conf.py app:app &
     fi
-    
+
     GUNICORN_PID=$!
     cd ../system-test
-    
+
     print_status "Gunicorn started with PID: $GUNICORN_PID"
-    
+
     # Give Gunicorn time to fully initialize
     sleep 2
-    
+
     # Wait for services to be ready
     wait_for_service "http://localhost:$APP_PORT/"
     wait_for_service "http://localhost:$METRICS_PORT/metrics"
-    
+
     print_success "Gunicorn server is ready"
 }
 
 # Function to generate test requests
 generate_requests() {
     print_status "Generating test requests for $TEST_DURATION seconds..."
-    
+
     # Simple approach: generate requests in background and show progress
     (
         for i in $(seq 1 $((TEST_DURATION * 2))); do
@@ -422,36 +429,36 @@ generate_requests() {
             sleep 0.5
         done
     ) &
-    
+
     local request_pid=$!
-    
+
     # Show progress dots
     for i in $(seq 1 $TEST_DURATION); do
         sleep 1
         echo -n "."
     done
-    
+
     echo ""  # New line after progress dots
-    
+
     # Wait for request generation to complete
     wait $request_pid 2>/dev/null || true
-    
+
     print_success "Generated $((TEST_DURATION * 4)) requests"
 }
 
 # Function to verify metrics
 verify_metrics() {
     print_status "Verifying metrics..."
-    
+
     local metrics_url="http://localhost:$METRICS_PORT/metrics"
     local metrics_output=$(curl -s "$metrics_url")
-    
+
     # Check if metrics endpoint is accessible
     if [ -z "$metrics_output" ]; then
         print_error "Failed to fetch metrics from $metrics_url"
         return 1
     fi
-    
+
     # Define expected metrics
     local expected_metrics=(
         "gunicorn_worker_requests_total"
@@ -461,14 +468,14 @@ verify_metrics() {
         "gunicorn_worker_uptime_seconds"
         "gunicorn_worker_state"
     )
-    
+
     # Optional metrics (may not have values)
     local optional_metrics=(
         "gunicorn_master_worker_restart_total"
     )
-    
+
     local failed_checks=0
-    
+
     # Check each expected metric
     for metric in "${expected_metrics[@]}"; do
         local metric_line=$(echo "$metrics_output" | grep "$metric.*[0-9]" | head -1)
@@ -479,7 +486,7 @@ verify_metrics() {
             failed_checks=$((failed_checks + 1))
         fi
     done
-    
+
     # Check optional metrics (don't fail if they have no values)
     for metric in "${optional_metrics[@]}"; do
         local metric_line=$(echo "$metrics_output" | grep "$metric.*[0-9]" | head -1)
@@ -489,7 +496,7 @@ verify_metrics() {
             print_warning "Optional metric $metric has no values (this is normal)"
         fi
     done
-    
+
     # Check for specific metric types
     if echo "$metrics_output" | grep -q "# TYPE.*counter"; then
         print_success "Counter metrics found"
@@ -497,21 +504,21 @@ verify_metrics() {
         print_error "No counter metrics found"
         failed_checks=$((failed_checks + 1))
     fi
-    
+
     if echo "$metrics_output" | grep -q "# TYPE.*gauge"; then
         print_success "Gauge metrics found"
     else
         print_error "No gauge metrics found"
         failed_checks=$((failed_checks + 1))
     fi
-    
+
     if echo "$metrics_output" | grep -q "# TYPE.*histogram"; then
         print_success "Histogram metrics found"
     else
         print_error "No histogram metrics found"
         failed_checks=$((failed_checks + 1))
     fi
-    
+
     # Check for worker IDs
     if echo "$metrics_output" | grep -q "worker_id.*worker_"; then
         print_success "Worker ID labels found"
@@ -519,7 +526,7 @@ verify_metrics() {
         print_error "No worker ID labels found"
         failed_checks=$((failed_checks + 1))
     fi
-    
+
     # Check Redis integration
     if echo "$metrics_output" | grep -q "gunicorn_worker_requests_total.*[1-9]"; then
         print_success "Request metrics are being captured"
@@ -527,42 +534,42 @@ verify_metrics() {
         print_error "Request metrics are not being captured"
         failed_checks=$((failed_checks + 1))
     fi
-    
+
     # Count total metric samples
     local sample_count=$(echo "$metrics_output" | grep -c "^gunicorn.*[0-9]" || true)
     print_status "Total metric samples: $sample_count"
-    
+
     if [ $sample_count -gt 10 ]; then
         print_success "Sufficient metric samples found ($sample_count)"
     else
         print_error "Insufficient metric samples ($sample_count)"
         failed_checks=$((failed_checks + 1))
     fi
-    
+
     # Check Redis keys
     local redis_keys=$(redis-cli keys "gunicorn:*" | wc -l)
     print_status "Redis keys count: $redis_keys"
-    
+
     if [ $redis_keys -gt 10 ]; then
         print_success "Redis integration working ($redis_keys keys)"
     else
         print_error "Redis integration not working ($redis_keys keys)"
         failed_checks=$((failed_checks + 1))
     fi
-    
+
     # Test specific Redis key patterns
     local metric_keys=$(redis-cli keys "gunicorn:metric:*" | wc -l)
     local meta_keys=$(redis-cli keys "gunicorn:meta:*" | wc -l)
-    
+
     print_status "Redis metric keys: $metric_keys, meta keys: $meta_keys"
-    
+
     if [ $metric_keys -gt 5 ] && [ $meta_keys -gt 5 ]; then
         print_success "Redis key patterns correct"
     else
         print_error "Redis key patterns incorrect"
         failed_checks=$((failed_checks + 1))
     fi
-    
+
     # Test Redis key values
     local sample_key=$(redis-cli keys "gunicorn:metric:*" | head -1)
     if [ ! -z "$sample_key" ]; then
@@ -574,26 +581,26 @@ verify_metrics() {
             failed_checks=$((failed_checks + 1))
         fi
     fi
-    
+
     return $failed_checks
 }
 
 # Function to test signal handling
 test_signal_handling() {
     print_status "Testing signal handling (Ctrl+C simulation)..."
-    
+
     # Send SIGINT to Gunicorn master process
     if [ ! -z "$GUNICORN_PID" ]; then
         kill -INT "$GUNICORN_PID"
         sleep 3
-        
+
         # Check if process is still running
         if kill -0 "$GUNICORN_PID" 2>/dev/null; then
             print_warning "Process still running after SIGINT, sending SIGTERM"
             kill -TERM "$GUNICORN_PID"
             sleep 2
         fi
-        
+
         if kill -0 "$GUNICORN_PID" 2>/dev/null; then
             print_error "Process did not respond to signals"
             return 1
@@ -619,22 +626,22 @@ main() {
     fi
     echo -e "${BLUE}========================================${NC}"
     echo
-    
+
     # Step 1: Install dependencies
     install_dependencies
-    
+
     # Step 2: Flush Redis for clean test
     flush_redis
-    
+
     # Step 3: Start Redis
     start_redis
-    
+
     # Step 4: Start Gunicorn
     start_gunicorn
-    
+
     # Step 5: Generate requests
     generate_requests
-    
+
     # Step 6: Verify metrics
     if verify_metrics; then
         print_success "All metrics verification passed!"
@@ -642,7 +649,7 @@ main() {
         print_error "Some metrics verification failed!"
         exit 1
     fi
-    
+
     # Step 7: Verify Redis contains metrics
     if verify_redis_metrics; then
         print_success "Redis metrics verification passed!"
@@ -650,13 +657,13 @@ main() {
         print_error "Redis metrics verification failed!"
         exit 1
     fi
-    
+
     # Step 8: Test signal handling
     test_signal_handling
-    
+
     # Step 9: Clean up Redis
     cleanup_redis
-    
+
     echo
     echo -e "${GREEN}========================================${NC}"
     echo -e "${GREEN}  System Test Completed Successfully!${NC}"
