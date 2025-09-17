@@ -16,6 +16,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up Docker
+      uses: docker/setup-docker-action@v3
+
     - name: Run Docker system test
       run: |
         cd system-test
@@ -50,6 +53,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up Docker
+      uses: docker/setup-docker-action@v3
+
     - name: Run Docker system test
       run: |
         cd system-test
@@ -83,6 +89,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Set up Docker
+      uses: docker/setup-docker-action@v3
 
     - name: Run Docker system test
       shell: bash
