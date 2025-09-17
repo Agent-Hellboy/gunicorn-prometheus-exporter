@@ -536,10 +536,17 @@ main() {
 
 # Run main function with optional timeout for CI mode
 if [ "$CI_MODE" = true ]; then
-    timeout $TIMEOUT main "$@" || {
-        print_error "System test timed out after $TIMEOUT seconds"
-        exit 1
-    }
+    # Check if timeout command is available
+    if command -v timeout >/dev/null 2>&1; then
+        timeout $TIMEOUT main "$@" || {
+            print_error "System test timed out after $TIMEOUT seconds"
+            exit 1
+        }
+    else
+        print_warning "timeout command not available, running without timeout protection"
+        print_warning "This may cause the test to hang indefinitely if there are issues"
+        main "$@"
+    fi
 else
     main "$@"
 fi

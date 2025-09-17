@@ -34,7 +34,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y redis-server lsof
+        sudo apt-get install -y redis-server lsof coreutils
 
     - name: Start Redis server
       run: |
@@ -46,6 +46,7 @@ jobs:
         cd ${{ github.workspace }}/system-test
         chmod +x system_test.sh
         ./system_test.sh --ci
+      timeout-minutes: 5
 
     - name: Upload test artifacts
       if: failure()
@@ -79,6 +80,7 @@ jobs:
         cd ${{ github.workspace }}/system-test
         chmod +x system_test.sh
         ./system_test.sh --ci
+      timeout-minutes: 5
 
     - name: Upload test artifacts
       if: failure()
@@ -113,6 +115,7 @@ jobs:
         cd ${{ github.workspace }}/system-test
         chmod +x system_test.sh
         ./system_test.sh --ci
+      timeout-minutes: 5
 
     - name: Upload test artifacts
       if: failure()
