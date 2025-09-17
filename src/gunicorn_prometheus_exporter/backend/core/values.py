@@ -118,6 +118,22 @@ def get_redis_value_class(redis_client, redis_key_prefix="prometheus"):
     return ConfiguredRedisValue
 
 
+def cleanup_process_keys_for_pid(
+    pid: int, redis_client, redis_key_prefix: str = "prometheus"
+) -> None:
+    """Clean up Redis keys for a specific process ID.
+
+    Args:
+        pid: Process ID to clean up
+        redis_client: Redis client instance
+        redis_key_prefix: Prefix for Redis keys
+    """
+    from .client import RedisStorageClient
+    
+    storage_client = RedisStorageClient(redis_client, redis_key_prefix)
+    storage_client.cleanup_process_keys(pid)
+
+
 def mark_process_dead_redis(pid, redis_client, redis_key_prefix="prometheus"):
     """Do bookkeeping for when one process dies in a Redis multi-process setup.
 
@@ -126,7 +142,34 @@ def mark_process_dead_redis(pid, redis_client, redis_key_prefix="prometheus"):
         redis_client: Redis client instance
         redis_key_prefix: Prefix for Redis keys
     """
-    from .client import RedisStorageClient
+    cleanup_process_keys_for_pid(pid, redis_client, redis_key_prefix)
 
-    storage_client = RedisStorageClient(redis_client, redis_key_prefix)
-    storage_client.cleanup_process_keys(pid)
+
+class CleanupUtilsMixin:
+    """Mixin class for cleanup utilities."""
+
+    @staticmethod
+    def cleanup_process_keys_for_pid(
+        pid: int, redis_client, redis_key_prefix: str = "prometheus"
+    ) -> None:
+        """Clean up Redis keys for a specific process ID.
+
+        Args:
+            pid: Process ID to clean up
+            redis_client: Redis client instance
+            redis_key_prefix: Prefix for Redis keys
+        """
+        cleanup_process_keys_for_pid(pid, redis_client, redis_key_prefix)
+
+    @staticmethod
+    def mark_process_as_dead(
+        pid: int, redis_client, redis_key_prefix: str = "prometheus"
+    ) -> None:
+        """Mark a process as dead and clean up its keys.
+
+        Args:
+            pid: Process ID to mark as dead
+            redis_client: Redis client instance
+            redis_key_prefix: Prefix for Redis keys
+        """
+        mark_process_dead_redis(pid, redis_client, redis_key_prefix)

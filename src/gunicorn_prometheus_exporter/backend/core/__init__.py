@@ -12,7 +12,7 @@ from .client import (
 )
 from .collector import RedisMultiProcessCollector
 from .dict import RedisDict, redis_key
-from .values import RedisValue, get_redis_value_class, mark_process_dead_redis
+from .values import RedisValue, get_redis_value_class, mark_process_dead_redis, cleanup_process_keys_for_pid, CleanupUtilsMixin
 
 
 __version__ = "0.1.0"
@@ -22,6 +22,8 @@ __all__ = [
     "RedisValue",
     "get_redis_value_class",
     "mark_process_dead_redis",
+    "cleanup_process_keys_for_pid",
+    "CleanupUtilsMixin",
     "RedisMultiProcessCollector",
     "RedisStorageClient",
     "RedisStorageDict",

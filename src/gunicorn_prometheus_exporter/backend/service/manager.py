@@ -12,6 +12,7 @@ from typing import Optional, Protocol
 import redis
 
 from ...config import config
+from ..core import get_redis_value_class
 
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,36 @@ class PrometheusValueClassProtocol(Protocol):
     def __call__(self, *args, **kwargs):
         """Value class constructor."""
         raise NotImplementedError
+
+
+class FactoryUtilsMixin:
+    """Mixin class for factory utilities."""
+
+    def create_redis_value_class(self, redis_client, redis_key_prefix="prometheus"):
+        """Create a RedisValue class configured with Redis client.
+
+        Args:
+            redis_client: Redis client instance
+            redis_key_prefix: Prefix for Redis keys
+
+        Returns:
+            Configured RedisValue class
+        """
+        return get_redis_value_class(redis_client, redis_key_prefix)
+
+    def create_storage_manager(
+        self, redis_client_factory=None, value_class_factory=None
+    ):
+        """Create a new Redis storage manager.
+
+        Args:
+            redis_client_factory: Factory function for Redis client
+            value_class_factory: Factory function for value class
+
+        Returns:
+            New RedisStorageManager instance
+        """
+        return RedisStorageManager(redis_client_factory, value_class_factory)
 
 
 class RedisStorageManager:

@@ -1,0 +1,124 @@
+name: System Test - Redis Integration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  system-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y redis-server lsof
+
+    - name: Start Redis server
+      run: |
+        sudo systemctl start redis-server
+        redis-cli ping
+
+    - name: Run system test
+      run: |
+        cd ${{ github.workspace }}/system-test
+        chmod +x system_test.sh
+        ./system_test.sh --ci
+
+    - name: Upload test artifacts
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-logs
+        path: |
+          *.log
+          test_venv/
+        retention-days: 7
+
+  system-test-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Redis
+      run: |
+        brew install redis
+        brew services start redis
+
+    - name: Run system test
+      run: |
+        cd ${{ github.workspace }}/system-test
+        chmod +x system_test.sh
+        ./system_test.sh --ci
+
+    - name: Upload test artifacts
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-logs-macos
+        path: |
+          *.log
+          test_venv/
+        retention-days: 7
+
+  system-test-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Redis
+      run: |
+        choco install redis-64 -y
+        Start-Service redis
+
+    - name: Run system test (Windows)
+      shell: bash
+      run: |
+        cd ${{ github.workspace }}
+        ./system_test.sh
+
+    - name: Upload test artifacts
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-logs-windows
+        path: |
+          *.log
+          test_venv/
+        retention-days: 7

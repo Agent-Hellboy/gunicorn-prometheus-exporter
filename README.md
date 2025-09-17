@@ -254,9 +254,60 @@ def when_ready(server):
     redis_when_ready(server)
 ```
 
+## System Testing
+
+We provide comprehensive system tests to validate the complete functionality of the Gunicorn Prometheus Exporter with Redis integration.
+
+### Quick Test (Local Development)
+```bash
+# Make sure Redis is running
+brew services start redis  # macOS
+sudo systemctl start redis  # Linux
+
+# Run quick test
+cd system-test
+./quick_test.sh
+```
+
+### Full System Test (CI/CD)
+```bash
+# Complete automated test (installs everything)
+cd system-test
+./system_test.sh
+```
+
+### Using Make Commands
+```bash
+cd system-test
+make quick-test    # Fast local testing
+make system-test   # Full automated testing
+make install       # Install dependencies
+make clean         # Clean up
+```
+
+**Test Coverage**:
+- ✅ Redis integration and storage
+- ✅ Multi-worker Gunicorn setup
+- ✅ All metric types (counters, gauges, histograms)
+- ✅ Request processing and metrics capture
+- ✅ Signal handling and graceful shutdown
+- ✅ CI/CD automation
+
+See [`system-test/README.md`](system-test/README.md) for detailed documentation.
+
 ## Contributing
 
 Contributions are welcome! Please see our [contributing guide](https://agent-hellboy.github.io/gunicorn-prometheus-exporter/contributing/) for details.
+
+### Development Setup
+```bash
+# Install dependencies
+cd system-test
+make install
+
+# Run tests
+make quick-test
+```
 
 ## License
 

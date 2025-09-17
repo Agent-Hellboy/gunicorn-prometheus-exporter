@@ -62,6 +62,7 @@ class RedisMultiProcessCollector:
             val = key_cache.get(key)
             if not val:
                 try:
+                    # The key is already a JSON string from redis_key function
                     metric_name, name, labels, help_text = json.loads(key)
                     labels_key = tuple(sorted(labels.items()))
                     val = key_cache[key] = (
@@ -77,7 +78,7 @@ class RedisMultiProcessCollector:
             return val
 
         # Get all metric keys from Redis
-        pattern = f"{redis_key_prefix}:*:metric:*"
+        pattern = f"{redis_key_prefix}:metric:*"
         metric_keys = redis_client.keys(pattern)
 
         for metric_key in metric_keys:
@@ -103,7 +104,7 @@ class RedisMultiProcessCollector:
                 return
 
             # Parse key and get metric info
-            metric_name, name, _, labels_key, help_text = _parse_key(original_key)
+            metric_name, name, labels, labels_key, help_text = _parse_key(original_key)
             typ = RedisMultiProcessCollector._extract_metric_type(metric_key)
 
             # Get and validate values
@@ -135,6 +136,8 @@ class RedisMultiProcessCollector:
     @staticmethod
     def _get_metadata(metric_key, redis_client):
         """Get metadata for a metric key."""
+        # metric_key format: gunicorn:metric:{original_key}
+        # metadata_key format: gunicorn:meta:{original_key}
         metadata_key = metric_key.replace(b"metric:", b"meta:")
         return redis_client.hgetall(metadata_key)
 

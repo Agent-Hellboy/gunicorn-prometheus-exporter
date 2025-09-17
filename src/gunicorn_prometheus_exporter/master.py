@@ -41,43 +41,71 @@ class PrometheusMaster(Arbiter):
 
     def handle_int(self):
         """Handle INT signal (Ctrl+C)."""
-        logger.info("Gunicorn master INT signal received (Ctrl+C)")
+        try:
+            logger.info("Gunicorn master INT signal received (Ctrl+C)")
+        except Exception:
+            # Avoid logging errors in signal handlers
+            pass
         MasterWorkerRestarts.labels(reason="int").inc()
         super().handle_int()
 
     def handle_hup(self):
         """Handle HUP signal."""
-        logger.info("Gunicorn master HUP signal received")
+        try:
+            logger.info("Gunicorn master HUP signal received")
+        except Exception:
+            # Avoid logging errors in signal handlers
+            pass
         MasterWorkerRestarts.labels(reason="hup").inc()
         super().handle_hup()
 
     def handle_ttin(self):
         """Handle TTIN signal."""
-        logger.info("Gunicorn master TTIN signal received")
+        try:
+            logger.info("Gunicorn master TTIN signal received")
+        except Exception:
+            # Avoid logging errors in signal handlers
+            pass
         MasterWorkerRestarts.labels(reason="ttin").inc()
         super().handle_ttin()
 
     def handle_ttou(self):
         """Handle TTOU signal."""
-        logger.info("Gunicorn master TTOU signal received")
+        try:
+            logger.info("Gunicorn master TTOU signal received")
+        except Exception:
+            # Avoid logging errors in signal handlers
+            pass
         MasterWorkerRestarts.labels(reason="ttou").inc()
         super().handle_ttou()
 
     def handle_chld(self, sig, frame):
         """Handle CHLD signal."""
-        logger.info("Gunicorn master CHLD signal received")
+        try:
+            logger.info("Gunicorn master CHLD signal received")
+        except Exception:
+            # Avoid logging errors in signal handlers
+            pass
         MasterWorkerRestarts.labels(reason="chld").inc()
         super().handle_chld(sig, frame)
 
     def handle_usr1(self):
         """Handle USR1 signal."""
-        logger.info("Gunicorn master USR1 signal received")
+        try:
+            logger.info("Gunicorn master USR1 signal received")
+        except Exception:
+            # Avoid logging errors in signal handlers
+            pass
         MasterWorkerRestarts.labels(reason="usr1").inc()
         super().handle_usr1()
 
     def handle_usr2(self):
         """Handle USR2 signal."""
-        logger.info("Gunicorn master USR2 signal received")
+        try:
+            logger.info("Gunicorn master USR2 signal received")
+        except Exception:
+            # Avoid logging errors in signal handlers
+            pass
         MasterWorkerRestarts.labels(reason="usr2").inc()
         super().handle_usr2()
 
@@ -91,4 +119,5 @@ class PrometheusMaster(Arbiter):
         if len(self.SIG_QUEUE) < 5:
             self.SIG_QUEUE.append(sig)
             self.wakeup()
-        # Don't call parent signal method to avoid double-queuing
+        # Call parent signal method to ensure proper signal processing
+        super().signal(sig, frame)

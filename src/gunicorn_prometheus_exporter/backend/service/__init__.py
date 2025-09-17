@@ -9,6 +9,7 @@ Modules:
 
 from .manager import (
     RedisStorageManager,
+    FactoryUtilsMixin,
     cleanup_redis_keys,
     get_redis_client,
     get_redis_collector,
@@ -23,6 +24,7 @@ __version__ = "0.1.0"
 __all__ = [
     # Main classes
     "RedisStorageManager",
+    "FactoryUtilsMixin",
     # Manager functions
     "get_redis_storage_manager",
     # Convenience functions
