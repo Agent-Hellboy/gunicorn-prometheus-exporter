@@ -113,6 +113,9 @@ cleanup() {
     pkill -f "gunicorn.*redis_integration" 2>/dev/null || true
     pkill -f "redis-server" 2>/dev/null || true
     
+    # Clean up Redis database
+    cleanup_redis
+    
     # Clean up log files
     rm -f gunicorn.log 2>/dev/null || true
     
@@ -200,7 +203,75 @@ check_redis() {
     fi
 }
 
-# Function to install dependencies
+# Function to flush Redis database
+flush_redis() {
+    print_status "Flushing Redis database for clean test..."
+    
+    if command -v redis-cli >/dev/null 2>&1; then
+        redis-cli FLUSHDB >/dev/null 2>&1
+        print_success "Redis database flushed"
+    else
+        print_warning "redis-cli not available, skipping Redis flush"
+    fi
+}
+
+# Function to verify Redis contains metrics
+verify_redis_metrics() {
+    print_status "Verifying metrics are stored in Redis..."
+    
+    if ! command -v redis-cli >/dev/null 2>&1; then
+        print_warning "redis-cli not available, skipping Redis verification"
+        return 0
+    fi
+    
+    # Check if Redis has any keys
+    local key_count=$(redis-cli DBSIZE 2>/dev/null || echo "0")
+    
+    if [ "$key_count" -eq 0 ]; then
+        print_error "Redis database is empty - no metrics stored"
+        return 1
+    fi
+    
+    print_success "Redis contains $key_count keys"
+    
+    # Check for specific metric patterns
+    local metric_keys=$(redis-cli KEYS "*metric*" 2>/dev/null | wc -l)
+    local meta_keys=$(redis-cli KEYS "*meta*" 2>/dev/null | wc -l)
+    
+    if [ "$metric_keys" -gt 0 ]; then
+        print_success "Found $metric_keys metric keys in Redis"
+    else
+        print_error "No metric keys found in Redis"
+        return 1
+    fi
+    
+    if [ "$meta_keys" -gt 0 ]; then
+        print_success "Found $meta_keys metadata keys in Redis"
+    else
+        print_error "No metadata keys found in Redis"
+        return 1
+    fi
+    
+    # Show sample keys
+    print_status "Sample Redis keys:"
+    redis-cli KEYS "*" 2>/dev/null | head -5 | while read key; do
+        echo "  - $key"
+    done
+    
+    return 0
+}
+
+# Function to clean up Redis
+cleanup_redis() {
+    print_status "Cleaning up Redis database..."
+    
+    if command -v redis-cli >/dev/null 2>&1; then
+        redis-cli FLUSHDB >/dev/null 2>&1
+        print_success "Redis database cleaned"
+    else
+        print_warning "redis-cli not available, skipping Redis cleanup"
+    fi
+}
 install_dependencies() {
     print_status "Installing dependencies..."
 
@@ -552,16 +623,19 @@ main() {
     # Step 1: Install dependencies
     install_dependencies
     
-    # Step 2: Start Redis
+    # Step 2: Flush Redis for clean test
+    flush_redis
+    
+    # Step 3: Start Redis
     start_redis
     
-    # Step 3: Start Gunicorn
+    # Step 4: Start Gunicorn
     start_gunicorn
     
-    # Step 4: Generate requests
+    # Step 5: Generate requests
     generate_requests
     
-    # Step 5: Verify metrics
+    # Step 6: Verify metrics
     if verify_metrics; then
         print_success "All metrics verification passed!"
     else
@@ -569,8 +643,19 @@ main() {
         exit 1
     fi
     
-    # Step 6: Test signal handling
+    # Step 7: Verify Redis contains metrics
+    if verify_redis_metrics; then
+        print_success "Redis metrics verification passed!"
+    else
+        print_error "Redis metrics verification failed!"
+        exit 1
+    fi
+    
+    # Step 8: Test signal handling
     test_signal_handling
+    
+    # Step 9: Clean up Redis
+    cleanup_redis
     
     echo
     echo -e "${GREEN}========================================${NC}"
