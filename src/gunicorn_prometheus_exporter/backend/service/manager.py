@@ -9,10 +9,16 @@ import os
 
 from typing import Optional, Protocol
 
-import redis
-
 from ...config import config
 from ..core import get_redis_value_class
+
+# Conditional Redis import - only import when needed
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    redis = None
 
 
 logger = logging.getLogger(__name__)
@@ -78,6 +84,9 @@ class RedisStorageManager:
             redis_client_factory: Factory function to create Redis client (for testing)
             value_class_factory: Factory function to create value class (for testing)
         """
+        if not REDIS_AVAILABLE:
+            raise ImportError("Redis is not available. Install redis package to use RedisStorageManager.")
+        
         self._redis_client: Optional[RedisClientProtocol] = None
         self._redis_value_class: Optional[PrometheusValueClassProtocol] = None
         self._original_value_class: Optional[PrometheusValueClassProtocol] = None

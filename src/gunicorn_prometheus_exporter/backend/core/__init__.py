@@ -10,7 +10,6 @@ from .client import (
     RedisStorageDict,
     RedisValueClass,
 )
-from .collector import RedisMultiProcessCollector
 from .dict import RedisDict, redis_key
 from .values import (
     CleanupUtilsMixin,
@@ -19,6 +18,14 @@ from .values import (
     get_redis_value_class,
     mark_process_dead_redis,
 )
+
+# Conditional import of Redis collector
+try:
+    from .collector import RedisMultiProcessCollector
+    REDIS_COLLECTOR_AVAILABLE = True
+except ImportError:
+    RedisMultiProcessCollector = None
+    REDIS_COLLECTOR_AVAILABLE = False
 
 
 __version__ = "0.1.0"
@@ -30,8 +37,11 @@ __all__ = [
     "mark_process_dead_redis",
     "cleanup_process_keys_for_pid",
     "CleanupUtilsMixin",
-    "RedisMultiProcessCollector",
     "RedisStorageClient",
     "RedisStorageDict",
     "RedisValueClass",
 ]
+
+# Conditionally add Redis collector to __all__
+if REDIS_COLLECTOR_AVAILABLE:
+    __all__.append("RedisMultiProcessCollector")

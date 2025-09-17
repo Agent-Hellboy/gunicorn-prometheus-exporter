@@ -1,4 +1,4 @@
-name: System Test - Redis Integration (Linux Docker)
+name: System Tests - Redis Integration & Basic File-based (Linux Docker)
 
 on:
   push:
@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  system-test-ubuntu:
+  system-test-redis:
     runs-on: ubuntu-latest
-    name: System Test (Ubuntu)
+    name: Redis Integration System Test (Ubuntu)
     
     steps:
     - name: Checkout code
@@ -19,11 +19,11 @@ jobs:
     - name: Set up Docker
       uses: docker/setup-docker-action@v3
 
-    - name: Run Docker system test
+    - name: Run Redis Integration Docker system test
       run: |
         cd system-test
-        chmod +x system_test.sh
-        # Build Docker image
+        chmod +x system_test_redis_integ.sh
+        # Build Docker image for Redis integration test
         docker build -f Dockerfile -t gunicorn-prometheus-exporter-test ..
         # Run with proper resource limits
         docker run --rm \
@@ -36,11 +36,47 @@ jobs:
           gunicorn-prometheus-exporter-test
       timeout-minutes: 10
 
-    - name: Upload test artifacts
+    - name: Upload Redis test artifacts
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: test-logs-ubuntu
+        name: redis-test-logs-ubuntu
+        path: |
+          *.log
+        retention-days: 7
+
+  system-test-basic:
+    runs-on: ubuntu-latest
+    name: Basic File-based System Test (Ubuntu)
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker
+      uses: docker/setup-docker-action@v3
+
+    - name: Run Basic File-based Docker system test
+      run: |
+        cd system-test
+        chmod +x system_test_basic.sh
+        # Build Docker image for basic file-based test
+        docker build -f Dockerfile.basic -t gunicorn-prometheus-exporter-basic-test ..
+        # Run with proper resource limits
+        docker run --rm \
+          --name gunicorn-prometheus-basic-test \
+          --memory=1g \
+          --cpus=2 \
+          -p 8088:8088 \
+          -p 9093:9093 \
+          gunicorn-prometheus-exporter-basic-test
+      timeout-minutes: 10
+
+    - name: Upload Basic test artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: basic-test-logs-ubuntu
         path: |
           *.log
         retention-days: 7
