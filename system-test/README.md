@@ -1,10 +1,10 @@
-# System Test Suite for Gunicorn Prometheus Exporter
+# System Test Suite for Gunicorn Prometheus Exporter (Cross-Platform Docker)
 
-This directory contains comprehensive system tests for the Gunicorn Prometheus Exporter with Redis integration.
+This directory contains a comprehensive system test for the Gunicorn Prometheus Exporter with Redis integration.
 
 ## Overview
 
-The system test suite validates the complete functionality of the Gunicorn Prometheus Exporter, including:
+The system test validates the complete functionality of the Gunicorn Prometheus Exporter, including:
 
 - ✅ **Dependency Installation**: Automatic setup of required packages
 - ✅ **Redis Integration**: Full Redis backend functionality
@@ -13,12 +13,16 @@ The system test suite validates the complete functionality of the Gunicorn Prome
 - ✅ **Request Processing**: Real HTTP request handling and metrics capture
 - ✅ **Signal Handling**: Proper shutdown and cleanup
 - ✅ **CI/CD Ready**: Automated testing for continuous integration
+- ✅ **Cross-Platform**: Works consistently on Mac, Windows, and Linux via Docker
+- ✅ **Self-Contained**: No host machine dependencies
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `system_test.sh` | **Unified system test** - Complete automated test suite with multiple modes |
+| `system_test.sh` | **Unified system test** - Complete automated test suite with multiple modes (including Docker) |
+| `Dockerfile` | **Docker image** - Container definition for consistent testing |
+| `docker-compose.yml` | **Docker Compose** - Multi-service setup for testing |
 | `Makefile` | **Build automation** - Easy test execution commands |
 | `requirements-dev.txt` | **Dependencies** - Development and testing packages |
 | `README.md` | **Documentation** - This file |
@@ -27,27 +31,29 @@ The system test suite validates the complete functionality of the Gunicorn Prome
 
 ### Prerequisites
 
-1. **Redis Server** must be running:
-   ```bash
-   # macOS
-   brew install redis
-   brew services start redis
-   
-   # Ubuntu/Debian
-   sudo apt-get install redis-server
-   sudo systemctl start redis
-   
-   # Verify Redis is running
-   redis-cli ping
-   ```
+1. **Docker** must be installed:
+   - **Mac**: Install Docker Desktop from https://www.docker.com/products/docker-desktop
+   - **Windows**: Install Docker Desktop from https://www.docker.com/products/docker-desktop
+   - **Linux**: Install Docker Engine from https://docs.docker.com/engine/install/
 
-2. **Python 3.11+** installed
-
-3. **Gunicorn** installed (will be installed automatically by tests)
+2. **Git** (for cloning the repository)
 
 ### Running Tests
 
-#### Option 1: Using Make (Recommended)
+#### Option 1: Docker-based Testing (Recommended - Works on All Platforms)
+```bash
+# Run complete system test in Docker container
+make docker-test
+
+# Or using docker-compose
+docker-compose up --build
+
+# Or manually with Docker
+docker build -f Dockerfile -t gunicorn-prometheus-exporter-test ..
+docker run --rm -p 8088:8088 -p 9093:9093 -p 6379:6379 gunicorn-prometheus-exporter-test
+```
+
+#### Option 2: Using Make (Requires Local Redis)
 ```bash
 # Quick test (requires Redis running)
 make quick-test
@@ -65,8 +71,11 @@ make install
 make clean
 ```
 
-#### Option 2: Direct Script Execution
+#### Option 3: Direct Script Execution
 ```bash
+# Docker mode (cross-platform, no host dependencies)
+./system_test.sh --docker
+
 # Quick test (requires Redis running)
 ./system_test.sh --quick --no-redis
 
@@ -145,6 +154,28 @@ sudo systemctl start redis  # Linux
 ```bash
 # CI test (timeout-protected)
 ./system_test.sh --ci
+```
+
+### Docker Mode (`--docker`)
+
+**Purpose**: Run system test in Docker container (cross-platform)
+**Duration**: Same as CI mode (30 seconds)
+**Requirements**: Docker installed
+
+**What it does**:
+- ✅ Automatically detects Docker environment
+- ✅ Skips Redis startup (handled by Docker)
+- ✅ Runs in isolated container environment
+- ✅ Works consistently on Mac, Windows, Linux
+- ✅ No host machine dependencies
+
+**Usage**:
+```bash
+# Run in Docker mode
+./system_test.sh --docker
+
+# Docker mode with CI timeout
+./system_test.sh --docker --ci
 ```
 
 ### Force Mode (`--force`)

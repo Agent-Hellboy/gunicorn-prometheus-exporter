@@ -1,4 +1,4 @@
-name: System Test - Redis Integration
+name: System Test - Redis Integration (Cross-Platform Docker)
 
 on:
   push:
@@ -8,79 +8,70 @@ on:
   workflow_dispatch:
 
 jobs:
-  system-test:
+  system-test-ubuntu:
     runs-on: ubuntu-latest
+    name: System Test (Ubuntu)
     
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-    - name: Install system dependencies
+    - name: Run Docker system test
       run: |
-        sudo apt-get update
-        sudo apt-get install -y redis-server lsof coreutils
-
-    - name: Start Redis server
-      run: |
-        sudo systemctl start redis-server
-        redis-cli ping
-
-    - name: Run system test
-      run: |
-        cd ${{ github.workspace }}/system-test
+        cd system-test
         chmod +x system_test.sh
-        ./system_test.sh --ci
-      timeout-minutes: 5
+        # Build with cache for faster builds
+        docker build -f Dockerfile -t gunicorn-prometheus-exporter-test .. --progress=plain
+        # Run with proper resource limits
+        docker run --rm \
+          --name gunicorn-prometheus-test \
+          --memory=1g \
+          --cpus=2 \
+          -p 8088:8088 \
+          -p 9093:9093 \
+          -p 6379:6379 \
+          gunicorn-prometheus-exporter-test
+      timeout-minutes: 10
 
     - name: Upload test artifacts
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: test-logs
+        name: test-logs-ubuntu
         path: |
           *.log
-          test_venv/
         retention-days: 7
 
   system-test-macos:
     runs-on: macos-latest
+    name: System Test (macOS)
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-    - name: Install Redis
+    - name: Run Docker system test
       run: |
-        brew install redis
-        brew services start redis
-
-    - name: Run system test
-      run: |
-        cd ${{ github.workspace }}/system-test
+        cd system-test
         chmod +x system_test.sh
-        ./system_test.sh --ci
-      timeout-minutes: 5
+        # Build with cache for faster builds
+        docker build -f Dockerfile -t gunicorn-prometheus-exporter-test .. --progress=plain
+        # Run with proper resource limits
+        docker run --rm \
+          --name gunicorn-prometheus-test \
+          --memory=1g \
+          --cpus=2 \
+          -p 8088:8088 \
+          -p 9093:9093 \
+          -p 6379:6379 \
+          gunicorn-prometheus-exporter-test
+      timeout-minutes: 10
 
     - name: Upload test artifacts
       if: failure()
@@ -89,33 +80,32 @@ jobs:
         name: test-logs-macos
         path: |
           *.log
-          test_venv/
         retention-days: 7
 
   system-test-windows:
     runs-on: windows-latest
+    name: System Test (Windows)
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-    - name: Install Redis
-      run: |
-        choco install redis-64 -y
-        Start-Service redis
-
-    - name: Run system test (Windows)
+    - name: Run Docker system test
       shell: bash
       run: |
-        cd ${{ github.workspace }}/system-test
+        cd system-test
         chmod +x system_test.sh
-        ./system_test.sh --ci
-      timeout-minutes: 5
+        docker build -f Dockerfile -t gunicorn-prometheus-exporter-test ..
+        docker run --rm \
+          --name gunicorn-prometheus-test \
+          -p 8088:8088 \
+          -p 9093:9093 \
+          -p 6379:6379 \
+          gunicorn-prometheus-exporter-test
+      timeout-minutes: 10
 
     - name: Upload test artifacts
       if: failure()
@@ -124,5 +114,4 @@ jobs:
         name: test-logs-windows
         path: |
           *.log
-          test_venv/
         retention-days: 7

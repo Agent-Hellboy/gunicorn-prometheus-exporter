@@ -1,6 +1,6 @@
 # Makefile for Gunicorn Prometheus Exporter
 
-.PHONY: help install test quick-test system-test ci-test clean lint format
+.PHONY: help install test quick-test system-test ci-test docker-test docker-build clean lint format
 
 # Default target
 help:
@@ -11,6 +11,8 @@ help:
 	@echo "  system-test  - Run full system test"
 	@echo "  ci-test      - Run CI-optimized system test"
 	@echo "  force-test   - Run test with force kill of existing processes"
+	@echo "  docker-test  - Run system test in Docker (works on Mac/Windows/Linux)"
+	@echo "  docker-build - Build Docker image for system test"
 	@echo "  clean        - Clean up test artifacts"
 	@echo "  lint         - Run linting"
 	@echo "  format       - Format code"
@@ -47,10 +49,10 @@ force-test:
 
 # Clean up test artifacts
 clean:
-	rm -rf test_venv/
 	rm -f *.log
 	pkill -f "gunicorn.*redis_integration" || true
 	pkill -f "redis-server" || true
+	docker rmi gunicorn-prometheus-exporter-test 2>/dev/null || true
 
 # Run linting
 lint:
@@ -61,6 +63,21 @@ lint:
 format:
 	black src/
 	isort src/
+
+# Docker-based system test (works on Mac/Windows/Linux)
+docker-build:
+	@echo "Building Docker image for system test..."
+	docker build -f Dockerfile -t gunicorn-prometheus-exporter-test ..
+
+docker-test: docker-build
+	@echo "Running system test in Docker container..."
+	@echo "This works consistently on Mac, Windows, and Linux!"
+	docker run --rm \
+		--name gunicorn-prometheus-test \
+		-p 8088:8088 \
+		-p 9093:9093 \
+		-p 6379:6379 \
+		gunicorn-prometheus-exporter-test
 
 # Development setup
 dev-setup: install

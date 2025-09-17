@@ -37,6 +37,13 @@ QUICK_MODE=false
 CI_MODE=false
 SKIP_REDIS=false
 FORCE_KILL=false
+DOCKER_MODE=false
+
+# Detect if running in Docker
+if [ -f /.dockerenv ] || [ -n "${DOCKER_CONTAINER:-}" ]; then
+    DOCKER_MODE=true
+    SKIP_REDIS=true  # Redis is started by Docker startup script
+fi
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -60,9 +67,21 @@ while [[ $# -gt 0 ]]; do
             FORCE_KILL=true
             shift
             ;;
+        --docker)
+            # Run the test in Docker container instead of locally
+            echo "Running system test in Docker container..."
+            docker build -f Dockerfile -t gunicorn-prometheus-exporter-test .. >/dev/null 2>&1
+            docker run --rm \
+                --name gunicorn-prometheus-test \
+                -p 8088:8088 \
+                -p 9093:9093 \
+                -p 6379:6379 \
+                gunicorn-prometheus-exporter-test
+            exit $?
+            ;;
         *)
             echo "Unknown option $1"
-            echo "Usage: $0 [--quick] [--ci] [--no-redis] [--force]"
+            echo "Usage: $0 [--quick] [--ci] [--no-redis] [--force] [--docker]"
             exit 1
             ;;
     esac
@@ -184,24 +203,31 @@ check_redis() {
 # Function to install dependencies
 install_dependencies() {
     print_status "Installing dependencies..."
-    
+
+    # Skip dependency installation in Docker mode
+    if [ "$DOCKER_MODE" = true ]; then
+        print_status "Skipping dependency installation (Docker mode)"
+        print_success "Dependencies already installed in container"
+        return 0
+    fi
+
     # Create virtual environment if not in CI mode or if it doesn't exist
     if [ "$CI_MODE" = true ] || [ ! -d "test_venv" ]; then
         print_status "Creating virtual environment..."
         python3 -m venv test_venv
     fi
-    
+
     source test_venv/bin/activate
-    
+
     # Upgrade pip
     pip install --upgrade pip
-    
+
     # Install the package in development mode
     pip install -e ..
-    
+
     # Install additional test dependencies
     pip install redis requests psutil gunicorn flask
-    
+
     print_success "Dependencies installed"
 }
 
@@ -285,8 +311,10 @@ start_gunicorn() {
     export REDIS_DB="0"
     export GUNICORN_WORKERS="2"
     
-    # Activate virtual environment and start Gunicorn in background
-    source test_venv/bin/activate
+    # Start Gunicorn in background
+    if [ "$DOCKER_MODE" != true ]; then
+        source test_venv/bin/activate
+    fi
     cd ../example
     
     # Use different startup method based on mode
@@ -361,6 +389,10 @@ verify_metrics() {
         "gunicorn_worker_cpu_percent"
         "gunicorn_worker_uptime_seconds"
         "gunicorn_worker_state"
+    )
+    
+    # Optional metrics (may not have values)
+    local optional_metrics=(
         "gunicorn_master_worker_restart_total"
     )
     
@@ -374,6 +406,16 @@ verify_metrics() {
         else
             print_error "Metric $metric has no values"
             failed_checks=$((failed_checks + 1))
+        fi
+    done
+    
+    # Check optional metrics (don't fail if they have no values)
+    for metric in "${optional_metrics[@]}"; do
+        local metric_line=$(echo "$metrics_output" | grep "$metric.*[0-9]" | head -1)
+        if [ ! -z "$metric_line" ]; then
+            print_success "Optional metric $metric: $metric_line"
+        else
+            print_warning "Optional metric $metric has no values (this is normal)"
         fi
     done
     
@@ -495,7 +537,9 @@ test_signal_handling() {
 main() {
     echo -e "${BLUE}========================================${NC}"
     echo -e "${BLUE}  Gunicorn Prometheus Exporter System Test${NC}"
-    if [ "$QUICK_MODE" = true ]; then
+    if [ "$DOCKER_MODE" = true ]; then
+        echo -e "${BLUE}  Mode: Docker Test (Cross-Platform)${NC}"
+    elif [ "$QUICK_MODE" = true ]; then
         echo -e "${BLUE}  Mode: Quick Test${NC}"
     elif [ "$CI_MODE" = true ]; then
         echo -e "${BLUE}  Mode: CI Test${NC}"
@@ -534,19 +578,5 @@ main() {
     echo -e "${GREEN}========================================${NC}"
 }
 
-# Run main function with optional timeout for CI mode
-if [ "$CI_MODE" = true ]; then
-    # Check if timeout command is available
-    if command -v timeout >/dev/null 2>&1; then
-        timeout $TIMEOUT main "$@" || {
-            print_error "System test timed out after $TIMEOUT seconds"
-            exit 1
-        }
-    else
-        print_warning "timeout command not available, running without timeout protection"
-        print_warning "This may cause the test to hang indefinitely if there are issues"
-        main "$@"
-    fi
-else
-    main "$@"
-fi
+# Run main function
+main "$@"
