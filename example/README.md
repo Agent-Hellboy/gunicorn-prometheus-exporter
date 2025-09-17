@@ -9,6 +9,7 @@ This directory contains different configuration approaches for storing Prometheu
 This project **extends the Prometheus Python client** to support Redis-based storage, creating a new architecture that separates storage from compute:
 
 #### **Traditional Approach**
+
 ```python
 # Standard Prometheus multiprocess - files only
 from prometheus_client import multiprocess
@@ -17,6 +18,7 @@ multiprocess.MultiProcessCollector(registry)
 ```
 
 #### **Our Redis Storage Extension**
+
 ```python
 # Our innovation - Redis storage
 from gunicorn_prometheus_exporter.storage import get_redis_storage_manager
@@ -28,17 +30,18 @@ registry.register(collector)
 
 ### **Key Innovation: Storage-Compute Separation**
 
-| Feature | Traditional | Redis Storage |
-|---------|-------------|---------------|
-| **Storage** | Local files | Redis server |
-| **Scalability** | Single server | Multiple servers |
-| **File I/O** | High overhead | No file I/O |
-| **Shared Metrics** | No | Yes |
-| **Architecture** | Coupled | Separated |
+| Feature            | Traditional   | Redis Storage    |
+| ------------------ | ------------- | ---------------- |
+| **Storage**        | Local files   | Redis server     |
+| **Scalability**    | Single server | Multiple servers |
+| **File I/O**       | High overhead | No file I/O      |
+| **Shared Metrics** | No            | Yes              |
+| **Architecture**   | Coupled       | Separated        |
 
 ## Configuration Files
 
 ### 1. `gunicorn_basic.conf.py` - File-Based Storage
+
 **Standard Prometheus multiprocess storage using files.**
 
 - **Storage**: Files in `/tmp/prometheus_multiproc/`
@@ -48,11 +51,13 @@ registry.register(collector)
 - **Cons**: Files only, not shared across servers
 
 **Usage:**
+
 ```bash
 gunicorn --config gunicorn_basic.conf.py app:app
 ```
 
 ### 2. `gunicorn_redis_integration.conf.py` - Redis Storage
+
 **Pure Redis-based storage (no files created).**
 
 - **Storage**: Redis keys `gunicorn:*:metric:*` and `gunicorn:*:meta:*`
@@ -62,12 +67,14 @@ gunicorn --config gunicorn_basic.conf.py app:app
 - **Cons**: Requires Redis server
 
 **Redis Flags:**
+
 - `REDIS_ENABLED=true`: Enable Redis integration
 - `REDIS_HOST`: Redis server host (default: 127.0.0.1)
 - `REDIS_PORT`: Redis server port (default: 6379)
 - `REDIS_DB`: Redis database number (default: 0)
 
 **Usage:**
+
 ```bash
 gunicorn --config gunicorn_redis_integration.conf.py app:app
 ```
@@ -75,15 +82,17 @@ gunicorn --config gunicorn_redis_integration.conf.py app:app
 ## Quick Start
 
 1. **Basic Setup (Files Only):**
+
    ```bash
    gunicorn --config gunicorn_basic.conf.py app:app
    ```
 
 2. **Redis Storage (No Files):**
+
    ```bash
    # Start Redis server first
    redis-server
-   
+
    # Start Gunicorn with Redis storage
    gunicorn --config gunicorn_redis_integration.conf.py app:app
    ```

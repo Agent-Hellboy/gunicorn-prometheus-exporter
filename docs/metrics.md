@@ -33,6 +33,7 @@ The exporter provides comprehensive metrics for monitoring Gunicorn workers, req
 ### Worker Metrics
 
 #### `gunicorn_worker_requests_total`
+
 **Type**: Counter
 **Description**: Total number of requests processed by each worker
 **Labels**: `worker_id`
@@ -44,6 +45,7 @@ gunicorn_worker_requests_total{worker_id="worker_1_1234567890"} 42.0
 ```
 
 #### `gunicorn_worker_request_duration_seconds`
+
 **Type**: Histogram
 **Description**: Request duration in seconds
 **Labels**: `worker_id`
@@ -61,6 +63,7 @@ gunicorn_worker_request_duration_seconds_count{worker_id="worker_1_1234567890"} 
 ```
 
 #### `gunicorn_worker_memory_bytes`
+
 **Type**: Gauge
 **Description**: Memory usage of each worker in bytes
 **Labels**: `worker_id`
@@ -72,6 +75,7 @@ gunicorn_worker_memory_bytes{worker_id="worker_1_1234567890"} 52428800.0
 ```
 
 #### `gunicorn_worker_cpu_percent`
+
 **Type**: Gauge
 **Description**: CPU usage percentage of each worker
 **Labels**: `worker_id`
@@ -83,6 +87,7 @@ gunicorn_worker_cpu_percent{worker_id="worker_1_1234567890"} 2.5
 ```
 
 #### `gunicorn_worker_uptime_seconds`
+
 **Type**: Gauge
 **Description**: Uptime of each worker in seconds
 **Labels**: `worker_id`
@@ -96,6 +101,7 @@ gunicorn_worker_uptime_seconds{worker_id="worker_1_1234567890"} 3600.0
 ### Error Metrics
 
 #### `gunicorn_worker_failed_requests_total`
+
 **Type**: Counter
 **Description**: Total number of failed requests (4xx, 5xx status codes)
 **Labels**: `worker_id`, `method`, `endpoint`, `status_code`
@@ -107,6 +113,7 @@ gunicorn_worker_failed_requests_total{worker_id="worker_1_1234567890",method="GE
 ```
 
 #### `gunicorn_worker_error_handling_total`
+
 **Type**: Counter
 **Description**: Total number of errors handled by workers
 **Labels**: `worker_id`, `method`, `endpoint`, `error_type`
@@ -120,6 +127,7 @@ gunicorn_worker_error_handling_total{worker_id="worker_1_1234567890",method="POS
 ### Worker State Metrics
 
 #### `gunicorn_worker_state`
+
 **Type**: Gauge
 **Description**: Current state of each worker
 **Labels**: `worker_id`, `state`, `timestamp`
@@ -133,6 +141,7 @@ gunicorn_worker_state{worker_id="worker_1_1234567890",state="running",timestamp=
 ### Master Metrics
 
 #### `gunicorn_master_worker_restarts_total`
+
 **Type**: Counter
 **Description**: Total number of worker restarts initiated by the master
 **Labels**: None
@@ -146,6 +155,7 @@ gunicorn_master_worker_restarts_total 3.0
 ## Metric Labels
 
 ### Worker ID Format
+
 Worker IDs follow the pattern: `worker_{age}_{start_time}`
 
 - `age`: Worker age (incremental number)
@@ -154,11 +164,13 @@ Worker IDs follow the pattern: `worker_{age}_{start_time}`
 Example: `worker_1_1234567890`
 
 ### State Values
+
 - `running`: Worker is actively processing requests
 - `quit`: Worker is shutting down gracefully
 - `abort`: Worker is shutting down forcefully
 
 ### Error Types
+
 Common error types include:
 
 - `ValueError`: Invalid request data
@@ -173,6 +185,7 @@ Common error types include:
 ### Prometheus Queries
 
 #### Request Rate
+
 ```promql
 # Requests per second per worker
 rate(gunicorn_worker_requests_total[5m])
@@ -182,6 +195,7 @@ sum(rate(gunicorn_worker_requests_total[5m]))
 ```
 
 #### Response Time
+
 ```promql
 # 95th percentile response time
 histogram_quantile(0.95, rate(gunicorn_worker_request_duration_seconds_bucket[5m]))
@@ -191,6 +205,7 @@ rate(gunicorn_worker_request_duration_seconds_sum[5m]) / rate(gunicorn_worker_re
 ```
 
 #### Error Rate
+
 ```promql
 # Error rate per worker
 rate(gunicorn_worker_failed_requests_total[5m])
@@ -200,6 +215,7 @@ sum(rate(gunicorn_worker_failed_requests_total[5m])) / sum(rate(gunicorn_worker_
 ```
 
 #### Memory Usage
+
 ```promql
 # Memory usage per worker
 gunicorn_worker_memory_bytes
@@ -209,6 +225,7 @@ avg(gunicorn_worker_memory_bytes)
 ```
 
 #### CPU Usage
+
 ```promql
 # CPU usage per worker
 gunicorn_worker_cpu_percent
@@ -218,6 +235,7 @@ avg(gunicorn_worker_cpu_percent)
 ```
 
 #### Worker Health
+
 ```promql
 # Number of running workers
 sum(gunicorn_worker_state{state="running"})
@@ -231,26 +249,31 @@ gunicorn_worker_uptime_seconds
 #### Key Panels to Include
 
 1. **Request Rate Panel**
+
    ```promql
    sum(rate(gunicorn_worker_requests_total[5m]))
    ```
 
 2. **Response Time Panel**
+
    ```promql
    histogram_quantile(0.95, rate(gunicorn_worker_request_duration_seconds_bucket[5m]))
    ```
 
 3. **Error Rate Panel**
+
    ```promql
    sum(rate(gunicorn_worker_failed_requests_total[5m])) / sum(rate(gunicorn_worker_requests_total[5m])) * 100
    ```
 
 4. **Memory Usage Panel**
+
    ```promql
    avg(gunicorn_worker_memory_bytes) / 1024 / 1024
    ```
 
 5. **CPU Usage Panel**
+
    ```promql
    avg(gunicorn_worker_cpu_percent)
    ```
@@ -263,6 +286,7 @@ gunicorn_worker_uptime_seconds
 ## Alerting Rules
 
 ### High Error Rate
+
 ```yaml
 groups:
   - name: gunicorn_alerts
@@ -278,39 +302,42 @@ groups:
 ```
 
 ### High Response Time
+
 ```yaml
-      - alert: HighResponseTime
-        expr: histogram_quantile(0.95, rate(gunicorn_worker_request_duration_seconds_bucket[5m])) > 1
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High response time detected"
-          description: "95th percentile response time is {{ $value }}s"
+- alert: HighResponseTime
+  expr: histogram_quantile(0.95, rate(gunicorn_worker_request_duration_seconds_bucket[5m])) > 1
+  for: 2m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High response time detected"
+    description: "95th percentile response time is {{ $value }}s"
 ```
 
 ### Worker Restarts
+
 ```yaml
-      - alert: WorkerRestarts
-        expr: increase(gunicorn_master_worker_restarts_total[5m]) > 0
-        for: 1m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Worker restarts detected"
-          description: "{{ $value }} worker restarts in the last 5 minutes"
+- alert: WorkerRestarts
+  expr: increase(gunicorn_master_worker_restarts_total[5m]) > 0
+  for: 1m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Worker restarts detected"
+    description: "{{ $value }} worker restarts in the last 5 minutes"
 ```
 
 ### High Memory Usage
+
 ```yaml
-      - alert: HighMemoryUsage
-        expr: avg(gunicorn_worker_memory_bytes) / 1024 / 1024 > 512
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High memory usage detected"
-          description: "Average memory usage is {{ $value }}MB"
+- alert: HighMemoryUsage
+  expr: avg(gunicorn_worker_memory_bytes) / 1024 / 1024 > 512
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High memory usage detected"
+    description: "Average memory usage is {{ $value }}MB"
 ```
 
 ## Custom Metrics

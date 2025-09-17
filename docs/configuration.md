@@ -6,30 +6,31 @@ Complete configuration guide for the Gunicorn Prometheus Exporter with all optio
 
 ### Required Variables
 
-| Variable | Type | Default | Description | Example |
-|----------|------|---------|-------------|---------|
-| `PROMETHEUS_MULTIPROC_DIR` | String | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics | `/var/tmp/prometheus_multiproc` |
-| `PROMETHEUS_METRICS_PORT` | Integer | `9090` | Port for metrics endpoint | `9091` |
-| `PROMETHEUS_BIND_ADDRESS` | String | `0.0.0.0` | Bind address for metrics server | `127.0.0.1` |
-| `GUNICORN_WORKERS` | Integer | `1` | Number of workers for metrics | `4` |
+| Variable                   | Type    | Default                     | Description                        | Example                         |
+| -------------------------- | ------- | --------------------------- | ---------------------------------- | ------------------------------- |
+| `PROMETHEUS_MULTIPROC_DIR` | String  | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics | `/var/tmp/prometheus_multiproc` |
+| `PROMETHEUS_METRICS_PORT`  | Integer | `9090`                      | Port for metrics endpoint          | `9091`                          |
+| `PROMETHEUS_BIND_ADDRESS`  | String  | `0.0.0.0`                   | Bind address for metrics server    | `127.0.0.1`                     |
+| `GUNICORN_WORKERS`         | Integer | `1`                         | Number of workers for metrics      | `4`                             |
 
 ### Optional Variables
 
-| Variable | Type | Default | Description | Example |
-|----------|------|---------|-------------|---------|
-| `GUNICORN_KEEPALIVE` | Integer | `2` | Keep-alive timeout | `5` |
-| `CLEANUP_DB_FILES` | Boolean | `false` | Clean up old metric files | `true` |
+| Variable             | Type    | Default | Description               | Example |
+| -------------------- | ------- | ------- | ------------------------- | ------- |
+| `GUNICORN_KEEPALIVE` | Integer | `2`     | Keep-alive timeout        | `5`     |
+| `CLEANUP_DB_FILES`   | Boolean | `false` | Clean up old metric files | `true`  |
 
 ### Redis Variables
 
 #### Redis Storage (No Files Created)
-| Variable | Type | Default | Description | Example |
-|----------|------|---------|-------------|---------|
-| `REDIS_ENABLED` | Boolean | `false` | Enable Redis storage (replaces file storage) | `true` |
-| `REDIS_HOST` | String | `localhost` | Redis server host | `redis.example.com` |
-| `REDIS_PORT` | Integer | `6379` | Redis server port | `6380` |
-| `REDIS_DB` | Integer | `0` | Redis database number | `1` |
-| `REDIS_PASSWORD` | String | `None` | Redis password | `secret123` |
+
+| Variable         | Type    | Default     | Description                                  | Example             |
+| ---------------- | ------- | ----------- | -------------------------------------------- | ------------------- |
+| `REDIS_ENABLED`  | Boolean | `false`     | Enable Redis storage (replaces file storage) | `true`              |
+| `REDIS_HOST`     | String  | `localhost` | Redis server host                            | `redis.example.com` |
+| `REDIS_PORT`     | Integer | `6379`      | Redis server port                            | `6380`              |
+| `REDIS_DB`       | Integer | `0`         | Redis database number                        | `1`                 |
+| `REDIS_PASSWORD` | String  | `None`      | Redis password                               | `secret123`         |
 
 ## Redis Backend Configuration
 
@@ -38,12 +39,14 @@ The Redis backend provides a sophisticated architecture for metrics storage with
 ### Architecture Components
 
 #### `backend.service` - High-Level Management
+
 - **`RedisStorageManager`**: Centralized lifecycle management
 - **`setup_redis_metrics()`**: Initialize Redis storage
 - **`teardown_redis_metrics()`**: Clean shutdown
 - **`get_redis_storage_manager()`**: Global manager access
 
-#### `backend.core` - Low-Level Operations  
+#### `backend.core` - Low-Level Operations
+
 - **`RedisStorageClient`**: Main Redis operations client
 - **`RedisStorageDict`**: Dictionary-like Redis interface
 - **`RedisValue`**: Redis-backed metric values
@@ -99,7 +102,7 @@ on_exit = default_on_exit
 ### Benefits of Redis Backend
 
 1. **No File System Dependencies**: Eliminates multiproc directory requirements
-2. **Better Scalability**: Redis handles concurrent access efficiently  
+2. **Better Scalability**: Redis handles concurrent access efficiently
 3. **Storage-Compute Separation**: Metrics storage independent of application servers
 4. **Centralized Aggregation**: All metrics accessible from a single Redis instance
 5. **Automatic Cleanup**: Dead process keys are automatically cleaned up
@@ -128,6 +131,7 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 ```
 
 **Environment Variables:**
+
 ```bash
 export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
 export PROMETHEUS_METRICS_PORT="9090"

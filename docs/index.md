@@ -9,6 +9,7 @@ A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with suppo
 We've **extended the Prometheus Python client** to support Redis-based storage, creating a new architecture that separates storage from compute:
 
 #### **Traditional Prometheus Multiprocess**
+
 ```python
 # Standard approach - files only
 from prometheus_client import multiprocess
@@ -17,6 +18,7 @@ multiprocess.MultiProcessCollector(registry)
 ```
 
 #### **Our Redis Storage Extension**
+
 ```python
 # Our innovation - Redis storage
 from gunicorn_prometheus_exporter.storage import get_redis_storage_manager
@@ -28,13 +30,13 @@ registry.register(collector)
 
 ### **Architecture Benefits**
 
-| Aspect | Traditional | Redis Storage |
-|--------|-------------|---------------|
-| **Storage** | Local files | Redis server |
-| **Scalability** | Single instance | Multiple instances |
-| **Separation** | Coupled | Separated |
-| **Performance** | File I/O overhead | Direct Redis access |
-| **Availability** | Server-dependent | Redis-backed |
+| Aspect           | Traditional       | Redis Storage       |
+| ---------------- | ----------------- | ------------------- |
+| **Storage**      | Local files       | Redis server        |
+| **Scalability**  | Single instance   | Multiple instances  |
+| **Separation**   | Coupled           | Separated           |
+| **Performance**  | File I/O overhead | Direct Redis access |
+| **Availability** | Server-dependent  | Redis-backed        |
 
 ## Quick Start
 
@@ -57,6 +59,7 @@ pip install gunicorn-prometheus-exporter[all]
 ### Basic Usage
 
 1. **Set up environment variables**:
+
 ```bash
 export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
 export PROMETHEUS_METRICS_PORT="9091"
@@ -65,6 +68,7 @@ export GUNICORN_WORKERS="2"
 ```
 
 2. **Create a Gunicorn configuration file** (`gunicorn.conf.py`):
+
 ```python
 # Basic Gunicorn settings
 bind = "0.0.0.0:8000"
@@ -80,28 +84,31 @@ os.environ.setdefault("GUNICORN_WORKERS", "2")
 ```
 
 3. **Start Gunicorn**:
+
 ```bash
 gunicorn -c gunicorn.conf.py your_app:app
 ```
 
 4. **Access metrics**:
+
 ```bash
 curl http://0.0.0.0:9091/metrics
 ```
 
 ## Supported Worker Types
 
-| Worker Type | Installation | Usage |
-|-------------|-------------|-------|
-| **Sync Worker** | `pip install gunicorn-prometheus-exporter` | `worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"` |
-| **Thread Worker** | `pip install gunicorn-prometheus-exporter` | `worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"` |
-| **Eventlet Worker** | `pip install gunicorn-prometheus-exporter[eventlet]` | `worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"` |
-| **Gevent Worker** | `pip install gunicorn-prometheus-exporter[gevent]` | `worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"` |
-| **Tornado Worker** | `pip install gunicorn-prometheus-exporter[tornado]` (Not recommended) | `worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"` (Not recommended) |
+| Worker Type         | Installation                                                          | Usage                                                                                     |
+| ------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Sync Worker**     | `pip install gunicorn-prometheus-exporter`                            | `worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"`                          |
+| **Thread Worker**   | `pip install gunicorn-prometheus-exporter`                            | `worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"`                    |
+| **Eventlet Worker** | `pip install gunicorn-prometheus-exporter[eventlet]`                  | `worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"`                  |
+| **Gevent Worker**   | `pip install gunicorn-prometheus-exporter[gevent]`                    | `worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"`                    |
+| **Tornado Worker**  | `pip install gunicorn-prometheus-exporter[tornado]` (Not recommended) | `worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"` (Not recommended) |
 
 ## 📈 Available Metrics
 
 ### Worker Metrics
+
 - `gunicorn_worker_requests_total` - Total requests handled by each worker
 - `gunicorn_worker_request_duration_seconds` - Request duration histogram
 - `gunicorn_worker_memory_bytes` - Memory usage per worker
@@ -111,25 +118,28 @@ curl http://0.0.0.0:9091/metrics
 - `gunicorn_worker_failed_requests_total` - Failed requests with method/endpoint labels
 
 ### Master Metrics
+
 - `gunicorn_master_worker_restarts_total` - Total worker restarts
 - `gunicorn_master_signals_total` - Signal handling metrics
 
 ### Error Metrics
+
 - `gunicorn_worker_error_handling_total` - Error tracking with method and endpoint labels
 
 ## 🧪 Testing Status
 
 All worker types have been thoroughly tested and validated:
 
-| Worker Type | Status | Metrics | Master Signals | Load Distribution |
-|-------------|--------|---------|----------------|-------------------|
-| **Sync Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
-| **Thread Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
-| **Eventlet Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
-| **Gevent Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
-| **Tornado Worker** | Not recommended | Metrics endpoint issues | HUP, USR1, CHLD | Balanced |
+| Worker Type         | Status          | Metrics                 | Master Signals  | Load Distribution |
+| ------------------- | --------------- | ----------------------- | --------------- | ----------------- |
+| **Sync Worker**     | Working         | All metrics             | HUP, USR1, CHLD | Balanced          |
+| **Thread Worker**   | Working         | All metrics             | HUP, USR1, CHLD | Balanced          |
+| **Eventlet Worker** | Working         | All metrics             | HUP, USR1, CHLD | Balanced          |
+| **Gevent Worker**   | Working         | All metrics             | HUP, USR1, CHLD | Balanced          |
+| **Tornado Worker**  | Not recommended | Metrics endpoint issues | HUP, USR1, CHLD | Balanced          |
 
 ### Validation Includes:
+
 - Request counting and distribution across workers
 - Memory and CPU usage tracking
 - Error handling with method/endpoint labels
@@ -142,16 +152,17 @@ All worker types have been thoroughly tested and validated:
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PROMETHEUS_MULTIPROC_DIR` | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics |
-| `PROMETHEUS_METRICS_PORT` | `9091` | Port for metrics endpoint |
-| `PROMETHEUS_BIND_ADDRESS` | `0.0.0.0` | Bind address for metrics server |
-| `GUNICORN_WORKERS` | `1` | Number of workers for metrics calculation |
+| Variable                   | Default                     | Description                               |
+| -------------------------- | --------------------------- | ----------------------------------------- |
+| `PROMETHEUS_MULTIPROC_DIR` | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics        |
+| `PROMETHEUS_METRICS_PORT`  | `9091`                      | Port for metrics endpoint                 |
+| `PROMETHEUS_BIND_ADDRESS`  | `0.0.0.0`                   | Bind address for metrics server           |
+| `GUNICORN_WORKERS`         | `1`                         | Number of workers for metrics calculation |
 
 ### Redis Configuration (Optional)
 
 #### Redis Storage (No Files Created)
+
 ```bash
 # Enable Redis storage (replaces file storage)
 export REDIS_ENABLED="true"
@@ -162,22 +173,22 @@ export REDIS_DB="0"
 
 > **🏗️ Redis Backend Architecture**: The Redis backend provides a sophisticated storage system with `backend.service` for high-level management and `backend.core` for low-level operations. See the [API Reference](api-reference.md#-redis-backend-architecture) for detailed documentation.
 
-
 ## 🌐 Understanding the Three URLs
 
 When deploying with Gunicorn Prometheus Exporter, you'll work with three distinct URLs:
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| **Prometheus UI** | `http://localhost:9090` | Prometheus web interface for querying and visualizing metrics |
-| **Your Application** | `http://localhost:8200` | Your actual web application (Gunicorn server) |
-| **Metrics Endpoint** | `http://127.0.0.1:9091/metrics` | Raw metrics data for Prometheus to scrape |
+| Service              | URL                             | Purpose                                                       |
+| -------------------- | ------------------------------- | ------------------------------------------------------------- |
+| **Prometheus UI**    | `http://localhost:9090`         | Prometheus web interface for querying and visualizing metrics |
+| **Your Application** | `http://localhost:8200`         | Your actual web application (Gunicorn server)                 |
+| **Metrics Endpoint** | `http://127.0.0.1:9091/metrics` | Raw metrics data for Prometheus to scrape                     |
 
 > **Note**: The metrics endpoint URL is configurable through environment variables. The default port is 9091 to avoid conflicts with Prometheus UI (9090).
 
 ## 📝 Examples
 
 ### Basic Configuration
+
 ```python
 # gunicorn_basic.conf.py
 bind = "0.0.0.0:8000"
@@ -192,6 +203,7 @@ os.environ.setdefault("GUNICORN_WORKERS", "2")
 ```
 
 ### Async Worker Configuration
+
 ```python
 # gunicorn_async.conf.py
 bind = "0.0.0.0:8000"
@@ -207,6 +219,7 @@ os.environ.setdefault("GUNICORN_WORKERS", "2")
 ```
 
 ### Redis Storage Configuration
+
 ```python
 # gunicorn_redis_storage.conf.py
 bind = "0.0.0.0:8000"
@@ -228,6 +241,7 @@ os.environ.setdefault("REDIS_DB", "0")
 ## Development
 
 ### Setup
+
 ```bash
 git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter.git
 cd gunicorn-prometheus-exporter
@@ -235,6 +249,7 @@ pip install -e ".[dev]"
 ```
 
 ### Running Tests
+
 ```bash
 # Run all tests
 pytest
@@ -247,6 +262,7 @@ pytest tests/test_plugin.py
 ```
 
 ### Code Quality
+
 ```bash
 # Linting
 ruff check src/ tests/
@@ -261,6 +277,7 @@ ruff format src/ tests/
 For detailed documentation, visit our [documentation site](https://agent-hellboy.github.io/gunicorn-prometheus-exporter/).
 
 ### Framework-Specific Guides
+
 - [Django Integration](examples/django-integration.md)
 - [FastAPI Integration](examples/fastapi-integration.md)
 - [Flask Integration](examples/flask-integration.md)
@@ -268,6 +285,7 @@ For detailed documentation, visit our [documentation site](https://agent-hellboy
 - [Custom WSGI App](examples/custom-wsgi-app.md)
 
 ### Deployment Guides
+
 - [Deployment Guide](examples/deployment-guide.md) - Comprehensive guide for Docker, Kubernetes, and production deployments
 
 ## 🤝 Contributing

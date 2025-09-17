@@ -31,11 +31,13 @@ This directory contains the complete documentation for the Gunicorn Prometheus E
 ### Local Development
 
 1. **Install dependencies:**
+
    ```bash
    pip install mkdocs mkdocs-material mkdocs-minify-plugin
    ```
 
 2. **Serve locally:**
+
    ```bash
    mkdocs serve
    ```

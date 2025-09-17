@@ -227,7 +227,7 @@ gunicorn-prometheus-exporter>=0.1.0
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 services:
   web:
     build: .
@@ -264,9 +264,9 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'flask-gunicorn'
+  - job_name: "flask-gunicorn"
     static_configs:
-      - targets: ['your-app-host:9091']  # Replace with your application hostname
+      - targets: ["your-app-host:9091"] # Replace with your application hostname
     metrics_path: /metrics
     scrape_interval: 5s
 ```
@@ -373,6 +373,7 @@ def after_request(response):
 ### Common Flask Issues
 
 1. **Application Context Error**
+
    ```python
    # Ensure app context is available
    with app.app_context():
@@ -381,6 +382,7 @@ def after_request(response):
    ```
 
 2. **Database Connection Issues**
+
    ```python
    # Initialize database
    with app.app_context():
@@ -406,6 +408,7 @@ flask run --host=0.0.0.0 --port=8000
 ## 📈 Performance Tips
 
 1. **Use Flask-Caching**
+
    ```python
    from flask_caching import Cache
 
@@ -419,6 +422,7 @@ flask run --host=0.0.0.0 --port=8000
    ```
 
 2. **Database Connection Pooling**
+
    ```python
    # config.py
    SQLALCHEMY_ENGINE_OPTIONS = {
@@ -429,6 +433,7 @@ flask run --host=0.0.0.0 --port=8000
    ```
 
 3. **Use Blueprints for Large Applications**
+
    ```python
    # users.py
    from flask import Blueprint
@@ -445,6 +450,7 @@ flask run --host=0.0.0.0 --port=8000
    ```
 
 4. **Optimize JSON Serialization**
+
    ```python
    from flask import jsonify
    import json

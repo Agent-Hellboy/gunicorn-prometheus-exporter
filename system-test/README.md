@@ -18,14 +18,14 @@ The system test validates the complete functionality of the Gunicorn Prometheus 
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `system_test.sh` | **Unified system test** - Complete automated test suite with multiple modes (including Docker) |
-| `Dockerfile` | **Docker image** - Container definition for consistent testing |
-| `docker-compose.yml` | **Docker Compose** - Multi-service setup for testing |
-| `Makefile` | **Build automation** - Easy test execution commands |
-| `requirements-dev.txt` | **Dependencies** - Development and testing packages |
-| `README.md` | **Documentation** - This file |
+| File                   | Purpose                                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------------------------- |
+| `system_test.sh`       | **Unified system test** - Complete automated test suite with multiple modes (including Docker) |
+| `Dockerfile`           | **Docker image** - Container definition for consistent testing                                 |
+| `docker-compose.yml`   | **Docker Compose** - Multi-service setup for testing                                           |
+| `Makefile`             | **Build automation** - Easy test execution commands                                            |
+| `requirements-dev.txt` | **Dependencies** - Development and testing packages                                            |
+| `README.md`            | **Documentation** - This file                                                                  |
 
 ## Quick Start
 
@@ -41,6 +41,7 @@ The system test validates the complete functionality of the Gunicorn Prometheus 
 ### Running Tests
 
 #### Option 1: Docker-based Testing (Recommended - Works on All Platforms)
+
 ```bash
 # Run complete system test in Docker container
 make docker-test
@@ -54,6 +55,7 @@ docker run --rm -p 8088:8088 -p 9093:9093 -p 6379:6379 gunicorn-prometheus-expor
 ```
 
 #### Option 2: Using Make (Requires Local Redis)
+
 ```bash
 # Quick test (requires Redis running)
 make quick-test
@@ -72,6 +74,7 @@ make clean
 ```
 
 #### Option 3: Direct Script Execution
+
 ```bash
 # Docker mode (cross-platform, no host dependencies)
 ./system_test.sh --docker
@@ -98,6 +101,7 @@ make clean
 **Requirements**: Redis must be running
 
 **What it tests**:
+
 - ✅ Basic server startup
 - ✅ HTTP endpoints (app + metrics)
 - ✅ Request processing
@@ -106,6 +110,7 @@ make clean
 - ✅ Signal handling
 
 **Usage**:
+
 ```bash
 # Make sure Redis is running first
 brew services start redis  # macOS
@@ -122,6 +127,7 @@ sudo systemctl start redis  # Linux
 **Requirements**: None (installs everything automatically)
 
 **What it tests**:
+
 - ✅ Automatic dependency installation
 - ✅ Redis server startup and management
 - ✅ Gunicorn server with Redis integration
@@ -133,6 +139,7 @@ sudo systemctl start redis  # Linux
 - ✅ Error scenarios
 
 **Usage**:
+
 ```bash
 # Run full system test (no prerequisites needed)
 ./system_test.sh
@@ -145,12 +152,14 @@ sudo systemctl start redis  # Linux
 **Requirements**: None (installs everything automatically)
 
 **What it tests**:
+
 - ✅ Same as Full Mode
 - ✅ Timeout protection (30 seconds max)
 - ✅ Enhanced cleanup
 - ✅ CI-optimized logging
 
 **Usage**:
+
 ```bash
 # CI test (timeout-protected)
 ./system_test.sh --ci
@@ -163,6 +172,7 @@ sudo systemctl start redis  # Linux
 **Requirements**: Docker installed
 
 **What it does**:
+
 - ✅ Automatically detects Docker environment
 - ✅ Skips Redis startup (handled by Docker)
 - ✅ Runs in isolated container environment
@@ -170,6 +180,7 @@ sudo systemctl start redis  # Linux
 - ✅ No host machine dependencies
 
 **Usage**:
+
 ```bash
 # Run in Docker mode
 ./system_test.sh --docker
@@ -185,12 +196,14 @@ sudo systemctl start redis  # Linux
 **Requirements**: None
 
 **What it does**:
+
 - ✅ Kills any existing processes on port 8088 (app)
 - ✅ Kills any existing processes on port 9093 (metrics)
 - ✅ Prevents port conflicts during development
 - ✅ Useful when previous tests didn't clean up properly
 
 **Usage**:
+
 ```bash
 # Force kill and run quick test
 ./system_test.sh --quick --no-redis --force
@@ -205,11 +218,13 @@ sudo systemctl start redis  # Linux
 ## Test Configuration
 
 ### Ports Used
+
 - **Application**: `8088`
 - **Metrics**: `9093`
 - **Redis**: `6379`
 
 ### Environment Variables
+
 ```bash
 PROMETHEUS_METRICS_PORT=9093
 PROMETHEUS_BIND_ADDRESS=127.0.0.1
@@ -222,15 +237,15 @@ GUNICORN_WORKERS=2
 
 ### Test Metrics Verified
 
-| Metric Type | Metric Name | Verification |
-|-------------|-------------|--------------|
-| **Counter** | `gunicorn_worker_requests_total` | Request count > 0 |
+| Metric Type   | Metric Name                                | Verification          |
+| ------------- | ------------------------------------------ | --------------------- |
+| **Counter**   | `gunicorn_worker_requests_total`           | Request count > 0     |
 | **Histogram** | `gunicorn_worker_request_duration_seconds` | Buckets + sum + count |
-| **Gauge** | `gunicorn_worker_memory_bytes` | Memory usage > 0 |
-| **Gauge** | `gunicorn_worker_cpu_percent` | CPU percentage |
-| **Gauge** | `gunicorn_worker_uptime_seconds` | Uptime > 0 |
-| **Gauge** | `gunicorn_worker_state` | State transitions |
-| **Counter** | `gunicorn_master_worker_restart_total` | Restart tracking |
+| **Gauge**     | `gunicorn_worker_memory_bytes`             | Memory usage > 0      |
+| **Gauge**     | `gunicorn_worker_cpu_percent`              | CPU percentage        |
+| **Gauge**     | `gunicorn_worker_uptime_seconds`           | Uptime > 0            |
+| **Gauge**     | `gunicorn_worker_state`                    | State transitions     |
+| **Counter**   | `gunicorn_master_worker_restart_total`     | Restart tracking      |
 
 ## CI/CD Integration
 
@@ -247,6 +262,7 @@ See `.github/workflows/system-test.yml` for CI configuration.
 ### Common Issues
 
 #### 1. Port Already in Use
+
 ```bash
 # Kill existing processes
 pkill -f "gunicorn.*redis_integration"
@@ -258,6 +274,7 @@ export APP_PORT=8089
 ```
 
 #### 2. Redis Connection Failed
+
 ```bash
 # Check Redis status
 redis-cli ping
@@ -268,6 +285,7 @@ sudo systemctl start redis  # Linux
 ```
 
 #### 3. Gunicorn Not Found
+
 ```bash
 # Install gunicorn
 pip install gunicorn
@@ -277,6 +295,7 @@ pip install gunicorn
 ```
 
 #### 4. Permission Denied
+
 ```bash
 # Make scripts executable
 chmod +x *.sh
@@ -285,6 +304,7 @@ chmod +x *.sh
 ### Debug Mode
 
 Enable verbose output:
+
 ```bash
 # Add debug flags
 set -x  # Enable debug mode
@@ -296,11 +316,13 @@ export DEBUG=1
 If tests fail, manually verify:
 
 1. **Redis Keys**:
+
    ```bash
    redis-cli keys "gunicorn:*" | wc -l
    ```
 
 2. **Metrics Endpoint**:
+
    ```bash
    curl -s http://localhost:9093/metrics | grep "gunicorn_worker_requests_total"
    ```

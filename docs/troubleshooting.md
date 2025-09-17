@@ -15,6 +15,7 @@ OSError: [Errno 98] Address already in use
 **Solution:**
 
 1. Change the metrics port in your configuration:
+
 ```python
 # In gunicorn.conf.py
 import os
@@ -22,6 +23,7 @@ os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")  # Use different port
 ```
 
 2. Or kill the process using the port:
+
 ```bash
 # Find the process
 lsof -i :9090
@@ -33,12 +35,15 @@ kill -9 <PID>
 ### Permission Denied
 
 **Error:**
+
 ```
 PermissionError: [Errno 13] Permission denied
 ```
 
 **Solution:**
+
 1. Check multiprocess directory permissions:
+
 ```bash
 # Create directory with proper permissions
 mkdir -p /tmp/prometheus_multiproc
@@ -46,6 +51,7 @@ chmod 755 /tmp/prometheus_multiproc
 ```
 
 2. Or use a different directory:
+
 ```python
 # In gunicorn.conf.py
 import os
@@ -55,12 +61,15 @@ os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/var/tmp/prometheus_multiproc
 ### Import Errors for Async Workers
 
 **Error:**
+
 ```
 ModuleNotFoundError: No module named 'eventlet'
 ```
 
 **Solution:**
+
 1. Install the required dependencies:
+
 ```bash
 # For eventlet workers
 pip install gunicorn-prometheus-exporter[eventlet]
@@ -76,6 +85,7 @@ pip install gunicorn-prometheus-exporter[async]
 ```
 
 2. Verify the installation:
+
 ```bash
 python -c "import eventlet; print('eventlet available')"
 ```
@@ -87,6 +97,7 @@ python -c "import eventlet; print('eventlet available')"
 **Solutions:**
 
 1. **Check environment variables:**
+
 ```bash
 # Verify all required variables are set
 echo $PROMETHEUS_MULTIPROC_DIR
@@ -96,12 +107,14 @@ echo $GUNICORN_WORKERS
 ```
 
 2. **Check multiprocess directory:**
+
 ```bash
 # Verify directory exists and is writable
 ls -la /tmp/prometheus_multiproc/
 ```
 
 3. **Restart Gunicorn:**
+
 ```bash
 # Kill existing process
 pkill -f gunicorn
@@ -113,12 +126,15 @@ gunicorn -c gunicorn.conf.py app:app
 ### Worker Type Errors
 
 **Error:**
+
 ```
 TypeError: 'NoneType' object is not callable
 ```
 
 **Solution:**
+
 1. Verify worker class is correctly specified:
+
 ```python
 # In gunicorn.conf.py
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"  # Sync
@@ -129,6 +145,7 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"  # Tornado
 ```
 
 2. Check if async dependencies are installed:
+
 ```bash
 # For eventlet workers
 python -c "import eventlet"
@@ -145,12 +162,15 @@ python -c "import tornado"
 ### Environment Variables Not Set
 
 **Error:**
+
 ```
 ValueError: Environment variable PROMETHEUS_METRICS_PORT must be set in production
 ```
 
 **Solution:**
+
 1. Set environment variables in your configuration:
+
 ```python
 # In gunicorn.conf.py
 import os
@@ -161,6 +181,7 @@ os.environ.setdefault("GUNICORN_WORKERS", "2")
 ```
 
 2. Or export them in your shell:
+
 ```bash
 export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
 export PROMETHEUS_METRICS_PORT="9090"
@@ -171,17 +192,21 @@ export GUNICORN_WORKERS="2"
 ### Redis Configuration Issues
 
 **Error:**
+
 ```
 ConnectionError: Error connecting to Redis
 ```
 
 **Solution:**
+
 1. Check Redis server is running:
+
 ```bash
 redis-cli ping
 ```
 
 2. Verify Redis configuration:
+
 ```python
 # In gunicorn.conf.py
 import os
@@ -192,6 +217,7 @@ os.environ.setdefault("REDIS_DB", "0")
 ```
 
 3. Test Redis connection:
+
 ```bash
 redis-cli -h localhost -p 6379 ping
 ```
@@ -278,11 +304,13 @@ gunicorn --config example/gunicorn_tornado_async.conf.py example/async_app:app
 ### Eventlet Worker Problems
 
 **Common Issues:**
+
 1. **Import errors**: Install `eventlet` package
 2. **WSGI compatibility**: Use async-compatible application
 3. **Worker connections**: Set appropriate `worker_connections`
 
 **Solution:**
+
 ```python
 # In gunicorn.conf.py
 worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
@@ -295,11 +323,13 @@ app = "example.async_app:app"
 ### Gevent Worker Problems
 
 **Common Issues:**
+
 1. **Import errors**: Install `gevent` package
 2. **Monkey patching**: May conflict with other libraries
 3. **Worker connections**: Set appropriate `worker_connections`
 
 **Solution:**
+
 ```python
 # In gunicorn.conf.py
 worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"
@@ -312,6 +342,7 @@ app = "example.async_app:app"
 ### Tornado Worker Problems (Not Recommended)
 
 **Common Issues:**
+
 1. **Import errors**: Install `tornado` package
 2. **IOLoop conflicts**: May conflict with other async libraries
 3. **Application compatibility**: Requires async-compatible app
@@ -321,6 +352,7 @@ app = "example.async_app:app"
 **Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
 
 **Alternative Solution:**
+
 ```python
 # In gunicorn.conf.py - Use EventletWorker instead
 worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
@@ -334,17 +366,21 @@ app = "example.async_app:app"
 ### High Memory Usage
 
 **Symptoms:**
+
 - Memory usage increases over time
 - Workers restart frequently
 
 **Solutions:**
+
 1. **Reduce worker count:**
+
 ```python
 # In gunicorn.conf.py
 workers = 2  # Reduce from default
 ```
 
 2. **Enable metric cleanup:**
+
 ```python
 # In gunicorn.conf.py
 import os
@@ -352,6 +388,7 @@ os.environ.setdefault("CLEANUP_DB_FILES", "true")
 ```
 
 3. **Monitor memory metrics:**
+
 ```bash
 # Check memory usage
 curl http://0.0.0.0:9090/metrics | grep gunicorn_worker_memory_bytes
@@ -360,11 +397,14 @@ curl http://0.0.0.0:9090/metrics | grep gunicorn_worker_memory_bytes
 ### High CPU Usage
 
 **Symptoms:**
+
 - CPU usage spikes during requests
 - Slow response times
 
 **Solutions:**
+
 1. **Use appropriate worker type:**
+
 ```python
 # For I/O-bound apps
 worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"
@@ -374,6 +414,7 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
 ```
 
 2. **Monitor CPU metrics:**
+
 ```bash
 # Check CPU usage
 curl http://0.0.0.0:9090/metrics | grep gunicorn_worker_cpu_percent
@@ -382,11 +423,14 @@ curl http://0.0.0.0:9090/metrics | grep gunicorn_worker_cpu_percent
 ### Slow Metrics Collection
 
 **Symptoms:**
+
 - Metrics endpoint responds slowly
 - High latency in metric updates
 
 **Solutions:**
+
 1. **Reduce metric collection frequency:**
+
 ```python
 # Update worker metrics less frequently
 def worker_int(worker):
@@ -444,31 +488,37 @@ cp -r /backup/prometheus_multiproc_latest/* /tmp/prometheus_multiproc/
 When reporting issues, include:
 
 1. **Gunicorn version:**
+
 ```bash
 gunicorn --version
 ```
 
 2. **Python version:**
+
 ```bash
 python --version
 ```
 
 3. **Installed packages:**
+
 ```bash
 pip list | grep gunicorn
 ```
 
 4. **Configuration file:**
+
 ```bash
 cat gunicorn.conf.py
 ```
 
 5. **Error logs:**
+
 ```bash
 gunicorn -c gunicorn.conf.py app:app --log-level debug 2>&1
 ```
 
 6. **Metrics endpoint:**
+
 ```bash
 curl http://0.0.0.0:9090/metrics
 ```

@@ -4,9 +4,11 @@ import time
 from threading import Lock
 from typing import List, Tuple
 
+
 # Conditional Redis import - only import when needed
 try:
-    import redis
+    import redis  # pylint: disable=unused-import
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
@@ -22,8 +24,10 @@ class RedisDict:
 
     def __init__(self, redis_client, key_prefix: str = "prometheus"):
         if not REDIS_AVAILABLE:
-            raise ImportError("Redis is not available. Install redis package to use RedisDict.")
-        
+            raise ImportError(
+                "Redis is not available. Install redis package to use RedisDict."
+            )
+
         self._redis = redis_client
         self._key_prefix = key_prefix
         self._lock = Lock()
@@ -123,9 +127,7 @@ class RedisDict:
         # Redis client is typically managed externally
 
     @staticmethod
-    def read_all_values_from_redis(
-        redis_client, key_prefix: str = "prometheus"
-    ):
+    def read_all_values_from_redis(redis_client, key_prefix: str = "prometheus"):
         """Static method to read all values from Redis, similar to MmapedDict."""
         redis_dict = RedisDict(redis_client, key_prefix)
         return redis_dict.read_all_values()

@@ -13,6 +13,7 @@ pip install gunicorn-prometheus-exporter
 ```
 
 **Includes:**
+
 - Sync worker (`PrometheusWorker`)
 - Thread worker (`PrometheusThreadWorker`)
 - Basic Prometheus metrics collection
@@ -22,7 +23,7 @@ pip install gunicorn-prometheus-exporter
 
 Install with support for async worker types:
 
-```bash
+````bash
 # Install all async workers
 pip install gunicorn-prometheus-exporter[async]
 
@@ -36,7 +37,7 @@ Install with Redis storage capabilities:
 
 ```bash
 pip install gunicorn-prometheus-exporter[redis]
-```
+````
 
 **Includes:**
 
@@ -102,11 +103,13 @@ pip install -e ".[async,redis]"
 **Default:** `/tmp/prometheus_multiproc`
 
 **Example:**
+
 ```bash
 export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
@@ -129,11 +132,13 @@ os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
 **Range:** 1-65535
 
 **Example:**
+
 ```bash
 export PROMETHEUS_METRICS_PORT="9090"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
@@ -214,6 +219,7 @@ os.environ.setdefault("GUNICORN_WORKERS", "4")
 **Range:** 0-300
 
 **Example:**
+
 ```bash
 export GUNICORN_KEEPALIVE="5"
 ```
@@ -236,6 +242,7 @@ os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
 **Values:** `true`, `false`
 
 **Example:**
+
 ```bash
 export CLEANUP_DB_FILES="true"
 ```
@@ -278,38 +285,38 @@ os.environ.setdefault("REDIS_ENABLED", "true")
 
 ### Core Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
+| Package             | Version    | Purpose                       |
+| ------------------- | ---------- | ----------------------------- |
 | `prometheus-client` | `>=0.16.0` | Prometheus metrics collection |
-| `psutil` | `>=5.8.0` | System metrics (CPU, memory) |
-| `gunicorn` | `>=20.1.0` | WSGI server integration |
+| `psutil`            | `>=5.8.0`  | System metrics (CPU, memory)  |
+| `gunicorn`          | `>=20.1.0` | WSGI server integration       |
 
 ### Optional Dependencies
 
 #### Async Worker Dependencies
 
-| Package | Version | Worker Type |
-|---------|---------|-------------|
-| `eventlet` | `>=0.30.0` | Eventlet worker |
-| `gevent` | `>=21.8.0` | Gevent worker |
-| `tornado` | `>=6.1.0` | Tornado worker (Not recommended - see compatibility issues) |
+| Package    | Version    | Worker Type                                                 |
+| ---------- | ---------- | ----------------------------------------------------------- |
+| `eventlet` | `>=0.30.0` | Eventlet worker                                             |
+| `gevent`   | `>=21.8.0` | Gevent worker                                               |
+| `tornado`  | `>=6.1.0`  | Tornado worker (Not recommended - see compatibility issues) |
 
 #### Redis Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
+| Package | Version   | Purpose      |
+| ------- | --------- | ------------ |
 | `redis` | `>=4.0.0` | Redis client |
 
 #### Development Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `pytest` | `>=7.0.0` | Testing framework |
-| `pytest-cov` | `>=4.0.0` | Coverage reporting |
-| `ruff` | `>=0.1.0` | Linting and formatting |
-| `mypy` | `>=1.0.0` | Type checking |
-| `mkdocs` | `>=1.4.0` | Documentation |
-| `mkdocs-material` | `>=9.0.0` | Documentation theme |
+| Package           | Version   | Purpose                |
+| ----------------- | --------- | ---------------------- |
+| `pytest`          | `>=7.0.0` | Testing framework      |
+| `pytest-cov`      | `>=4.0.0` | Coverage reporting     |
+| `ruff`            | `>=0.1.0` | Linting and formatting |
+| `mypy`            | `>=1.0.0` | Type checking          |
+| `mkdocs`          | `>=1.4.0` | Documentation          |
+| `mkdocs-material` | `>=9.0.0` | Documentation theme    |
 
 ## 🔧 Configuration Examples
 
@@ -438,6 +445,7 @@ python -c "import redis; print('Redis available')" 2>/dev/null && echo "Redis in
 **Error:** `ModuleNotFoundError: No module named 'eventlet'`
 
 **Solution:**
+
 ```bash
 # Install missing dependency
 pip install gunicorn-prometheus-exporter[eventlet]
@@ -448,6 +456,7 @@ pip install gunicorn-prometheus-exporter[eventlet]
 **Error:** `ImportError: cannot import name 'X' from 'Y'`
 
 **Solution:**
+
 ```bash
 # Upgrade to latest version
 pip install --upgrade gunicorn-prometheus-exporter
@@ -463,6 +472,7 @@ pip install gunicorn-prometheus-exporter==0.1.3
 **Error:** `ValueError: Environment variable X must be set`
 
 **Solution:**
+
 ```bash
 # Set required variables
 export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
@@ -476,6 +486,7 @@ export GUNICORN_WORKERS="2"
 **Error:** `ValueError: Invalid port number`
 
 **Solution:**
+
 ```bash
 # Use valid port range (1-65535)
 export PROMETHEUS_METRICS_PORT="9090"  # Valid

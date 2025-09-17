@@ -311,6 +311,7 @@ def post_fork(server, worker):
 - `--worker-class`: Worker class to use
 
 **Example usage:**
+
 ```bash
 # Override workers from CLI
 gunicorn -c gunicorn.conf.py app:app --workers 8
@@ -508,49 +509,50 @@ logging.basicConfig(level=logging.DEBUG)
 
 ### Worker Metrics
 
-| Metric | Type | Labels | Description |
-|--------|------|--------|-------------|
-| `gunicorn_worker_requests_total` | Counter | `worker_id` | Total requests handled by each worker |
-| `gunicorn_worker_request_duration_seconds` | Histogram | `worker_id` | Request duration distribution |
-| `gunicorn_worker_memory_bytes` | Gauge | `worker_id` | Memory usage per worker |
-| `gunicorn_worker_cpu_percent` | Gauge | `worker_id` | CPU usage per worker |
-| `gunicorn_worker_uptime_seconds` | Gauge | `worker_id` | Worker uptime |
-| `gunicorn_worker_state` | Gauge | `worker_id`, `state`, `timestamp` | Worker state with timestamp |
-| `gunicorn_worker_failed_requests_total` | Counter | `worker_id`, `method`, `endpoint` | Failed requests with labels |
+| Metric                                     | Type      | Labels                            | Description                           |
+| ------------------------------------------ | --------- | --------------------------------- | ------------------------------------- |
+| `gunicorn_worker_requests_total`           | Counter   | `worker_id`                       | Total requests handled by each worker |
+| `gunicorn_worker_request_duration_seconds` | Histogram | `worker_id`                       | Request duration distribution         |
+| `gunicorn_worker_memory_bytes`             | Gauge     | `worker_id`                       | Memory usage per worker               |
+| `gunicorn_worker_cpu_percent`              | Gauge     | `worker_id`                       | CPU usage per worker                  |
+| `gunicorn_worker_uptime_seconds`           | Gauge     | `worker_id`                       | Worker uptime                         |
+| `gunicorn_worker_state`                    | Gauge     | `worker_id`, `state`, `timestamp` | Worker state with timestamp           |
+| `gunicorn_worker_failed_requests_total`    | Counter   | `worker_id`, `method`, `endpoint` | Failed requests with labels           |
 
 ### Master Metrics
 
-| Metric | Type | Labels | Description |
-|--------|------|--------|-------------|
-| `gunicorn_master_worker_restarts_total` | Counter | None | Total worker restarts |
-| `gunicorn_master_signals_total` | Counter | `signal` | Signal handling metrics |
+| Metric                                  | Type    | Labels   | Description             |
+| --------------------------------------- | ------- | -------- | ----------------------- |
+| `gunicorn_master_worker_restarts_total` | Counter | None     | Total worker restarts   |
+| `gunicorn_master_signals_total`         | Counter | `signal` | Signal handling metrics |
 
 ### Error Metrics
 
-| Metric | Type | Labels | Description |
-|--------|------|--------|-------------|
+| Metric                                 | Type    | Labels                                          | Description                |
+| -------------------------------------- | ------- | ----------------------------------------------- | -------------------------- |
 | `gunicorn_worker_error_handling_total` | Counter | `worker_id`, `method`, `endpoint`, `error_type` | Error tracking with labels |
 
 ## Configuration Options
 
 ### Environment Variables
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `PROMETHEUS_MULTIPROC_DIR` | String | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics |
-| `PROMETHEUS_METRICS_PORT` | Integer | `9090` | Port for metrics endpoint |
-| `PROMETHEUS_BIND_ADDRESS` | String | `0.0.0.0` | Bind address for metrics server |
-| `GUNICORN_WORKERS` | Integer | `1` | Number of workers for metrics calculation |
+| Variable                   | Type    | Default                     | Description                               |
+| -------------------------- | ------- | --------------------------- | ----------------------------------------- |
+| `PROMETHEUS_MULTIPROC_DIR` | String  | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics        |
+| `PROMETHEUS_METRICS_PORT`  | Integer | `9090`                      | Port for metrics endpoint                 |
+| `PROMETHEUS_BIND_ADDRESS`  | String  | `0.0.0.0`                   | Bind address for metrics server           |
+| `GUNICORN_WORKERS`         | Integer | `1`                         | Number of workers for metrics calculation |
 
 ### Redis Configuration
 
 #### Redis Storage (No Files Created)
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `REDIS_ENABLED` | Boolean | `false` | Enable Redis storage (replaces file storage) |
-| `REDIS_HOST` | String | `localhost` | Redis server host |
-| `REDIS_PORT` | Integer | `6379` | Redis server port |
-| `REDIS_DB` | Integer | `0` | Redis database number |
+
+| Variable        | Type    | Default     | Description                                  |
+| --------------- | ------- | ----------- | -------------------------------------------- |
+| `REDIS_ENABLED` | Boolean | `false`     | Enable Redis storage (replaces file storage) |
+| `REDIS_HOST`    | String  | `localhost` | Redis server host                            |
+| `REDIS_PORT`    | Integer | `6379`      | Redis server port                            |
+| `REDIS_DB`      | Integer | `0`         | Redis database number                        |
 
 ## 🏗️ Redis Backend Architecture
 
@@ -561,12 +563,14 @@ The Gunicorn Prometheus Exporter includes a sophisticated Redis backend system t
 The Redis backend is organized into two main packages:
 
 #### `backend.service` - High-Level Management
+
 - **`RedisStorageManager`**: Centralized management of Redis storage lifecycle
 - **`setup_redis_metrics()`**: Initialize Redis-based metrics storage
 - **`teardown_redis_metrics()`**: Clean shutdown and resource cleanup
 - **`get_redis_storage_manager()`**: Access the global storage manager instance
 
 #### `backend.core` - Low-Level Operations
+
 - **`RedisStorageClient`**: Main client for Redis operations
 - **`RedisStorageDict`**: Dictionary-like interface for Redis storage
 - **`RedisValue`**: Redis-backed metric value implementation
@@ -576,6 +580,7 @@ The Redis backend is organized into two main packages:
 ### Key Components
 
 #### RedisStorageManager
+
 The central component that manages the entire Redis storage lifecycle:
 
 ```python
@@ -599,6 +604,7 @@ manager.teardown()
 ```
 
 #### RedisStorageClient
+
 Provides a clean interface for Redis operations:
 
 ```python
@@ -619,6 +625,7 @@ storage_client.cleanup_process_keys(pid=12345)
 ```
 
 #### RedisValue
+
 Redis-backed implementation of Prometheus metric values:
 
 ```python

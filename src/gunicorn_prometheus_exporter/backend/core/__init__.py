@@ -19,9 +19,11 @@ from .values import (
     mark_process_dead_redis,
 )
 
+
 # Conditional import of Redis collector
 try:
     from .collector import RedisMultiProcessCollector
+
     REDIS_COLLECTOR_AVAILABLE = True
 except ImportError:
     RedisMultiProcessCollector = None

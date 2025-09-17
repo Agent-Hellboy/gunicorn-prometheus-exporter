@@ -21,12 +21,14 @@ others) that conforms to the WSGI specification.
 We've extended the Prometheus Python client to support **Redis-based storage** as an alternative to traditional multiprocess files. This architectural innovation provides several key benefits:
 
 #### **Traditional Approach (File-Based)**
+
 - Metrics stored in local files (`/tmp/prometheus_multiproc/`)
 - Storage and compute are coupled on the same server
 - Limited scalability across multiple instances
 - File I/O overhead for metrics collection
 
 #### **New Redis Storage Approach**
+
 - Metrics stored directly in Redis (`gunicorn:*:metric:*` keys)
 - **Storage and compute are completely separated**
 - Shared metrics across multiple Gunicorn instances
@@ -35,15 +37,16 @@ We've extended the Prometheus Python client to support **Redis-based storage** a
 
 ### **Key Benefits:**
 
-| Feature | File-Based | Redis Storage |
-|---------|------------|---------------|
-| **Storage Location** | Local files | Redis server |
-| **Scalability** | Single server | Multiple servers |
-| **File I/O** | High overhead | No file I/O |
-| **Shared Metrics** | No | Yes |
-| **Storage Separation** | Coupled | Separated |
+| Feature                | File-Based    | Redis Storage    |
+| ---------------------- | ------------- | ---------------- |
+| **Storage Location**   | Local files   | Redis server     |
+| **Scalability**        | Single server | Multiple servers |
+| **File I/O**           | High overhead | No file I/O      |
+| **Shared Metrics**     | No            | Yes              |
+| **Storage Separation** | Coupled       | Separated        |
 
 ### **Use Cases:**
+
 - **Microservices Architecture**: Multiple services sharing metrics
 - **Container Orchestration**: Kubernetes pods with shared Redis
 - **High Availability**: Metrics survive server restarts
@@ -70,6 +73,7 @@ The `PrometheusTornadoWorker` has known compatibility issues and is **not recomm
 - **Thread Safety Problems**: Metrics collection can cause deadlocks
 
 **Recommended Alternatives:**
+
 - Use `PrometheusEventletWorker` for async applications requiring eventlet
 - Use `PrometheusGeventWorker` for async applications requiring gevent
 - Use `PrometheusWorker` (sync worker) for most applications
@@ -79,11 +83,13 @@ The `PrometheusTornadoWorker` has known compatibility issues and is **not recomm
 ### Installation
 
 **Basic installation (sync and thread workers only):**
+
 ```bash
 pip install gunicorn-prometheus-exporter
 ```
 
 **With async worker support:**
+
 ```bash
 # Install with all async worker types
 pip install gunicorn-prometheus-exporter[async]
@@ -95,11 +101,13 @@ pip install gunicorn-prometheus-exporter[tornado]   # For tornado workers
 ```
 
 **With Redis storage:**
+
 ```bash
 pip install gunicorn-prometheus-exporter[redis]
 ```
 
 **Complete installation (all features):**
+
 ```bash
 pip install gunicorn-prometheus-exporter[all]
 ```
@@ -126,13 +134,13 @@ def when_ready(server):
 
 The exporter supports all major Gunicorn worker types:
 
-| Worker Class | Concurrency Model | Use Case | Installation |
-|--------------|-------------------|----------|--------------|
-| `PrometheusWorker` | Pre-fork (sync) | Simple, reliable, 1 request per worker | `pip install gunicorn-prometheus-exporter` |
-| `PrometheusThreadWorker` | Threads | I/O-bound apps, better concurrency | `pip install gunicorn-prometheus-exporter` |
-| `PrometheusEventletWorker` | Greenlets | Async I/O with eventlet | `pip install gunicorn-prometheus-exporter[eventlet]` |
-| `PrometheusGeventWorker` | Greenlets | Async I/O with gevent | `pip install gunicorn-prometheus-exporter[gevent]` |
-| `PrometheusTornadoWorker` | Async IOLoop | Tornado-based async (Not recommended) | `pip install gunicorn-prometheus-exporter[tornado]` |
+| Worker Class               | Concurrency Model | Use Case                               | Installation                                         |
+| -------------------------- | ----------------- | -------------------------------------- | ---------------------------------------------------- |
+| `PrometheusWorker`         | Pre-fork (sync)   | Simple, reliable, 1 request per worker | `pip install gunicorn-prometheus-exporter`           |
+| `PrometheusThreadWorker`   | Threads           | I/O-bound apps, better concurrency     | `pip install gunicorn-prometheus-exporter`           |
+| `PrometheusEventletWorker` | Greenlets         | Async I/O with eventlet                | `pip install gunicorn-prometheus-exporter[eventlet]` |
+| `PrometheusGeventWorker`   | Greenlets         | Async I/O with gevent                  | `pip install gunicorn-prometheus-exporter[gevent]`   |
+| `PrometheusTornadoWorker`  | Async IOLoop      | Tornado-based async (Not recommended)  | `pip install gunicorn-prometheus-exporter[tornado]`  |
 
 ### Start Gunicorn
 
@@ -167,6 +175,7 @@ The documentation includes:
 ## Available Metrics
 
 ### Worker Metrics
+
 - `gunicorn_worker_requests_total`: Total requests processed
 - `gunicorn_worker_request_duration_seconds`: Request duration histogram
 - `gunicorn_worker_memory_usage_bytes`: Memory usage per worker
@@ -174,11 +183,13 @@ The documentation includes:
 - `gunicorn_worker_uptime_seconds`: Worker uptime
 
 ### Master Metrics
+
 - `gunicorn_master_signals_total`: Signal counts by type
 - `gunicorn_master_worker_restarts_total`: Worker restart counts
 - `gunicorn_master_workers_current`: Current worker count
 
 ### Redis Metrics (if Redis storage enabled)
+
 - `gunicorn_redis_connection_status`: Redis connection health status
 - `gunicorn_redis_errors_total`: Redis operation error counts
 
@@ -187,20 +198,24 @@ The documentation includes:
 See the `example/` directory for complete working examples with all worker types:
 
 ### Basic Examples
+
 - `gunicorn_simple.conf.py`: Basic sync worker setup
 - `gunicorn_thread_worker.conf.py`: Threaded workers for I/O-bound apps
 - `gunicorn_redis_integration.conf.py`: Redis storage setup (no files)
 
 ### Async Worker Examples
+
 - `gunicorn_eventlet_async.conf.py`: Eventlet workers with async app
 - `gunicorn_gevent_async.conf.py`: Gevent workers with async app
 - `gunicorn_tornado_async.conf.py`: Tornado workers with async app (Not recommended)
 
 ### Test Applications
+
 - `app.py`: Simple Flask app for sync/thread workers
 - `async_app.py`: Async-compatible Flask app for async workers
 
 Run any example with:
+
 ```bash
 cd example
 gunicorn --config gunicorn_simple.conf.py app:app
@@ -210,12 +225,12 @@ gunicorn --config gunicorn_simple.conf.py app:app
 
 All worker types have been thoroughly tested and are production-ready:
 
-| Worker Type | Status | Metrics | Master Signals | Load Distribution |
-|-------------|--------|---------|----------------|-------------------|
-| **Sync Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
-| **Thread Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
-| **Eventlet Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
-| **Gevent Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced |
+| Worker Type         | Status  | Metrics     | Master Signals  | Load Distribution |
+| ------------------- | ------- | ----------- | --------------- | ----------------- |
+| **Sync Worker**     | Working | All metrics | HUP, USR1, CHLD | Balanced          |
+| **Thread Worker**   | Working | All metrics | HUP, USR1, CHLD | Balanced          |
+| **Eventlet Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced          |
+| **Gevent Worker**   | Working | All metrics | HUP, USR1, CHLD | Balanced          |
 
 **Note**: Tornado worker is not supported due to compatibility issues.
 
@@ -228,15 +243,15 @@ All async workers require their respective dependencies:
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PROMETHEUS_METRICS_PORT` | `9091` | Port for metrics endpoint |
-| `PROMETHEUS_BIND_ADDRESS` | `0.0.0.0` | Bind address for metrics |
-| `GUNICORN_WORKERS` | `1` | Number of workers |
-| `PROMETHEUS_MULTIPROC_DIR` | Auto-generated | Multiprocess directory |
-| `REDIS_ENABLED` | `false` | Enable Redis storage (no files created) |
-| `REDIS_FORWARD_ENABLED` | `false` | Enable Redis forwarding (keeps files + forwards to Redis) |
-| `REDIS_URL` | `redis://127.0.0.1:6379` | Redis connection URL (configure for your environment) |
+| Variable                   | Default                  | Description                                               |
+| -------------------------- | ------------------------ | --------------------------------------------------------- |
+| `PROMETHEUS_METRICS_PORT`  | `9091`                   | Port for metrics endpoint                                 |
+| `PROMETHEUS_BIND_ADDRESS`  | `0.0.0.0`                | Bind address for metrics                                  |
+| `GUNICORN_WORKERS`         | `1`                      | Number of workers                                         |
+| `PROMETHEUS_MULTIPROC_DIR` | Auto-generated           | Multiprocess directory                                    |
+| `REDIS_ENABLED`            | `false`                  | Enable Redis storage (no files created)                   |
+| `REDIS_FORWARD_ENABLED`    | `false`                  | Enable Redis forwarding (keeps files + forwards to Redis) |
+| `REDIS_URL`                | `redis://127.0.0.1:6379` | Redis connection URL (configure for your environment)     |
 
 ### Gunicorn Hooks
 
@@ -259,6 +274,7 @@ def when_ready(server):
 We provide comprehensive system tests to validate the complete functionality of the Gunicorn Prometheus Exporter with Redis integration.
 
 ### Quick Test (Local Development)
+
 ```bash
 # Make sure Redis is running
 brew services start redis  # macOS
@@ -270,6 +286,7 @@ cd system-test
 ```
 
 ### Full System Test (CI/CD)
+
 ```bash
 # Complete automated test (installs everything)
 cd system-test
@@ -277,6 +294,7 @@ cd system-test
 ```
 
 ### Using Make Commands
+
 ```bash
 cd system-test
 make quick-test    # Fast local testing
@@ -286,6 +304,7 @@ make clean         # Clean up
 ```
 
 **Test Coverage**:
+
 - ✅ Redis integration and storage
 - ✅ Multi-worker Gunicorn setup
 - ✅ All metric types (counters, gauges, histograms)
@@ -300,6 +319,7 @@ See [`system-test/README.md`](system-test/README.md) for detailed documentation.
 Contributions are welcome! Please see our [contributing guide](https://agent-hellboy.github.io/gunicorn-prometheus-exporter/contributing/) for details.
 
 ### Development Setup
+
 ```bash
 # Install dependencies
 cd system-test

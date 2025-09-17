@@ -7,9 +7,11 @@ from prometheus_client.metrics_core import Metric
 from prometheus_client.samples import Sample
 from prometheus_client.utils import floatToGoString
 
+
 # Conditional Redis import - only import when needed
 try:
     import redis
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
@@ -21,8 +23,11 @@ class RedisMultiProcessCollector:
 
     def __init__(self, registry, redis_client=None, redis_key_prefix="prometheus"):
         if not REDIS_AVAILABLE:
-            raise ImportError("Redis is not available. Install redis package to use RedisMultiProcessCollector.")
-        
+            raise ImportError(
+                "Redis is not available. Install redis package to use "
+                "RedisMultiProcessCollector."
+            )
+
         self._redis_client = redis_client or self._get_default_redis_client()
         self._redis_key_prefix = redis_key_prefix
 

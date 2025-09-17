@@ -330,7 +330,7 @@ gunicorn-prometheus-exporter>=0.1.0
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 services:
   web:
     build: .
@@ -364,9 +364,9 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'custom-wsgi-gunicorn'
+  - job_name: "custom-wsgi-gunicorn"
     static_configs:
-      - targets: ['localhost:9091']
+      - targets: ["localhost:9091"]
     metrics_path: /metrics
     scrape_interval: 5s
 ```
@@ -446,12 +446,14 @@ application = MetricsMiddleware(ErrorHandlingMiddleware(LoggingMiddleware(app)))
 ### Common WSGI Issues
 
 1. **WSGI Application Not Found**
+
    ```bash
    # Ensure the application object is correctly named
    # In app.py, make sure you have: application = your_app
    ```
 
 2. **Import Errors**
+
    ```bash
    # Ensure your app module is in the Python path
    export PYTHONPATH="${PYTHONPATH}:$(pwd)"
@@ -481,6 +483,7 @@ if __name__ == '__main__':
 ## 📈 Performance Tips
 
 1. **Use Connection Pooling**
+
    ```python
    # For database connections
    import threading
@@ -496,6 +499,7 @@ if __name__ == '__main__':
    ```
 
 2. **Implement Caching**
+
    ```python
    import functools
    import time
@@ -523,6 +527,7 @@ if __name__ == '__main__':
    ```
 
 3. **Optimize Response Generation**
+
    ```python
    # Pre-compile JSON responses
    import json
@@ -541,6 +546,7 @@ if __name__ == '__main__':
    ```
 
 4. **Use Streaming Responses**
+
    ```python
    def streaming_response(environ, start_response):
        status = '200 OK'
