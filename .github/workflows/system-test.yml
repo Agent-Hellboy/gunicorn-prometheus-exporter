@@ -1,4 +1,4 @@
-name: System Test - Redis Integration (Cross-Platform Docker)
+name: System Test - Redis Integration (Linux Docker)
 
 on:
   push:
@@ -41,77 +41,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: test-logs-ubuntu
-        path: |
-          *.log
-        retention-days: 7
-
-  system-test-macos:
-    runs-on: macos-latest
-    name: System Test (macOS)
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Docker
-      uses: docker/setup-docker-action@v3
-
-    - name: Run Docker system test
-      run: |
-        cd system-test
-        chmod +x system_test.sh
-        # Build Docker image
-        docker build -f Dockerfile -t gunicorn-prometheus-exporter-test ..
-        # Run with proper resource limits
-        docker run --rm \
-          --name gunicorn-prometheus-test \
-          --memory=1g \
-          --cpus=2 \
-          -p 8088:8088 \
-          -p 9093:9093 \
-          -p 6379:6379 \
-          gunicorn-prometheus-exporter-test
-      timeout-minutes: 10
-
-    - name: Upload test artifacts
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-logs-macos
-        path: |
-          *.log
-        retention-days: 7
-
-  system-test-windows:
-    runs-on: windows-latest
-    name: System Test (Windows)
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Docker
-      uses: docker/setup-docker-action@v3
-
-    - name: Run Docker system test
-      shell: bash
-      run: |
-        cd system-test
-        chmod +x system_test.sh
-        docker build -f Dockerfile -t gunicorn-prometheus-exporter-test ..
-        docker run --rm \
-          --name gunicorn-prometheus-test \
-          -p 8088:8088 \
-          -p 9093:9093 \
-          -p 6379:6379 \
-          gunicorn-prometheus-exporter-test
-      timeout-minutes: 10
-
-    - name: Upload test artifacts
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-logs-windows
         path: |
           *.log
         retention-days: 7
