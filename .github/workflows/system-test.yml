@@ -16,15 +16,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
     - name: Run Docker system test
       run: |
         cd system-test
         chmod +x system_test.sh
-        # Build with cache for faster builds
-        docker build -f Dockerfile -t gunicorn-prometheus-exporter-test .. --progress=plain
+        # Build Docker image
+        docker build -f Dockerfile -t gunicorn-prometheus-exporter-test ..
         # Run with proper resource limits
         docker run --rm \
           --name gunicorn-prometheus-test \
@@ -53,15 +50,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
     - name: Run Docker system test
       run: |
         cd system-test
         chmod +x system_test.sh
-        # Build with cache for faster builds
-        docker build -f Dockerfile -t gunicorn-prometheus-exporter-test .. --progress=plain
+        # Build Docker image
+        docker build -f Dockerfile -t gunicorn-prometheus-exporter-test ..
         # Run with proper resource limits
         docker run --rm \
           --name gunicorn-prometheus-test \
@@ -89,9 +83,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
 
     - name: Run Docker system test
       shell: bash
