@@ -45,6 +45,7 @@ class TestRedisStorageManager:
         mock_config.redis_port = 6379
         mock_config.redis_db = 0
         mock_config.redis_password = None
+        mock_config.redis_key_prefix = "gunicorn"
 
         mock_client = Mock()
         mock_client.ping.return_value = True
@@ -71,7 +72,7 @@ class TestRedisStorageManager:
 
             # Verify value class was replaced
             self.manager._value_class_factory.assert_called_once_with(
-                mock_client, "gunicorn:metrics:"
+                mock_client, "gunicorn"
             )
             assert mock_values.ValueClass is mock_value_class
 
@@ -165,9 +166,7 @@ class TestRedisStorageManager:
             ) as mock_logger:
                 self.manager.cleanup_keys()
 
-                mock_mark_dead.assert_called_once_with(
-                    12345, mock_client, "gunicorn:metrics:"
-                )
+                mock_mark_dead.assert_called_once_with(12345, mock_client, "gunicorn")
                 mock_logger.debug.assert_called_once_with(
                     "Cleaned up Redis keys for process %d", 12345
                 )

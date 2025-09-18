@@ -148,7 +148,7 @@ class TestRedisMultiProcessCollector:
                 mock_redis, "test_prefix"
             )
 
-            mock_redis.keys.assert_called_once_with("test_prefix:metric:*")
+            mock_redis.keys.assert_called_once_with("test_prefix:*:*:metric:*")
             mock_process.assert_called_once()
             assert isinstance(result, dict)
 
@@ -886,7 +886,7 @@ class TestMarkProcessDeadRedis:
 
         mark_process_dead_redis(12345, mock_redis, "test_prefix")
 
-        mock_redis.keys.assert_called_once_with("test_prefix:*:*:12345")
+        mock_redis.keys.assert_called_once_with("test_prefix:*:12345:*")
         mock_redis.delete.assert_called_once_with(b"key1", b"key2")
 
     def test_mark_process_dead_redis_without_client_from_env(self):
@@ -908,5 +908,5 @@ class TestMarkProcessDeadRedis:
 
         mark_process_dead_redis(12345, mock_redis, "test_prefix")
 
-        mock_redis.keys.assert_called_once_with("test_prefix:*:*:12345")
+        mock_redis.keys.assert_called_once_with("test_prefix:*:12345:*")
         mock_redis.delete.assert_not_called()

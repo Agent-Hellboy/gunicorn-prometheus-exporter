@@ -35,15 +35,21 @@ class RedisDict:
         self._key_prefix = key_prefix or config.redis_key_prefix
         self._lock = Lock()
 
-    def _get_metric_key(self, metric_key: str) -> str:
+    def _get_metric_key(self, metric_key: str, metric_type: str = "counter") -> str:
         """Convert internal metric key to Redis key."""
-        key_hash = hashlib.sha256(metric_key.encode("utf-8")).hexdigest()
-        return f"{self._key_prefix}:metric:{key_hash}"
+        import os
 
-    def _get_metadata_key(self, metric_key: str) -> str:
-        """Get Redis key for metric metadata."""
+        pid = os.getpid()
         key_hash = hashlib.sha256(metric_key.encode("utf-8")).hexdigest()
-        return f"{self._key_prefix}:meta:{key_hash}"
+        return f"{self._key_prefix}:{metric_type}:{pid}:metric:{key_hash}"
+
+    def _get_metadata_key(self, metric_key: str, metric_type: str = "counter") -> str:
+        """Get Redis key for metric metadata."""
+        import os
+
+        pid = os.getpid()
+        key_hash = hashlib.sha256(metric_key.encode("utf-8")).hexdigest()
+        return f"{self._key_prefix}:{metric_type}:{pid}:meta:{key_hash}"
 
     def read_value(self, key: str) -> Tuple[float, float]:
         """Read value and timestamp for a metric key."""

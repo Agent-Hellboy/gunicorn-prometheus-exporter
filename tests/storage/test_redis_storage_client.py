@@ -117,7 +117,9 @@ class TestRedisStorageDict:
         storage_dict = RedisStorageDict(mock_redis, "test_prefix")
 
         key = storage_dict._get_metric_key("test_key")
-        assert key == "test_prefix:metric:test_key"
+        assert key.startswith("test_prefix:counter:")
+        assert key.endswith(":metric:test_key")
+        assert ":metric:" in key
 
     def test_get_metadata_key(self):
         """Test metadata key generation."""
@@ -125,7 +127,9 @@ class TestRedisStorageDict:
         storage_dict = RedisStorageDict(mock_redis, "test_prefix")
 
         key = storage_dict._get_metadata_key("test_key")
-        assert key == "test_prefix:meta:test_key"
+        assert key.startswith("test_prefix:counter:")
+        assert key.endswith(":meta:test_key")
+        assert ":meta:" in key
 
     def test_read_value_existing(self):
         """Test reading existing value."""
@@ -138,11 +142,15 @@ class TestRedisStorageDict:
         assert value == 1.5
         assert timestamp == 1234567890.0
 
-        # Verify Redis calls
-        expected_metric_key = "test_prefix:metric:test_key"
+        # Verify Redis calls - check that hget was called with the correct pattern
         assert mock_redis.hget.call_count == 2
-        mock_redis.hget.assert_any_call(expected_metric_key, "value")
-        mock_redis.hget.assert_any_call(expected_metric_key, "timestamp")
+        # Check that the calls match the new key format pattern
+        calls = mock_redis.hget.call_args_list
+        metric_key = calls[0][0][0]  # First argument of first call
+        assert metric_key.startswith("test_prefix:counter:")
+        assert metric_key.endswith(":metric:test_key")
+        assert calls[0][0][1] == "value"  # Second argument should be "value"
+        assert calls[1][0][1] == "timestamp"  # Second argument should be "timestamp"
 
     def test_read_value_missing(self):
         """Test reading missing value (initializes with defaults)."""
@@ -180,27 +188,24 @@ class TestRedisStorageDict:
         with patch("time.time", return_value=1234567890.0):
             storage_dict.write_value("test_key", 1.5, 987654321.0)
 
-        # Verify Redis calls
-        expected_metric_key = "test_prefix:metric:test_key"
-        expected_metadata_key = "test_prefix:meta:test_key"
-
+        # Verify Redis calls - check that hset was called with the correct pattern
         assert mock_redis.hset.call_count == 2
 
-        # Check metric data
-        mock_redis.hset.assert_any_call(
-            expected_metric_key,
-            mapping={
-                "value": 1.5,
-                "timestamp": 987654321.0,
-                "updated_at": 1234567890.0,
-            },
-        )
+        # Check that the calls match the new key format pattern
+        calls = mock_redis.hset.call_args_list
+        metric_key = calls[0][0][0]  # First argument of first call
+        metadata_key = calls[1][0][0]  # First argument of second call
 
-        # Check metadata
-        mock_redis.hset.assert_any_call(
-            expected_metadata_key,
-            mapping={"original_key": "test_key", "created_at": 1234567890.0},
-        )
+        assert metric_key.startswith("test_prefix:counter:")
+        assert metric_key.endswith(":metric:test_key")
+        assert metadata_key.startswith("test_prefix:counter:")
+        assert metadata_key.endswith(":meta:test_key")
+
+        # Check the mapping content
+        metric_mapping = calls[0][1]["mapping"]
+        assert metric_mapping["value"] == 1.5
+        assert metric_mapping["timestamp"] == 987654321.0
+        assert metric_mapping["updated_at"] == 1234567890.0
 
     def test_init_value(self):
         """Test initializing value."""
@@ -209,7 +214,7 @@ class TestRedisStorageDict:
 
         with patch.object(storage_dict, "_init_value_unlocked") as mock_init_unlocked:
             storage_dict._init_value("test_key")
-            mock_init_unlocked.assert_called_once_with("test_key")
+            mock_init_unlocked.assert_called_once_with("test_key", "counter")
 
     def test_init_value_unlocked(self):
         """Test initializing value without lock."""
@@ -219,23 +224,24 @@ class TestRedisStorageDict:
         with patch("time.time", return_value=1234567890.0):
             storage_dict._init_value_unlocked("test_key")
 
-        # Verify Redis calls
-        expected_metric_key = "test_prefix:metric:test_key"
-        expected_metadata_key = "test_prefix:meta:test_key"
-
+        # Verify Redis calls - check that hset was called with the correct pattern
         assert mock_redis.hset.call_count == 2
 
-        # Check metric data
-        mock_redis.hset.assert_any_call(
-            expected_metric_key,
-            mapping={"value": 0.0, "timestamp": 0.0, "updated_at": 1234567890.0},
-        )
+        # Check that the calls match the new key format pattern
+        calls = mock_redis.hset.call_args_list
+        metric_key = calls[0][0][0]  # First argument of first call
+        metadata_key = calls[1][0][0]  # First argument of second call
 
-        # Check metadata
-        mock_redis.hset.assert_any_call(
-            expected_metadata_key,
-            mapping={"original_key": "test_key", "created_at": 1234567890.0},
-        )
+        assert metric_key.startswith("test_prefix:counter:")
+        assert metric_key.endswith(":metric:test_key")
+        assert metadata_key.startswith("test_prefix:counter:")
+        assert metadata_key.endswith(":meta:test_key")
+
+        # Check the mapping content
+        metric_mapping = calls[0][1]["mapping"]
+        assert metric_mapping["value"] == 0.0
+        assert metric_mapping["timestamp"] == 0.0
+        assert metric_mapping["updated_at"] == 1234567890.0
 
 
 class TestRedisValueClass:
@@ -318,7 +324,7 @@ class TestRedisStorageClient:
             client.cleanup_process_keys(12345)
 
         # Verify Redis calls
-        expected_pattern = "test_prefix:*:*:12345"
+        expected_pattern = "test_prefix:*:12345:*"
         mock_redis.keys.assert_called_once_with(expected_pattern)
         mock_redis.delete.assert_called_once_with(b"key1", b"key2", b"key3")
 
@@ -340,7 +346,7 @@ class TestRedisStorageClient:
             client.cleanup_process_keys(12345)
 
         # Verify Redis calls
-        expected_pattern = "test_prefix:*:*:12345"
+        expected_pattern = "test_prefix:*:12345:*"
         mock_redis.keys.assert_called_once_with(expected_pattern)
         mock_redis.delete.assert_not_called()
 

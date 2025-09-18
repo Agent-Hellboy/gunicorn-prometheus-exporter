@@ -559,8 +559,8 @@ verify_metrics() {
     fi
 
     # Test specific Redis key patterns
-    local metric_keys=$(redis-cli keys "gunicorn:metric:*" | wc -l)
-    local meta_keys=$(redis-cli keys "gunicorn:meta:*" | wc -l)
+    local metric_keys=$(redis-cli keys "gunicorn:*:metric:*" | wc -l)
+    local meta_keys=$(redis-cli keys "gunicorn:*:meta:*" | wc -l)
 
     print_status "Redis metric keys: $metric_keys, meta keys: $meta_keys"
 
@@ -572,7 +572,7 @@ verify_metrics() {
     fi
 
     # Test Redis key values
-    local sample_key=$(redis-cli keys "gunicorn:metric:*" | head -1)
+    local sample_key=$(redis-cli keys "gunicorn:*:metric:*" | head -1)
     if [ ! -z "$sample_key" ]; then
         local key_value=$(redis-cli hget "$sample_key" "value" 2>/dev/null || echo "none")
         if [ "$key_value" != "none" ] && [ ! -z "$key_value" ]; then

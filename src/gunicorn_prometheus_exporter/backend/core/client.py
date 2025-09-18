@@ -77,16 +77,17 @@ class RedisStorageDict:
         self._lock = threading.Lock()
         logger.debug("Initialized Redis storage dict with prefix: %s", key_prefix)
 
-    def read_value(self, key: str) -> Tuple[float, float]:
+    def read_value(self, key: str, metric_type: str = "counter") -> Tuple[float, float]:
         """Read value and timestamp for a metric key.
 
         Args:
             key: Metric key
+            metric_type: Type of metric (counter, gauge, histogram, summary)
 
         Returns:
             Tuple of (value, timestamp)
         """
-        metric_key = self._get_metric_key(key)
+        metric_key = self._get_metric_key(key, metric_type)
 
         with self._lock:
             # Get value and timestamp
@@ -104,15 +105,18 @@ class RedisStorageDict:
                 timestamp_data = timestamp_data.decode("utf-8")
             return float(value_data), float(timestamp_data)
 
-    def write_value(self, key: str, value: float, timestamp: float) -> None:
+    def write_value(
+        self, key: str, value: float, timestamp: float, metric_type: str = "counter"
+    ) -> None:
         """Write value and timestamp for a metric key.
 
         Args:
             key: Metric key
             value: Metric value
             timestamp: Metric timestamp
+            metric_type: Type of metric (counter, gauge, histogram, summary)
         """
-        metric_key = self._get_metric_key(key)
+        metric_key = self._get_metric_key(key, metric_type)
 
         with self._lock:
             # Store value and timestamp in Redis hash
@@ -126,27 +130,33 @@ class RedisStorageDict:
             )
 
             # Store metadata separately for easier querying
-            metadata_key = self._get_metadata_key(key)
+            metadata_key = self._get_metadata_key(key, metric_type)
             self._redis.hset(
                 metadata_key, mapping={"original_key": key, "created_at": time.time()}
             )
 
-    def _get_metric_key(self, key: str) -> str:
+    def _get_metric_key(self, key: str, metric_type: str = "counter") -> str:
         """Get Redis key for metric data."""
-        return f"{self._key_prefix}:metric:{key}"
+        import os
 
-    def _get_metadata_key(self, key: str) -> str:
+        pid = os.getpid()
+        return f"{self._key_prefix}:{metric_type}:{pid}:metric:{key}"
+
+    def _get_metadata_key(self, key: str, metric_type: str = "counter") -> str:
         """Get Redis key for metadata."""
-        return f"{self._key_prefix}:meta:{key}"
+        import os
 
-    def _init_value(self, key: str) -> None:
+        pid = os.getpid()
+        return f"{self._key_prefix}:{metric_type}:{pid}:meta:{key}"
+
+    def _init_value(self, key: str, metric_type: str = "counter") -> None:
         """Initialize a value with defaults."""
         with self._lock:
-            self._init_value_unlocked(key)
+            self._init_value_unlocked(key, metric_type)
 
-    def _init_value_unlocked(self, key: str) -> None:
+    def _init_value_unlocked(self, key: str, metric_type: str = "counter") -> None:
         """Initialize a value with defaults (assumes lock is already held)."""
-        metric_key = self._get_metric_key(key)
+        metric_key = self._get_metric_key(key, metric_type)
 
         # Store value and timestamp in Redis hash
         self._redis.hset(
@@ -155,7 +165,7 @@ class RedisStorageDict:
         )
 
         # Store metadata separately for easier querying
-        metadata_key = self._get_metadata_key(key)
+        metadata_key = self._get_metadata_key(key, metric_type)
         self._redis.hset(
             metadata_key, mapping={"original_key": key, "created_at": time.time()}
         )
@@ -214,7 +224,7 @@ class RedisStorageClient:
             pid: Process ID to clean up
         """
         try:
-            pattern = f"{self._key_prefix}:*:*:{pid}"
+            pattern = f"{self._key_prefix}:*:{pid}:*"
             keys_to_delete = self._redis_client.keys(pattern)
 
             if keys_to_delete:

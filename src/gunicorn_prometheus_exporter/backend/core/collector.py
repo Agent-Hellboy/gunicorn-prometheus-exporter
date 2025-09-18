@@ -96,7 +96,7 @@ class RedisMultiProcessCollector:
             return val
 
         # Get all metric keys from Redis
-        pattern = f"{redis_key_prefix}:metric:*"
+        pattern = f"{redis_key_prefix}:*:*:metric:*"
         metric_keys = redis_client.keys(pattern)
 
         for metric_key in metric_keys:

@@ -55,19 +55,25 @@ class RedisValue:
             multiprocess_mode,
         )
         self._key = redis_key(metric_name, name, labelnames, labelvalues, help_text)
-        self._value, self._timestamp = self._redis_dict.read_value(self._key)
+        self._value, self._timestamp = self._redis_dict.read_value(
+            self._key, self._params[0]
+        )
 
     def inc(self, amount):
         """Increment the value by amount."""
         self._value += amount
         self._timestamp = 0.0
-        self._redis_dict.write_value(self._key, self._value, self._timestamp)
+        self._redis_dict.write_value(
+            self._key, self._value, self._timestamp, self._params[0]
+        )
 
     def set(self, value, timestamp=None):
         """Set the value and optional timestamp."""
         self._value = value
         self._timestamp = timestamp or 0.0
-        self._redis_dict.write_value(self._key, self._value, self._timestamp)
+        self._redis_dict.write_value(
+            self._key, self._value, self._timestamp, self._params[0]
+        )
 
     def set_exemplar(self, _exemplar):
         """Set exemplar (not implemented for Redis yet)."""
