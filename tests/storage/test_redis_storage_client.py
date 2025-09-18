@@ -164,7 +164,7 @@ class TestRedisStorageDict:
 
             assert value == 0.0
             assert timestamp == 0.0
-            mock_init.assert_called_once_with("test_key")
+            mock_init.assert_called_once_with("test_key", "counter")
 
     def test_read_value_partial_missing(self):
         """Test reading value with missing timestamp."""
@@ -178,7 +178,7 @@ class TestRedisStorageDict:
 
             assert value == 0.0
             assert timestamp == 0.0
-            mock_init.assert_called_once_with("test_key")
+            mock_init.assert_called_once_with("test_key", "counter")
 
     def test_write_value(self):
         """Test writing value."""

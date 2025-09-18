@@ -96,7 +96,7 @@ class RedisStorageDict:
 
             if value_data is None or timestamp_data is None:
                 # Initialize with default values (without acquiring lock again)
-                self._init_value_unlocked(key)
+                self._init_value_unlocked(key, metric_type)
                 return 0.0, 0.0
 
             if isinstance(value_data, (bytes, bytearray)):
