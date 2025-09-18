@@ -18,11 +18,6 @@ class TestModuleInitialization:
         assert hasattr(gunicorn_prometheus_exporter, "registry")
         assert hasattr(gunicorn_prometheus_exporter, "config")
 
-    def test_version(self):
-        """Test module version."""
-        assert hasattr(gunicorn_prometheus_exporter, "__version__")
-        assert gunicorn_prometheus_exporter.__version__ == "0.1.5"
-
     def test_all_exports(self):
         """Test __all__ exports."""
         expected_exports = [

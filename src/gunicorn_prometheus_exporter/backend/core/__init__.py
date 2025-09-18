@@ -30,7 +30,6 @@ except ImportError:
     REDIS_COLLECTOR_AVAILABLE = False
 
 
-__version__ = "0.1.0"
 __all__ = [
     "redis_key",
     "RedisValue",

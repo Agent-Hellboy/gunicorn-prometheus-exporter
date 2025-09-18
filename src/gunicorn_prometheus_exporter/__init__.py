@@ -163,8 +163,6 @@ def patched_run(self):
 gunicorn.app.base.BaseApplication.run = patched_run
 
 
-__version__ = "0.1.5"
-
 # Build __all__ list conditionally
 __all__ = [
     "PrometheusWorker",
