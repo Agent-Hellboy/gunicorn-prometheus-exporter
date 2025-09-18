@@ -28,6 +28,12 @@ NC='\033[0m' # No Color
 APP_PORT=8088
 METRICS_PORT=9093
 REDIS_PORT=6379
+
+# Redis CLI options (host/port/db)
+REDIS_HOST_OPT="${REDIS_HOST:-127.0.0.1}"
+REDIS_PORT_OPT="${REDIS_PORT:-6379}"
+REDIS_DB_OPT="${REDIS_DB:-0}"
+REDIS_CLI="redis-cli -h \"$REDIS_HOST_OPT\" -p \"$REDIS_PORT_OPT\" -n \"$REDIS_DB_OPT\""
 TEST_DURATION=30
 REQUESTS_PER_SECOND=5
 TIMEOUT=60
@@ -198,7 +204,7 @@ wait_for_service() {
 
 # Function to check if Redis is running
 check_redis() {
-    if redis-cli ping >/dev/null 2>&1; then
+    if eval "$REDIS_CLI ping" >/dev/null 2>&1; then
         return 0
     else
         return 1
@@ -210,8 +216,27 @@ flush_redis() {
     print_status "Flushing Redis database for clean test..."
 
     if command -v redis-cli >/dev/null 2>&1; then
-        redis-cli FLUSHDB >/dev/null 2>&1
-        print_success "Redis database flushed"
+        # First try to flush all databases (more thorough)
+        if eval "$REDIS_CLI FLUSHALL" >/dev/null 2>&1; then
+            print_success "Redis all databases flushed (FLUSHALL)"
+        else
+            # Fallback to flushing current database only
+            if eval "$REDIS_CLI FLUSHDB" >/dev/null 2>&1; then
+                print_success "Redis current database flushed (FLUSHDB)"
+            else
+                print_warning "Failed to flush Redis database"
+                return 1
+            fi
+        fi
+
+        # Verify Redis is empty
+        local key_count
+        key_count=$(eval "$REDIS_CLI DBSIZE" 2>/dev/null || echo "0")
+        if [ "$key_count" -eq 0 ]; then
+            print_success "Redis confirmed empty (0 keys)"
+        else
+            print_warning "Redis still contains $key_count keys after flush"
+        fi
     else
         print_warning "redis-cli not available, skipping Redis flush"
     fi
@@ -227,7 +252,8 @@ verify_redis_metrics() {
     fi
 
     # Check if Redis has any keys
-    local key_count=$(redis-cli DBSIZE 2>/dev/null || echo "0")
+    local key_count
+    key_count=$(eval "$REDIS_CLI DBSIZE" 2>/dev/null || echo "0")
 
     if [ "$key_count" -eq 0 ]; then
         print_error "Redis database is empty - no metrics stored"
@@ -237,8 +263,10 @@ verify_redis_metrics() {
     print_success "Redis contains $key_count keys"
 
     # Check for specific metric patterns
-    local metric_keys=$(redis-cli KEYS "*metric*" 2>/dev/null | wc -l)
-    local meta_keys=$(redis-cli KEYS "*meta*" 2>/dev/null | wc -l)
+    local metric_keys
+    metric_keys=$(eval "$REDIS_CLI --scan --pattern \"*metric*\"" 2>/dev/null | wc -l)
+    local meta_keys
+    meta_keys=$(eval "$REDIS_CLI --scan --pattern \"*meta*\"" 2>/dev/null | wc -l)
 
     if [ "$metric_keys" -gt 0 ]; then
         print_success "Found $metric_keys metric keys in Redis"
@@ -256,7 +284,7 @@ verify_redis_metrics() {
 
     # Show sample keys
     print_status "Sample Redis keys:"
-    redis-cli KEYS "*" 2>/dev/null | head -5 | while read key; do
+    eval "$REDIS_CLI --scan --pattern \"*\"" 2>/dev/null | head -5 | while read -r key; do
         echo "  - $key"
     done
 
@@ -269,9 +297,15 @@ cleanup_redis() {
 
     if command -v redis-cli >/dev/null 2>&1; then
         # Try to connect to Redis and flush database
-        if redis-cli ping >/dev/null 2>&1; then
-            redis-cli FLUSHDB >/dev/null 2>&1 || true
-            print_success "Redis database cleaned"
+        if eval "$REDIS_CLI ping" >/dev/null 2>&1; then
+            # Use FLUSHALL for thorough cleanup
+            if eval "$REDIS_CLI FLUSHALL" >/dev/null 2>&1; then
+                print_success "Redis all databases cleaned (FLUSHALL)"
+            else
+                # Fallback to FLUSHDB
+                eval "$REDIS_CLI FLUSHDB" >/dev/null 2>&1 || true
+                print_success "Redis current database cleaned (FLUSHDB)"
+            fi
         else
             print_warning "Redis not responding, skipping cleanup"
         fi
@@ -531,8 +565,84 @@ verify_metrics() {
     # Check Redis integration
     if echo "$metrics_output" | grep -q "gunicorn_worker_requests_total.*[1-9]"; then
         print_success "Request metrics are being captured"
+
+        # Show detailed request metric values
+        print_status "Request metric values:"
+        echo "$metrics_output" | grep "gunicorn_worker_requests_total.*[0-9]" | while read -r line; do
+            echo "  - $line"
+        done
     else
         print_error "Request metrics are not being captured"
+        failed_checks=$((failed_checks + 1))
+    fi
+
+    # Check memory metrics
+    if echo "$metrics_output" | grep -q "gunicorn_worker_memory_bytes.*[0-9]"; then
+        print_success "Memory metrics are being captured"
+
+        # Show detailed memory metric values
+        print_status "Memory metric values:"
+        echo "$metrics_output" | grep "gunicorn_worker_memory_bytes.*[0-9]" | while read -r line; do
+            echo "  - $line"
+        done
+    else
+        print_error "Memory metrics are not being captured"
+        failed_checks=$((failed_checks + 1))
+    fi
+
+    # Check CPU metrics
+    if echo "$metrics_output" | grep -q "gunicorn_worker_cpu_percent.*[0-9]"; then
+        print_success "CPU metrics are being captured"
+
+        # Show detailed CPU metric values
+        print_status "CPU metric values:"
+        echo "$metrics_output" | grep "gunicorn_worker_cpu_percent.*[0-9]" | while read -r line; do
+            echo "  - $line"
+        done
+    else
+        print_error "CPU metrics are not being captured"
+        failed_checks=$((failed_checks + 1))
+    fi
+
+    # Check uptime metrics
+    if echo "$metrics_output" | grep -q "gunicorn_worker_uptime_seconds.*[0-9]"; then
+        print_success "Uptime metrics are being captured"
+
+        # Show detailed uptime metric values
+        print_status "Uptime metric values:"
+        echo "$metrics_output" | grep "gunicorn_worker_uptime_seconds.*[0-9]" | while read -r line; do
+            echo "  - $line"
+        done
+    else
+        print_error "Uptime metrics are not being captured"
+        failed_checks=$((failed_checks + 1))
+    fi
+
+    # Check request duration metrics
+    if echo "$metrics_output" | grep -q "gunicorn_worker_request_duration_seconds.*[0-9]"; then
+        print_success "Request duration metrics are being captured"
+
+        # Show detailed request duration metric values
+        print_status "Request duration metric values:"
+        echo "$metrics_output" | grep "gunicorn_worker_request_duration_seconds.*[0-9]" | while read -r line; do
+            echo "  - $line"
+        done
+    else
+        print_error "Request duration metrics are not being captured"
+        failed_checks=$((failed_checks + 1))
+    fi
+
+    # Check worker state metrics
+    if echo "$metrics_output" | grep -q "gunicorn_worker_state.*[0-9]"; then
+        print_success "Worker state metrics are being captured"
+
+        # Show detailed worker state metric values
+        print_status "Worker state metric values:"
+        echo "$metrics_output" | grep "gunicorn_worker_state.*[0-9]" | while read -r line; do
+            echo "  - $line"
+        done
+    else
+        print_error "Worker state metrics are not being captured"
         failed_checks=$((failed_checks + 1))
     fi
 
@@ -548,7 +658,8 @@ verify_metrics() {
     fi
 
     # Check Redis keys
-    local redis_keys=$(redis-cli keys "gunicorn:*" | wc -l)
+    local redis_keys
+    redis_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:*\"" | wc -l)
     print_status "Redis keys count: $redis_keys"
 
     if [ $redis_keys -gt 10 ]; then
@@ -559,8 +670,10 @@ verify_metrics() {
     fi
 
     # Test specific Redis key patterns
-    local metric_keys=$(redis-cli keys "gunicorn:*:metric:*" | wc -l)
-    local meta_keys=$(redis-cli keys "gunicorn:*:meta:*" | wc -l)
+    local metric_keys
+    metric_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:*:metric:*\"" | wc -l)
+    local meta_keys
+    meta_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:*:meta:*\"" | wc -l)
 
     print_status "Redis metric keys: $metric_keys, meta keys: $meta_keys"
 
@@ -572,15 +685,95 @@ verify_metrics() {
     fi
 
     # Test Redis key values
-    local sample_key=$(redis-cli keys "gunicorn:*:metric:*" | head -1)
+    local sample_key
+    sample_key=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:*:metric:*\"" | head -1)
     if [ ! -z "$sample_key" ]; then
-        local key_value=$(redis-cli hget "$sample_key" "value" 2>/dev/null || echo "none")
-        if [ "$key_value" != "none" ] && [ ! -z "$key_value" ]; then
-            print_success "Redis key values accessible"
+        print_status "Testing Redis key: $sample_key"
+
+        # Use a more robust approach to handle keys with special characters
+        # Write the key to a temporary file to avoid shell escaping issues
+        local temp_key_file
+        temp_key_file=$(mktemp)
+        echo "$sample_key" > "$temp_key_file"
+
+        local key_exists
+        key_exists=$(redis-cli -h "$REDIS_HOST_OPT" -p "$REDIS_PORT_OPT" -n "$REDIS_DB_OPT" exists "$sample_key" 2>/dev/null || echo "0")
+
+        if [ "$key_exists" = "1" ]; then
+            local key_type
+            key_type=$(redis-cli -h "$REDIS_HOST_OPT" -p "$REDIS_PORT_OPT" -n "$REDIS_DB_OPT" type "$sample_key" 2>/dev/null || echo "none")
+            print_status "Key type: $key_type"
+
+            if [ "$key_type" = "hash" ]; then
+                # Try to get hash fields using a more robust approach
+                local hash_fields
+                hash_fields=$(redis-cli -h "$REDIS_HOST_OPT" -p "$REDIS_PORT_OPT" -n "$REDIS_DB_OPT" hgetall "$sample_key" 2>/dev/null || echo "none")
+                print_status "Hash fields: $hash_fields"
+
+                # Check if we got any fields back
+                if [ "$hash_fields" != "none" ] && [ ! -z "$hash_fields" ]; then
+                    # Check if the hash contains the expected fields
+                    if echo "$hash_fields" | grep -q "value" && echo "$hash_fields" | grep -q "timestamp"; then
+                        print_success "Redis key values accessible"
+                    else
+                        print_error "Redis key missing expected fields (value/timestamp)"
+                        failed_checks=$((failed_checks + 1))
+                    fi
+                else
+                    print_error "Redis key values not accessible"
+                    failed_checks=$((failed_checks + 1))
+                fi
+            else
+                print_error "Redis key is not a hash type (got: $key_type)"
+                failed_checks=$((failed_checks + 1))
+            fi
         else
-            print_error "Redis key values not accessible"
+            print_error "Redis key does not exist"
             failed_checks=$((failed_checks + 1))
         fi
+
+        # Clean up temp file
+        rm -f "$temp_key_file"
+    else
+        print_error "No sample key found for testing"
+        failed_checks=$((failed_checks + 1))
+    fi
+
+    # Comprehensive Redis verification (similar to multiprocess file verification)
+    print_status "Verifying Redis storage..."
+
+    # Check Redis key patterns
+    local counter_keys
+    counter_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:counter:*\"" | wc -l)
+    local gauge_keys
+    gauge_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:gauge:*\"" | wc -l)
+    local histogram_keys
+    histogram_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:histogram:*\"" | wc -l)
+
+    print_status "Redis key distribution:"
+    print_status "  - Counter keys: $counter_keys"
+    print_status "  - Gauge keys: $gauge_keys"
+    print_status "  - Histogram keys: $histogram_keys"
+
+    # Show sample Redis keys
+    print_status "Sample Redis keys:"
+    eval "$REDIS_CLI --scan --pattern \"gunicorn:*\"" 2>/dev/null | head -5 | while read -r key; do
+        echo "  - $key"
+    done
+
+    # Verify Redis key structure
+    if [ $counter_keys -gt 0 ] && [ $gauge_keys -gt 0 ] && [ $histogram_keys -gt 0 ]; then
+        print_success "Redis key structure verification passed"
+    else
+        print_error "Redis key structure incomplete"
+        failed_checks=$((failed_checks + 1))
+    fi
+
+    # Final verification summary
+    if [ $failed_checks -eq 0 ]; then
+        print_success "All Redis integration verification passed!"
+    else
+        print_error "Some Redis integration verification failed!"
     fi
 
     return $failed_checks
@@ -636,6 +829,10 @@ main() {
 
     # Step 3: Start Redis
     start_redis
+
+    # Step 3.5: Double-check Redis is clean after startup
+    print_status "Ensuring Redis is completely clean after startup..."
+    flush_redis
 
     # Step 4: Start Gunicorn
     start_gunicorn

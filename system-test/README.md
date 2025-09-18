@@ -318,7 +318,7 @@ If tests fail, manually verify:
 1. **Redis Keys**:
 
    ```bash
-   redis-cli keys "gunicorn:*" | wc -l
+   redis-cli --scan --pattern "gunicorn:*" | wc -l
    ```
 
 2. **Metrics Endpoint**:

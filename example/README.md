@@ -115,7 +115,7 @@ curl http://localhost:9091/metrics
 curl http://localhost:9092/metrics
 
 # Check Redis keys (for Redis configurations)
-redis-cli keys '*'
+redis-cli --scan --pattern "*"
 ```
 
 ## Environment Variables

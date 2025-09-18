@@ -40,7 +40,7 @@ RUN echo '#!/bin/bash\n\
 redis-server --daemonize yes\n\
 \n\
 # Wait for Redis to be ready\n\
-while ! redis-cli ping > /dev/null 2>&1; do\n\
+while ! redis-cli -h 127.0.0.1 -p 6379 -n 0 ping > /dev/null 2>&1; do\n\
     echo "Waiting for Redis..."\n\
     sleep 1\n\
 done\n\
