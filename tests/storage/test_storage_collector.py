@@ -409,11 +409,11 @@ class TestRedisMultiProcessCollector:
             (("label", "value"),),
             1.0,
             1234567890.0,
-            b"prefix:gauge_all:12345:metric:hash",
+            "12345",
         )
 
         mock_metric.add_sample.assert_called_once_with(
-            "test_name", (("label", "value"), ("pid", "hash")), 1.0, 1234567890.0
+            "test_name", (("label", "value"), ("pid", "12345")), 1.0, 1234567890.0
         )
         assert mock_metric._multiprocess_mode == "all"
 
@@ -428,7 +428,7 @@ class TestRedisMultiProcessCollector:
             (("label", "value"),),
             1.0,
             1234567890.0,
-            b"prefix:gauge_min:12345:metric:hash",
+            "12345",
         )
 
         # The mode should be extracted from the key structure
@@ -446,7 +446,7 @@ class TestRedisMultiProcessCollector:
             (("label", "value"),),
             1.0,
             1234567890.0,
-            b"prefix:counter:12345:metric:hash",
+            "12345",
         )
 
         mock_metric.add_sample.assert_called_once_with(

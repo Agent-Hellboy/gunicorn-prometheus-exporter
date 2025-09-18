@@ -133,6 +133,12 @@ class RedisMultiProcessCollector:
                 return
 
             # Create metric and add sample
+            # Extract PID from metric_key for gauge metrics
+            pid = "unknown"
+            if typ == "gauge":
+                key_parts = metric_key.decode("utf-8").split(":")
+                pid = key_parts[-1] if len(key_parts) > 3 else "unknown"
+
             RedisMultiProcessCollector._add_sample_to_metric(
                 RedisMultiProcessCollector._get_or_create_metric(
                     metrics, metric_name, help_text, typ
@@ -142,7 +148,7 @@ class RedisMultiProcessCollector:
                 labels_key,
                 float(value_data),
                 float(timestamp_data),
-                metric_key,
+                pid,
             )
 
         except Exception as e:
@@ -191,19 +197,11 @@ class RedisMultiProcessCollector:
         return "counter"  # Default type
 
     @staticmethod
-    def _add_sample_to_metric(
-        metric, typ, name, labels_key, value, timestamp, metric_key
-    ):
+    def _add_sample_to_metric(metric, typ, name, labels_key, value, timestamp, pid):
         """Add a sample to the metric."""
         if typ == "gauge":
-            # Extract PID from Redis key
-            key_parts = metric_key.decode("utf-8").split(":")
-            pid = key_parts[-1] if len(key_parts) > 3 else "unknown"
-            # Set multiprocess mode based on the key structure
-            if len(key_parts) >= 3 and "_" in key_parts[2]:
-                metric._multiprocess_mode = key_parts[2].split("_")[1]
-            else:
-                metric._multiprocess_mode = "all"  # Default for gauge_all
+            # Set multiprocess mode based on the metric type
+            metric._multiprocess_mode = "all"  # Default for gauge_all
             metric.add_sample(name, labels_key + (("pid", pid),), value, timestamp)
         else:
             metric.add_sample(name, labels_key, value)
