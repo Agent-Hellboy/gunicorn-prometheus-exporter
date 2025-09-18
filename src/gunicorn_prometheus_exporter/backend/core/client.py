@@ -23,21 +23,21 @@ class RedisClientProtocol(Protocol):
         """Test Redis connection."""
         raise NotImplementedError
 
-    def hget(self, name: str, key: str) -> Optional[bytes]:
+    def hget(self, name: str | bytes, key: str) -> Optional[bytes | str]:
         """Get hash field value."""
         raise NotImplementedError
 
     def hset(
         self,
-        name: str,
+        name: str | bytes,
         key: str = None,
         value: str = None,
-        mapping: Dict[str, str] = None,
+        mapping: Dict[str, object] = None,
     ) -> int:
         """Set hash field value."""
         raise NotImplementedError
 
-    def hgetall(self, name: str) -> Dict[bytes, bytes]:
+    def hgetall(self, name: str | bytes) -> Dict[bytes | str, bytes | str]:
         """Get all hash fields."""
         raise NotImplementedError
 
@@ -45,7 +45,11 @@ class RedisClientProtocol(Protocol):
         """Get keys matching pattern."""
         raise NotImplementedError
 
-    def delete(self, *keys: str) -> int:
+    def scan_iter(self, match: str) -> Iterable[bytes]:
+        """Iterate keys matching pattern (non-blocking)."""
+        raise NotImplementedError
+
+    def delete(self, *keys: bytes | str) -> int:
         """Delete keys."""
         raise NotImplementedError
 
