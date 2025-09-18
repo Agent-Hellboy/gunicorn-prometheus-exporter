@@ -142,42 +142,46 @@ class TestRedisValue:
         """Clean up test environment."""
         os.environ.pop("REDIS_ENABLED", None)
 
-    @patch("gunicorn_prometheus_exporter.backend.core.dict.RedisDict")
-    def test_init(self, mock_redis_dict_class):
+    @patch("gunicorn_prometheus_exporter.backend.core.client.RedisStorageDict")
+    def test_init(self, mock_redis_storage_dict_class):
         """Test initialization."""
-        mock_redis_dict = Mock()
-        mock_redis_dict_class.return_value = mock_redis_dict
-        mock_redis_dict.read_value.return_value = (0.0, 0)
+        mock_redis = Mock()
+        mock_redis_storage_dict = Mock()
+        mock_redis_storage_dict_class.return_value = mock_redis_storage_dict
+        mock_redis_storage_dict.read_value.return_value = (0.0, 0)
 
         value = RedisValue(
-            mock_redis_dict,
             typ="counter",
             metric_name="test_metric",
             name="test_name",
             labelnames=(),
             labelvalues=(),
             help_text="Test help",
+            redis_client=mock_redis,
+            redis_key_prefix="test_prefix",
         )
 
-        assert value._redis_dict == mock_redis_dict
+        assert value._redis_dict == mock_redis_storage_dict
         assert value._value == 0.0
         assert value._timestamp == 0
 
-    @patch("gunicorn_prometheus_exporter.backend.core.dict.RedisDict")
-    def test_value_operations(self, mock_redis_dict_class):
+    @patch("gunicorn_prometheus_exporter.backend.core.client.RedisStorageDict")
+    def test_value_operations(self, mock_redis_storage_dict_class):
         """Test value operations."""
-        mock_redis_dict = Mock()
-        mock_redis_dict_class.return_value = mock_redis_dict
-        mock_redis_dict.read_value.return_value = (10.0, 1234567890)
+        mock_redis = Mock()
+        mock_redis_storage_dict = Mock()
+        mock_redis_storage_dict_class.return_value = mock_redis_storage_dict
+        mock_redis_storage_dict.read_value.return_value = (10.0, 1234567890)
 
         value = RedisValue(
-            mock_redis_dict,
             typ="counter",
             metric_name="test_metric",
             name="test_name",
             labelnames=(),
             labelvalues=(),
             help_text="Test help",
+            redis_client=mock_redis,
+            redis_key_prefix="test_prefix",
         )
 
         # Test value property
@@ -341,20 +345,16 @@ class TestRedisBackendIntegration:
         mock_client.hget.return_value = b"10.5"
         mock_client.hset.return_value = 1
 
-        # Create a RedisStorageDict first
-        from gunicorn_prometheus_exporter.backend.core.client import RedisStorageDict
-
-        redis_dict = RedisStorageDict(mock_client, "test_prefix")
-
         value_class = RedisValue(
-            redis_dict,
             typ="counter",
             metric_name="test_metric",
             name="test_name",
             labelnames=[],
             labelvalues=[],
             help_text="Test metric",
+            redis_client=mock_client,
+            redis_key_prefix="test_prefix",
         )
 
         # Test that the value class was created successfully
-        assert value_class._redis_dict == redis_dict
+        assert value_class._redis_dict is not None

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import time
 
@@ -34,11 +35,13 @@ class RedisDict:
 
     def _get_metric_key(self, metric_key: str) -> str:
         """Convert internal metric key to Redis key."""
-        return f"{self._key_prefix}:metric:{hash(metric_key)}"
+        key_hash = hashlib.sha256(metric_key.encode("utf-8")).hexdigest()
+        return f"{self._key_prefix}:metric:{key_hash}"
 
     def _get_metadata_key(self, metric_key: str) -> str:
         """Get Redis key for metric metadata."""
-        return f"{self._key_prefix}:meta:{hash(metric_key)}"
+        key_hash = hashlib.sha256(metric_key.encode("utf-8")).hexdigest()
+        return f"{self._key_prefix}:meta:{key_hash}"
 
     def read_value(self, key: str) -> Tuple[float, float]:
         """Read value and timestamp for a metric key."""
@@ -54,6 +57,10 @@ class RedisDict:
                 self._init_value_unlocked(key)
                 return 0.0, 0.0
 
+            if isinstance(value_data, (bytes, bytearray)):
+                value_data = value_data.decode("utf-8")
+            if isinstance(timestamp_data, (bytes, bytearray)):
+                timestamp_data = timestamp_data.decode("utf-8")
             return float(value_data), float(timestamp_data)
 
     def write_value(self, key: str, value: float, timestamp: float):

@@ -246,15 +246,15 @@ class TestRedisValueClass:
         mock_redis = Mock()
         value_class = RedisValueClass(mock_redis, "test_prefix")
 
-        assert value_class._redis_dict._redis is mock_redis
-        assert value_class._redis_dict._key_prefix == "test_prefix"
+        assert value_class._redis_client is mock_redis
+        assert value_class._key_prefix == "test_prefix"
 
     def test_init_default_prefix(self):
         """Test initialization with default prefix."""
         mock_redis = Mock()
         value_class = RedisValueClass(mock_redis)
 
-        assert value_class._redis_dict._key_prefix == "prometheus"
+        assert value_class._key_prefix == "prometheus"
 
     def test_call(self):
         """Test creating RedisValue instance."""

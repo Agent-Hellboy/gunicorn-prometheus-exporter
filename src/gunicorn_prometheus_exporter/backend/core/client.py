@@ -98,6 +98,10 @@ class RedisStorageDict:
                 self._init_value_unlocked(key)
                 return 0.0, 0.0
 
+            if isinstance(value_data, (bytes, bytearray)):
+                value_data = value_data.decode("utf-8")
+            if isinstance(timestamp_data, (bytes, bytearray)):
+                timestamp_data = timestamp_data.decode("utf-8")
             return float(value_data), float(timestamp_data)
 
     def write_value(self, key: str, value: float, timestamp: float) -> None:
@@ -169,7 +173,8 @@ class RedisValueClass:
             redis_client: Redis client instance
             key_prefix: Prefix for Redis keys
         """
-        self._redis_dict = RedisStorageDict(redis_client, key_prefix)
+        self._redis_client = redis_client
+        self._key_prefix = key_prefix
         logger.debug("Initialized Redis value class with prefix: %s", key_prefix)
 
     def __call__(self, *args, **kwargs):
@@ -179,8 +184,9 @@ class RedisValueClass:
 
         values_module = importlib.import_module(".values", package=__package__)
         RedisValue = values_module.RedisValue
-
-        return RedisValue(self._redis_dict, *args, **kwargs)
+        kwargs.setdefault("redis_client", self._redis_client)
+        kwargs.setdefault("redis_key_prefix", self._key_prefix)
+        return RedisValue(*args, **kwargs)
 
 
 class RedisStorageClient:

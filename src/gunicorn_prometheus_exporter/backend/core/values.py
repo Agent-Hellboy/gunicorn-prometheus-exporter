@@ -11,7 +11,6 @@ class RedisValue:
 
     def __init__(
         self,
-        redis_dict,
         typ=None,
         metric_name=None,
         name=None,
@@ -19,12 +18,13 @@ class RedisValue:
         labelvalues=None,
         help_text=None,
         multiprocess_mode="",
+        redis_client=None,
+        redis_key_prefix="prometheus",
         **_kwargs,
     ):
-        """Initialize RedisValue with RedisStorageDict.
+        """Initialize RedisValue with Redis client and key prefix.
 
         Args:
-            redis_dict: RedisStorageDict instance for storage operations
             typ: Metric type (counter, gauge, histogram, summary)
             metric_name: Name of the metric
             name: Sample name
@@ -32,11 +32,16 @@ class RedisValue:
             labelvalues: Label values
             help_text: Help text for the metric
             multiprocess_mode: Multiprocess mode for gauge metrics
+            redis_client: Redis client instance
+            redis_key_prefix: Prefix for Redis keys
         """
-        if not hasattr(redis_dict, "read_value"):
-            raise ValueError("redis_dict must be a RedisStorageDict instance")
+        if redis_client is None:
+            raise ValueError("redis_client must be provided")
 
-        self._redis_dict = redis_dict
+        # Create RedisStorageDict from client and prefix
+        from .client import RedisStorageDict
+
+        self._redis_dict = RedisStorageDict(redis_client, redis_key_prefix)
         self._params = (
             typ,
             metric_name,
@@ -86,10 +91,6 @@ def get_redis_value_class(redis_client, redis_key_prefix="prometheus"):
     Returns:
         Configured RedisValue class
     """
-    from .client import RedisStorageClient
-
-    storage_client = RedisStorageClient(redis_client, redis_key_prefix)
-    redis_dict = storage_client._redis_dict
 
     class ConfiguredRedisValue(RedisValue):
         def __init__(
@@ -104,7 +105,6 @@ def get_redis_value_class(redis_client, redis_key_prefix="prometheus"):
             **kwargs,
         ):
             super().__init__(
-                redis_dict,
                 typ,
                 metric_name,
                 name,
@@ -112,6 +112,8 @@ def get_redis_value_class(redis_client, redis_key_prefix="prometheus"):
                 labelvalues,
                 help_text,
                 multiprocess_mode,
+                redis_client=redis_client,
+                redis_key_prefix=redis_key_prefix,
                 **kwargs,
             )
 

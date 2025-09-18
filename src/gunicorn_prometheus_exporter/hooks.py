@@ -149,8 +149,6 @@ class MetricsServerManager:
                 redis_collector = manager.get_collector()
                 if redis_collector:
                     self.logger.info("Successfully initialized Redis-based collector")
-                    # Ensure the Redis collector is registered with the registry
-                    registry.register(redis_collector)
                     return port, registry
             except Exception as e:
                 self.logger.warning("Failed to initialize Redis collector: %s", e)
