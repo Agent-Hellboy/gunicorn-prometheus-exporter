@@ -10,7 +10,7 @@ from .client import (
     RedisStorageDict,
     RedisValueClass,
 )
-from .dict import RedisDict, redis_key
+from .dict import redis_key
 from .values import (
     CleanupUtilsMixin,
     RedisValue,
@@ -32,7 +32,6 @@ except ImportError:
 
 __version__ = "0.1.0"
 __all__ = [
-    "RedisDict",
     "redis_key",
     "RedisValue",
     "get_redis_value_class",

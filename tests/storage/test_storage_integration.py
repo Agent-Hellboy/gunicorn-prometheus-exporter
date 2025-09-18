@@ -17,7 +17,6 @@ from gunicorn_prometheus_exporter.backend import (
     setup_redis_metrics,
     teardown_redis_metrics,
 )
-from gunicorn_prometheus_exporter.backend.core import RedisDict
 from gunicorn_prometheus_exporter.backend.core.values import (
     get_redis_value_class,
     mark_process_dead_redis,
@@ -92,8 +91,8 @@ class TestStorageModuleIntegration:
             mock_client.hset.return_value = True
             mock_client.keys.return_value = []
 
-            # Test RedisDict
-            redis_dict = RedisDict(mock_client, "test")
+            # Test RedisStorageDict
+            redis_dict = RedisStorageDict(mock_client, "test")
             assert redis_dict is not None
 
             # Test RedisStorageClient
@@ -123,7 +122,6 @@ class TestStorageModuleIntegration:
         assert RedisStorageClient is not None
         assert RedisStorageDict is not None
         assert RedisValueClass is not None
-        assert RedisDict is not None
 
         # Test that all functions can be imported
         assert setup_redis_metrics is not None

@@ -65,9 +65,5 @@ def mock_redis():
     with (
         patch("redis.Redis", return_value=mock_redis_client),
         patch("redis.StrictRedis", return_value=mock_redis_client),
-        patch(
-            "gunicorn_prometheus_exporter.backend.core.dict.redis.Redis",
-            return_value=mock_redis_client,
-        ),
     ):
         yield mock_redis_client

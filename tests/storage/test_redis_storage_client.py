@@ -279,7 +279,7 @@ class TestRedisValueClass:
         # Verify that a RedisValue instance was created
         assert result is not None
         assert hasattr(result, "_redis_dict")
-        # The RedisValue creates its own RedisDict, so we just verify it exists
+        # The RedisValue creates its own RedisStorageDict, so we just verify it exists
         assert result._redis_dict is not None
 
 

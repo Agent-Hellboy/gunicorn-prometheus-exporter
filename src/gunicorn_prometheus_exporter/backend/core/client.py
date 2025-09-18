@@ -170,6 +170,42 @@ class RedisStorageDict:
             metadata_key, mapping={"original_key": key, "created_at": time.time()}
         )
 
+    def read_all_values(self):
+        """Yield (key, value, timestamp) for all metrics."""
+        pattern = f"{self._key_prefix}:*:*:metric:*"
+
+        with self._lock:
+            for metric_key in self._redis.keys(pattern):
+                # Get the original key from metadata
+                metadata_key = metric_key.replace("metric:", "meta:")
+                metadata = self._redis.hgetall(metadata_key)
+
+                if not metadata:
+                    continue
+
+                original_key = metadata.get(b"original_key", b"").decode("utf-8")
+                if not original_key:
+                    continue
+
+                # Get value and timestamp
+                value_data = self._redis.hget(metric_key, "value")
+                timestamp_data = self._redis.hget(metric_key, "timestamp")
+
+                if value_data is not None and timestamp_data is not None:
+                    yield original_key, float(value_data), float(timestamp_data)
+
+    @staticmethod
+    def read_all_values_from_redis(redis_client, key_prefix: str = None):
+        """Static method to read all values from Redis, similar to MmapedDict."""
+        if key_prefix is None:
+            key_prefix = config.redis_key_prefix
+        redis_dict = RedisStorageDict(redis_client, key_prefix)
+        return redis_dict.read_all_values()
+
+    def close(self):
+        """Close Redis connection if needed."""
+        # Redis client is typically managed externally
+
 
 class RedisValueClass:
     """Redis-backed value class for Prometheus metrics."""

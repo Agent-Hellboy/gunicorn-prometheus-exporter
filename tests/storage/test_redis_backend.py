@@ -5,9 +5,9 @@ import os
 from unittest.mock import Mock, patch
 
 from gunicorn_prometheus_exporter.backend.core import (
-    RedisDict,
     RedisMultiProcessCollector,
     RedisStorageClient,
+    RedisStorageDict,
     RedisValue,
     get_redis_value_class,
     mark_process_dead_redis,
@@ -63,7 +63,7 @@ class TestRedisStorageClient:
         assert client._redis_client == mock_client
 
 
-class TestRedisDict:
+class TestRedisStorageDict:
     """Test RedisStorageDict class."""
 
     def setup_method(self):
@@ -80,7 +80,7 @@ class TestRedisDict:
         mock_client = Mock()
         mock_client_class.return_value = mock_client
 
-        redis_dict = RedisDict(mock_client)
+        redis_dict = RedisStorageDict(mock_client)
 
         assert redis_dict._redis == mock_client
 
@@ -95,7 +95,7 @@ class TestRedisDict:
             b"1234567890.0",
         ]  # value, then timestamp
 
-        redis_dict = RedisDict(mock_client)
+        redis_dict = RedisStorageDict(mock_client)
 
         # Test write_value and read_value methods
         redis_dict.write_value("test_key", 10.5, 1234567890.0)
@@ -112,7 +112,7 @@ class TestRedisDict:
             "prometheus:metric:test_key"
         ]  # Return strings, not bytes
         mock_client.hget.return_value = b"10.5"
-        redis_dict = RedisDict(mock_client)
+        redis_dict = RedisStorageDict(mock_client)
 
         values = list(redis_dict.read_all_values())
 
@@ -122,9 +122,9 @@ class TestRedisDict:
     def test_close(self):
         """Test close method."""
         mock_client = Mock()
-        redis_dict = RedisDict(mock_client)
+        redis_dict = RedisStorageDict(mock_client)
 
-        # RedisDict.close() doesn't call redis_client.close()
+        # RedisStorageDict.close() doesn't call redis_client.close()
         redis_dict.close()
 
         # Just test that close() doesn't raise an exception
@@ -321,7 +321,7 @@ class TestRedisBackendIntegration:
         mock_client.keys.return_value = ["key1", "key2"]  # Return strings, not bytes
         mock_client.hgetall.return_value = {b"original_key": b"key1"}  # Mock metadata
 
-        redis_dict = RedisDict(mock_client)
+        redis_dict = RedisStorageDict(mock_client)
 
         # Test complete workflow using actual API
         redis_dict.write_value("key1", 10.5, 1234567890.0)
@@ -335,7 +335,7 @@ class TestRedisBackendIntegration:
         mock_client.hset.assert_called()
         mock_client.hget.assert_called()
         mock_client.keys.assert_called()
-        # RedisDict.close() doesn't call redis_client.close()
+        # RedisStorageDict.close() doesn't call redis_client.close()
 
     @patch("gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient")
     def test_value_class_integration(self, mock_client_class):
