@@ -178,8 +178,10 @@ class RedisStorageDict:
             for metric_key in self._redis.scan_iter(match=pattern):
                 if isinstance(metric_key, (bytes, bytearray)):
                     metric_key = metric_key.decode("utf-8")
-                # Get the original key from metadata
-                metadata_key = metric_key.replace("metric:", "meta:")
+                # Derive meta key deterministically
+                metadata_key = metric_key.replace(
+                    f"{self._key_prefix}:metric:", f"{self._key_prefix}:meta:", 1
+                )
                 metadata = self._redis.hgetall(metadata_key)
 
                 if not metadata:
