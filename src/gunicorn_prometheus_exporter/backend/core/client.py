@@ -53,11 +53,13 @@ class RedisClientProtocol(Protocol):
 class StorageDictProtocol(Protocol):
     """Protocol for storage dictionary interface."""
 
-    def read_value(self, key: str) -> Tuple[float, float]:
+    def read_value(self, key: str, metric_type: str = "counter") -> Tuple[float, float]:
         """Read value and timestamp."""
         raise NotImplementedError
 
-    def write_value(self, key: str, value: float, timestamp: float) -> None:
+    def write_value(
+        self, key: str, value: float, timestamp: float, metric_type: str = "counter"
+    ) -> None:
         """Write value and timestamp."""
         raise NotImplementedError
 
