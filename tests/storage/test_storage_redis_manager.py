@@ -97,7 +97,7 @@ class TestRedisStorageManager:
         mock_client = Mock()
         mock_redis.from_url.return_value = mock_client
         mock_client.ping.return_value = True
-        mock_client.keys.return_value = [
+        mock_client.scan_iter.return_value = [
             b"gunicorn:counter:123:metric1",
             b"gunicorn:gauge:456:metric2",
         ]
@@ -113,7 +113,7 @@ class TestRedisStorageManager:
         # cleanup_keys returns None, just test it doesn't raise
         assert result is None
         # The actual key pattern includes more parts, so just test that keys was called
-        mock_client.keys.assert_called_once()
+        mock_client.scan_iter.assert_called_once()
         mock_client.delete.assert_called_once()
 
     @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
@@ -122,7 +122,7 @@ class TestRedisStorageManager:
         mock_client = Mock()
         mock_redis.from_url.return_value = mock_client
         mock_client.ping.return_value = True
-        mock_client.keys.return_value = []
+        mock_client.scan_iter.return_value = []
 
         manager = RedisStorageManager()
 
@@ -134,7 +134,7 @@ class TestRedisStorageManager:
         # cleanup_keys returns None, just test it doesn't raise
         assert result is None
         # The actual key pattern includes more parts, so just test that keys was called
-        mock_client.keys.assert_called_once()
+        mock_client.scan_iter.assert_called_once()
 
     @patch("gunicorn_prometheus_exporter.backend.service.manager.redis")
     def test_cleanup_keys_error(self, mock_redis):

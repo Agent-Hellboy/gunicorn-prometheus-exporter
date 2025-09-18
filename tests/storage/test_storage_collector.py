@@ -157,7 +157,7 @@ class TestRedisMultiProcessCollector:
     def test_parse_key_valid_json(self):
         """Test _parse_key with valid JSON."""
         mock_redis = Mock()
-        mock_redis.keys.return_value = [b"test_prefix:gauge:12345:metric:hash"]
+        mock_redis.scan_iter.return_value = [b"test_prefix:gauge:12345:metric:hash"]
 
         # Mock the _process_metric_key to test _parse_key indirectly
         with patch.object(
@@ -188,7 +188,7 @@ class TestRedisMultiProcessCollector:
     def test_parse_key_invalid_json(self):
         """Test _parse_key with invalid JSON."""
         mock_redis = Mock()
-        mock_redis.keys.return_value = [b"test_prefix:gauge:12345:metric:hash"]
+        mock_redis.scan_iter.return_value = [b"test_prefix:gauge:12345:metric:hash"]
 
         with patch.object(
             RedisMultiProcessCollector, "_process_metric_key"
@@ -883,12 +883,12 @@ class TestMarkProcessDeadRedis:
     def test_mark_process_dead_redis_with_client(self):
         """Test mark_process_dead_redis with provided client."""
         mock_redis = Mock()
-        mock_redis.keys.return_value = [b"key1", b"key2"]
+        mock_redis.scan_iter.return_value = [b"key1", b"key2"]
         mock_redis.delete.return_value = 2
 
         mark_process_dead_redis(12345, mock_redis, "test_prefix")
 
-        mock_redis.keys.assert_called_once_with("test_prefix:*:12345:*")
+        mock_redis.scan_iter.assert_called_once_with(match="test_prefix:*:12345:*")
         mock_redis.delete.assert_called_once_with(b"key1", b"key2")
 
     def test_mark_process_dead_redis_without_client_from_env(self):
@@ -906,9 +906,9 @@ class TestMarkProcessDeadRedis:
     def test_mark_process_dead_redis_no_keys(self):
         """Test mark_process_dead_redis with no keys to delete."""
         mock_redis = Mock()
-        mock_redis.keys.return_value = []
+        mock_redis.scan_iter.return_value = []
 
         mark_process_dead_redis(12345, mock_redis, "test_prefix")
 
-        mock_redis.keys.assert_called_once_with("test_prefix:*:12345:*")
+        mock_redis.scan_iter.assert_called_once_with(match="test_prefix:*:12345:*")
         mock_redis.delete.assert_not_called()
