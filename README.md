@@ -255,7 +255,7 @@ All async workers require their respective dependencies:
 | `REDIS_PORT`               | `6379`                   | Redis server port                                         |
 | `REDIS_DB`                 | `0`                      | Redis database number                                     |
 | `REDIS_PASSWORD`           | *(none)*                 | Redis password (optional)                                 |
-| `REDIS_KEY_PREFIX`         | `gunicorn:metrics:`      | Prefix for Redis keys                                     |
+| `REDIS_KEY_PREFIX`         | `gunicorn`               | Prefix for Redis keys                                     |
 
 ### Gunicorn Hooks
 

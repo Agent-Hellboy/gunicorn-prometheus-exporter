@@ -7,7 +7,7 @@ Features:
 - Redis-based metrics storage (no files created)
 - Redis multiprocess collector for /metrics endpoint
 - Shared metrics across multiple Gunicorn instances
-- Redis keys: gunicorn:*:metric:* and gunicorn:*:meta:*
+- Redis keys: gunicorn:*:*:metric:* and gunicorn:*:*:meta:*
 
 Redis Flags:
 - REDIS_ENABLED=true: Enable Redis integration
@@ -26,7 +26,9 @@ import os  # noqa: E402
 os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9093")  # Changed from 9091 to 9092
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # nosec B104  # noqa: E501
 os.environ.setdefault("REDIS_ENABLED", "true")  # noqa: E501
-os.environ.setdefault("REDIS_HOST", "127.0.0.1")  # Configure for your environment  # noqa: E501
+os.environ.setdefault(
+    "REDIS_HOST", "127.0.0.1"
+)  # Configure for your environment  # noqa: E501
 os.environ.setdefault("REDIS_PORT", "6379")  # noqa: E501
 os.environ.setdefault("REDIS_DB", "0")  # noqa: E501
 

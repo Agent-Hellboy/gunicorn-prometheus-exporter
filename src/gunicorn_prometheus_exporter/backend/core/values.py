@@ -69,8 +69,10 @@ class RedisValue:
 
     def set(self, value, timestamp=None):
         """Set the value and optional timestamp."""
+        import time
+
         self._value = value
-        self._timestamp = timestamp or 0.0
+        self._timestamp = time.time() if timestamp is None else float(timestamp)
         self._redis_dict.write_value(
             self._key, self._value, self._timestamp, self._params[0]
         )

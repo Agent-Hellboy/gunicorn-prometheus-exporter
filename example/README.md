@@ -25,7 +25,7 @@ from gunicorn_prometheus_exporter.storage import get_redis_storage_manager
 manager = get_redis_storage_manager()
 collector = manager.get_collector()
 registry.register(collector)
-# Stores metrics in Redis: gunicorn:*:metric:*
+# Stores metrics in Redis: gunicorn:*:*:metric:*
 ```
 
 ### **Key Innovation: Storage-Compute Separation**
@@ -60,7 +60,7 @@ gunicorn --config gunicorn_basic.conf.py app:app
 
 **Pure Redis-based storage (no files created).**
 
-- **Storage**: Redis keys `gunicorn:*:metric:*` and `gunicorn:*:meta:*`
+- **Storage**: Redis keys `gunicorn:*:*:metric:*` and `gunicorn:*:*:meta:*`
 - **Metrics Endpoint**: `http://localhost:9092/metrics` (reads from Redis)
 - **Use Case**: Distributed deployments, multiple servers
 - **Pros**: Shared across servers, no files, scalable
