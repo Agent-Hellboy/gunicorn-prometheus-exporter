@@ -175,7 +175,7 @@ class RedisStorageDict:
         pattern = f"{self._key_prefix}:*:*:metric:*"
 
         with self._lock:
-            for metric_key in self._redis.keys(pattern):
+            for metric_key in self._redis.scan_iter(match=pattern):
                 # Get the original key from metadata
                 metadata_key = metric_key.replace("metric:", "meta:")
                 metadata = self._redis.hgetall(metadata_key)
@@ -261,7 +261,7 @@ class RedisStorageClient:
         """
         try:
             pattern = f"{self._key_prefix}:*:{pid}:*"
-            keys_to_delete = self._redis_client.keys(pattern)
+            keys_to_delete = list(self._redis_client.scan_iter(match=pattern))
 
             if keys_to_delete:
                 self._redis_client.delete(*keys_to_delete)

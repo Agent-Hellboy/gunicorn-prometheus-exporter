@@ -313,7 +313,7 @@ class TestRedisStorageClient:
     def test_cleanup_process_keys_success(self):
         """Test successful cleanup of process keys."""
         mock_redis = Mock()
-        mock_redis.keys.return_value = [b"key1", b"key2", b"key3"]
+        mock_redis.scan_iter.return_value = [b"key1", b"key2", b"key3"]
         mock_redis.delete.return_value = 3
 
         client = RedisStorageClient(mock_redis, "test_prefix")
@@ -325,7 +325,7 @@ class TestRedisStorageClient:
 
         # Verify Redis calls
         expected_pattern = "test_prefix:*:12345:*"
-        mock_redis.keys.assert_called_once_with(expected_pattern)
+        mock_redis.scan_iter.assert_called_once_with(match=expected_pattern)
         mock_redis.delete.assert_called_once_with(b"key1", b"key2", b"key3")
 
         # Verify logging
@@ -336,7 +336,7 @@ class TestRedisStorageClient:
     def test_cleanup_process_keys_no_keys(self):
         """Test cleanup when no keys exist."""
         mock_redis = Mock()
-        mock_redis.keys.return_value = []
+        mock_redis.scan_iter.return_value = []
 
         client = RedisStorageClient(mock_redis, "test_prefix")
 
@@ -347,7 +347,7 @@ class TestRedisStorageClient:
 
         # Verify Redis calls
         expected_pattern = "test_prefix:*:12345:*"
-        mock_redis.keys.assert_called_once_with(expected_pattern)
+        mock_redis.scan_iter.assert_called_once_with(match=expected_pattern)
         mock_redis.delete.assert_not_called()
 
         # Verify no debug logging
@@ -356,7 +356,7 @@ class TestRedisStorageClient:
     def test_cleanup_process_keys_exception(self):
         """Test cleanup with exception."""
         mock_redis = Mock()
-        mock_redis.keys.side_effect = Exception("Redis error")
+        mock_redis.scan_iter.side_effect = Exception("Redis error")
 
         client = RedisStorageClient(mock_redis, "test_prefix")
 

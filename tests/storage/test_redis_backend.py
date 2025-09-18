@@ -108,7 +108,7 @@ class TestRedisStorageDict:
     def test_read_all_values(self):
         """Test reading all values."""
         mock_client = Mock()
-        mock_client.keys.return_value = [
+        mock_client.scan_iter.return_value = [
             "prometheus:metric:test_key"
         ]  # Return strings, not bytes
         mock_client.hget.return_value = b"10.5"
@@ -117,7 +117,7 @@ class TestRedisStorageDict:
         values = list(redis_dict.read_all_values())
 
         assert len(values) > 0
-        mock_client.keys.assert_called_once()
+        mock_client.scan_iter.assert_called_once()
 
     def test_close(self):
         """Test close method."""
@@ -216,21 +216,23 @@ class TestRedisMultiProcessCollector:
         """Test collect with no metrics."""
         mock_client = Mock()
         mock_client_class.return_value = mock_client
-        mock_client.keys.return_value = []
+        mock_client.scan_iter.return_value = []
         mock_registry = Mock()
 
         collector = RedisMultiProcessCollector(mock_registry, mock_client)
         metrics = list(collector.collect())
 
         assert metrics == []
-        mock_client.keys.assert_called_with("gunicorn:*:*:metric:*")
+        mock_client.scan_iter.assert_called_with(match="gunicorn:*:*:metric:*")
 
     @patch("gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient")
     def test_collect_with_metrics(self, mock_client_class):
         """Test collect with metrics."""
         mock_client = Mock()
         mock_client_class.return_value = mock_client
-        mock_client.keys.return_value = [b"gunicorn:counter:12345:metric:test_metric"]
+        mock_client.scan_iter.return_value = [
+            b"gunicorn:counter:12345:metric:test_metric"
+        ]
         mock_client.hget.side_effect = [
             b"10.5",
             b"1234567890.0",
@@ -241,7 +243,7 @@ class TestRedisMultiProcessCollector:
         metrics = list(collector.collect())
 
         assert len(metrics) > 0
-        mock_client.keys.assert_called_with("gunicorn:*:*:metric:*")
+        mock_client.scan_iter.assert_called_with(match="gunicorn:*:*:metric:*")
 
     @patch("gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient")
     def test_collect_error_handling(self, mock_client_class):
@@ -280,7 +282,10 @@ class TestModuleFunctions:
     def test_mark_process_dead_redis(self):
         """Test mark_process_dead_redis function."""
         mock_client = Mock()
-        mock_client.keys.return_value = ["key1", "key2"]  # Return strings, not bytes
+        mock_client.scan_iter.return_value = [
+            "key1",
+            "key2",
+        ]  # Return strings, not bytes
         mock_client.hgetall.return_value = {
             b"original_key": b"key1"
         }  # Mock metadata  # Return actual keys
@@ -318,7 +323,10 @@ class TestRedisBackendIntegration:
             b"1234567891.0",
         ]  # Enough for 2 keys
         mock_client.delete.return_value = 1
-        mock_client.keys.return_value = ["key1", "key2"]  # Return strings, not bytes
+        mock_client.scan_iter.return_value = [
+            "key1",
+            "key2",
+        ]  # Return strings, not bytes
         mock_client.hgetall.return_value = {b"original_key": b"key1"}  # Mock metadata
 
         redis_dict = RedisStorageDict(mock_client)
@@ -334,7 +342,7 @@ class TestRedisBackendIntegration:
         assert len(values) > 0
         mock_client.hset.assert_called()
         mock_client.hget.assert_called()
-        mock_client.keys.assert_called()
+        mock_client.scan_iter.assert_called()
         # RedisStorageDict.close() doesn't call redis_client.close()
 
     @patch("gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient")

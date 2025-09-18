@@ -139,7 +139,7 @@ class TestRedisMultiProcessCollector:
     def test_read_metrics_from_redis(self):
         """Test _read_metrics_from_redis static method."""
         mock_redis = Mock()
-        mock_redis.keys.return_value = [b"test_prefix:gauge:12345:metric:hash"]
+        mock_redis.scan_iter.return_value = [b"test_prefix:gauge:12345:metric:hash"]
 
         with patch.object(
             RedisMultiProcessCollector, "_process_metric_key"
@@ -148,7 +148,9 @@ class TestRedisMultiProcessCollector:
                 mock_redis, "test_prefix"
             )
 
-            mock_redis.keys.assert_called_once_with("test_prefix:*:*:metric:*")
+            mock_redis.scan_iter.assert_called_once_with(
+                match="test_prefix:*:*:metric:*"
+            )
             mock_process.assert_called_once()
             assert isinstance(result, dict)
 

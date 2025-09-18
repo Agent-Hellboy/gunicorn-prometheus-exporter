@@ -95,9 +95,9 @@ class RedisMultiProcessCollector:
                     val = key_cache[key] = (key, key, {}, (), "")
             return val
 
-        # Get all metric keys from Redis
+        # Get all metric keys from Redis using scan_iter for better performance
         pattern = f"{redis_key_prefix}:*:*:metric:*"
-        metric_keys = redis_client.keys(pattern)
+        metric_keys = list(redis_client.scan_iter(match=pattern))
 
         for metric_key in metric_keys:
             RedisMultiProcessCollector._process_metric_key(
