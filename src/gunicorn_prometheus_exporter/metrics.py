@@ -134,7 +134,7 @@ class BaseMetric(metaclass=MetricMeta):
 class WorkerRequests(BaseMetric, metric_type=Counter):
     """Total number of requests handled by this worker."""
 
-    name = "gunicorn_worker_requests"
+    name = "gunicorn_worker_requests_total"
     documentation = "Total number of requests handled by this worker"
     labelnames = ["worker_id"]
 

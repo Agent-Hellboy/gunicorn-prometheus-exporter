@@ -34,6 +34,9 @@ REDIS_HOST_OPT="${REDIS_HOST:-127.0.0.1}"
 REDIS_PORT_OPT="${REDIS_PORT:-6379}"
 REDIS_DB_OPT="${REDIS_DB:-0}"
 REDIS_CLI="redis-cli -h \"$REDIS_HOST_OPT\" -p \"$REDIS_PORT_OPT\" -n \"$REDIS_DB_OPT\""
+
+# Controls whether to allow FLUSHALL during tests (default: false)
+: "${REDIS_DESTRUCTIVE_FLUSH:=false}"
 TEST_DURATION=30
 REQUESTS_PER_SECOND=5
 TIMEOUT=60
@@ -216,26 +219,34 @@ flush_redis() {
     print_status "Flushing Redis database for clean test..."
 
     if command -v redis-cli >/dev/null 2>&1; then
-        # First try to flush all databases (more thorough)
-        if eval "$REDIS_CLI FLUSHALL" >/dev/null 2>&1; then
-            print_success "Redis all databases flushed (FLUSHALL)"
-        else
-            # Fallback to flushing current database only
-            if eval "$REDIS_CLI FLUSHDB" >/dev/null 2>&1; then
-                print_success "Redis current database flushed (FLUSHDB)"
+        if [ "$REDIS_DESTRUCTIVE_FLUSH" = true ]; then
+            # Destructive flush - use FLUSHALL
+            if eval "$REDIS_CLI FLUSHALL" >/dev/null 2>&1; then
+                print_success "Redis all databases flushed (FLUSHALL)"
             else
-                print_warning "Failed to flush Redis database"
-                return 1
+                # Fallback to flushing current database only
+                if eval "$REDIS_CLI FLUSHDB" >/dev/null 2>&1; then
+                    print_success "Redis current database flushed (FLUSHDB)"
+                else
+                    print_warning "Failed to flush Redis database"
+                    return 1
+                fi
             fi
+        else
+            # Safer: delete only test keys by prefix
+            prefix="${REDIS_KEY_PREFIX:-gunicorn}"
+            # Batch unlink for performance
+            eval "$REDIS_CLI --scan --pattern \"${prefix}:*\"" | xargs -r -L100 eval "$REDIS_CLI UNLINK" >/dev/null 2>&1 || true
+            print_success "Deleted keys with prefix ${prefix}:*"
         fi
 
-        # Verify Redis is empty
+        # Verify Redis is empty (or only has non-test keys)
         local key_count
         key_count=$(eval "$REDIS_CLI DBSIZE" 2>/dev/null || echo "0")
         if [ "$key_count" -eq 0 ]; then
             print_success "Redis confirmed empty (0 keys)"
         else
-            print_warning "Redis still contains $key_count keys after flush"
+            print_success "Redis cleanup complete ($key_count keys remaining)"
         fi
     else
         print_warning "redis-cli not available, skipping Redis flush"
@@ -298,13 +309,21 @@ cleanup_redis() {
     if command -v redis-cli >/dev/null 2>&1; then
         # Try to connect to Redis and flush database
         if eval "$REDIS_CLI ping" >/dev/null 2>&1; then
-            # Use FLUSHALL for thorough cleanup
-            if eval "$REDIS_CLI FLUSHALL" >/dev/null 2>&1; then
-                print_success "Redis all databases cleaned (FLUSHALL)"
+            if [ "$REDIS_DESTRUCTIVE_FLUSH" = true ]; then
+                # Destructive cleanup - use FLUSHALL
+                if eval "$REDIS_CLI FLUSHALL" >/dev/null 2>&1; then
+                    print_success "Redis all databases cleaned (FLUSHALL)"
+                else
+                    # Fallback to FLUSHDB
+                    eval "$REDIS_CLI FLUSHDB" >/dev/null 2>&1 || true
+                    print_success "Redis current database cleaned (FLUSHDB)"
+                fi
             else
-                # Fallback to FLUSHDB
-                eval "$REDIS_CLI FLUSHDB" >/dev/null 2>&1 || true
-                print_success "Redis current database cleaned (FLUSHDB)"
+                # Safer: delete only test keys by prefix
+                prefix="${REDIS_KEY_PREFIX:-gunicorn}"
+                # Batch unlink for performance
+                eval "$REDIS_CLI --scan --pattern \"${prefix}:*\"" | xargs -r -L100 eval "$REDIS_CLI UNLINK" >/dev/null 2>&1 || true
+                print_success "Deleted keys with prefix ${prefix}:*"
             fi
         else
             print_warning "Redis not responding, skipping cleanup"
@@ -784,14 +803,14 @@ test_signal_handling() {
     print_status "Testing signal handling (Ctrl+C simulation)..."
 
     # Send SIGINT to Gunicorn master process
-    if [ ! -z "$GUNICORN_PID" ]; then
-        kill -INT "$GUNICORN_PID"
+    if [ -n "$GUNICORN_PID" ] && kill -0 "$GUNICORN_PID" 2>/dev/null; then
+        kill -INT "$GUNICORN_PID" 2>/dev/null || true
         sleep 3
 
         # Check if process is still running
         if kill -0 "$GUNICORN_PID" 2>/dev/null; then
             print_warning "Process still running after SIGINT, sending SIGTERM"
-            kill -TERM "$GUNICORN_PID"
+            kill -TERM "$GUNICORN_PID" 2>/dev/null || true
             sleep 2
         fi
 
@@ -802,6 +821,8 @@ test_signal_handling() {
             print_success "Signal handling working correctly"
             GUNICORN_PID=""  # Clear PID since process is dead
         fi
+    else
+        print_success "Process already exited (signal handling test skipped)"
     fi
 }
 

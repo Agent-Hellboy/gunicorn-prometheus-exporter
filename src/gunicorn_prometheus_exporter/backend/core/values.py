@@ -59,7 +59,7 @@ class RedisValue:
             self._key, self._params[0]
         )
 
-    def inc(self, amount):
+    def inc(self, amount=1):
         """Increment the value by amount."""
         self._value += amount
         self._timestamp = 0.0
@@ -83,8 +83,8 @@ class RedisValue:
         return
 
     def get(self):
-        """Get the current value."""
-        return self._value
+        """Get the current value and timestamp."""
+        return self._value, self._timestamp
 
     def get_exemplar(self):
         """Get exemplar (not implemented for Redis yet)."""

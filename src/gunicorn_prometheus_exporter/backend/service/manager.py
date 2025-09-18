@@ -126,8 +126,9 @@ class RedisStorageManager:
             )
 
             # Create value class
+            prefix = config.redis_key_prefix.rstrip(":")
             self._redis_value_class = self._value_class_factory(
-                self._redis_client, config.redis_key_prefix
+                self._redis_client, prefix
             )
 
             # Replace Prometheus value class
@@ -173,7 +174,9 @@ class RedisStorageManager:
             from ..core import mark_process_dead_redis
 
             pid = os.getpid()
-            mark_process_dead_redis(pid, self._redis_client, config.redis_key_prefix)
+            mark_process_dead_redis(
+                pid, self._redis_client, config.redis_key_prefix.rstrip(":")
+            )
             logger.debug("Cleaned up Redis keys for process %d", pid)
 
         except Exception as e:
@@ -190,7 +193,7 @@ class RedisStorageManager:
 
             registry = get_shared_registry()
             return RedisMultiProcessCollector(
-                registry, self._redis_client, config.redis_key_prefix
+                registry, self._redis_client, config.redis_key_prefix.rstrip(":")
             )
 
         except Exception as e:
