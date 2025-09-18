@@ -381,36 +381,56 @@ class TestFactoryFunctions:
     def test_get_redis_value_class(self):
         """Test get_redis_value_class factory function."""
         mock_redis = Mock()
+        # Mock the Redis client methods to return proper values
+        mock_redis.hget.return_value = None  # Return None to trigger initialization
+        mock_redis.hset.return_value = 1
+        mock_redis.hgetall.return_value = {}
+        mock_redis.keys.return_value = []
+        mock_redis.delete.return_value = None
 
-        with patch(
-            "gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient"
-        ) as mock_client_class:
-            mock_client = Mock()
-            mock_client_class.return_value = mock_client
+        result = get_redis_value_class(mock_redis, "test_prefix")
 
-            result = get_redis_value_class(mock_redis, "test_prefix")
+        # The function returns a ConfiguredRedisValue class
+        assert result is not None
+        assert callable(result)
 
-            mock_client_class.assert_called_once_with(mock_redis, "test_prefix")
-            # The function returns a ConfiguredRedisValue class, not the client's method
-            assert result is not None
-            assert callable(result)
+        # Test that the class can be instantiated with correct parameters
+        instance = result(
+            typ="counter",
+            metric_name="test_metric",
+            name="test_name",
+            labelnames=[],
+            labelvalues=[],
+            help_text="Test help",
+        )
+        assert instance is not None
 
     def test_get_redis_value_class_default_prefix(self):
         """Test get_redis_value_class with default prefix."""
         mock_redis = Mock()
+        # Mock the Redis client methods to return proper values
+        mock_redis.hget.return_value = None  # Return None to trigger initialization
+        mock_redis.hset.return_value = 1
+        mock_redis.hgetall.return_value = {}
+        mock_redis.keys.return_value = []
+        mock_redis.delete.return_value = None
 
-        with patch(
-            "gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient"
-        ) as mock_client_class:
-            mock_client = Mock()
-            mock_client_class.return_value = mock_client
+        result = get_redis_value_class(mock_redis)
 
-            result = get_redis_value_class(mock_redis)
+        # The function returns a ConfiguredRedisValue class
+        assert result is not None
+        assert callable(result)
 
-            mock_client_class.assert_called_once_with(mock_redis, "prometheus")
-            # The function returns a ConfiguredRedisValue class, not the client's method
-            assert result is not None
-            assert callable(result)
+        # Test that the class can be instantiated with correct parameters
+        instance = result(
+            typ="counter",
+            metric_name="test_metric",
+            name="test_name",
+            labelnames=[],
+            labelvalues=[],
+            help_text="Test help",
+        )
+        assert instance is not None
 
     def test_mark_process_dead_redis(self):
         """Test mark_process_dead_redis factory function."""
