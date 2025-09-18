@@ -127,7 +127,7 @@ class RedisStorageManager:
 
             # Create value class
             self._redis_value_class = self._value_class_factory(
-                self._redis_client, "gunicorn"
+                self._redis_client, config.redis_key_prefix
             )
 
             # Replace Prometheus value class
@@ -173,7 +173,7 @@ class RedisStorageManager:
             from ..core import mark_process_dead_redis
 
             pid = os.getpid()
-            mark_process_dead_redis(pid, self._redis_client, "gunicorn")
+            mark_process_dead_redis(pid, self._redis_client, config.redis_key_prefix)
             logger.debug("Cleaned up Redis keys for process %d", pid)
 
         except Exception as e:
@@ -189,7 +189,9 @@ class RedisStorageManager:
             from ..core import RedisMultiProcessCollector
 
             registry = get_shared_registry()
-            return RedisMultiProcessCollector(registry, self._redis_client, "gunicorn")
+            return RedisMultiProcessCollector(
+                registry, self._redis_client, config.redis_key_prefix
+            )
 
         except Exception as e:
             logger.error("Failed to create Redis collector: %s", e)

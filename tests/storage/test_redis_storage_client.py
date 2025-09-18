@@ -109,7 +109,7 @@ class TestRedisStorageDict:
         mock_redis = Mock()
         storage_dict = RedisStorageDict(mock_redis)
 
-        assert storage_dict._key_prefix == "prometheus"
+        assert storage_dict._key_prefix == "gunicorn"
 
     def test_get_metric_key(self):
         """Test metric key generation."""
@@ -254,7 +254,7 @@ class TestRedisValueClass:
         mock_redis = Mock()
         value_class = RedisValueClass(mock_redis)
 
-        assert value_class._key_prefix == "prometheus"
+        assert value_class._key_prefix == "gunicorn"
 
     def test_call(self):
         """Test creating RedisValue instance."""
@@ -294,7 +294,7 @@ class TestRedisStorageClient:
         mock_redis = Mock()
         client = RedisStorageClient(mock_redis)
 
-        assert client._key_prefix == "prometheus"
+        assert client._key_prefix == "gunicorn"
 
     def test_get_value_class(self):
         """Test getting value class."""
@@ -459,5 +459,5 @@ class TestFactoryFunctions:
 
             mark_process_dead_redis(12345, mock_redis)
 
-            mock_client_class.assert_called_once_with(mock_redis, "prometheus")
+            mock_client_class.assert_called_once_with(mock_redis, "gunicorn")
             mock_client.cleanup_process_keys.assert_called_once_with(12345)

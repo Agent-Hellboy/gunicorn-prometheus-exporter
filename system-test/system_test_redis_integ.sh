@@ -387,6 +387,7 @@ start_gunicorn() {
     export REDIS_HOST="127.0.0.1"
     export REDIS_PORT=$REDIS_PORT
     export REDIS_DB="0"
+    export REDIS_KEY_PREFIX="gunicorn"
     export GUNICORN_WORKERS="2"
 
     # Start Gunicorn in background

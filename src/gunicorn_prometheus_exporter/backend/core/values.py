@@ -1,3 +1,4 @@
+from ...config import config
 from .dict import redis_key
 
 
@@ -19,7 +20,7 @@ class RedisValue:
         help_text=None,
         multiprocess_mode="",
         redis_client=None,
-        redis_key_prefix="prometheus",
+        redis_key_prefix=None,
         **_kwargs,
     ):
         """Initialize RedisValue with Redis client and key prefix.
@@ -41,7 +42,9 @@ class RedisValue:
         # Create RedisStorageDict from client and prefix
         from .client import RedisStorageDict
 
-        self._redis_dict = RedisStorageDict(redis_client, redis_key_prefix)
+        self._redis_dict = RedisStorageDict(
+            redis_client, redis_key_prefix or config.redis_key_prefix
+        )
         self._params = (
             typ,
             metric_name,
@@ -81,16 +84,18 @@ class RedisValue:
         return None
 
 
-def get_redis_value_class(redis_client, redis_key_prefix="prometheus"):
+def get_redis_value_class(redis_client, redis_key_prefix=None):
     """Returns a RedisValue class configured with Redis client.
 
     Args:
         redis_client: Redis client instance
-        redis_key_prefix: Prefix for Redis keys
+        redis_key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
 
     Returns:
         Configured RedisValue class
     """
+    if redis_key_prefix is None:
+        redis_key_prefix = config.redis_key_prefix
 
     class ConfiguredRedisValue(RedisValue):
         def __init__(
@@ -121,29 +126,33 @@ def get_redis_value_class(redis_client, redis_key_prefix="prometheus"):
 
 
 def cleanup_process_keys_for_pid(
-    pid: int, redis_client, redis_key_prefix: str = "prometheus"
+    pid: int, redis_client, redis_key_prefix: str = None
 ) -> None:
     """Clean up Redis keys for a specific process ID.
 
     Args:
         pid: Process ID to clean up
         redis_client: Redis client instance
-        redis_key_prefix: Prefix for Redis keys
+        redis_key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
     """
+    if redis_key_prefix is None:
+        redis_key_prefix = config.redis_key_prefix
     from .client import RedisStorageClient
 
     storage_client = RedisStorageClient(redis_client, redis_key_prefix)
     storage_client.cleanup_process_keys(pid)
 
 
-def mark_process_dead_redis(pid, redis_client, redis_key_prefix="prometheus"):
+def mark_process_dead_redis(pid, redis_client, redis_key_prefix=None):
     """Do bookkeeping for when one process dies in a Redis multi-process setup.
 
     Args:
         pid: Process ID to clean up
         redis_client: Redis client instance
-        redis_key_prefix: Prefix for Redis keys
+        redis_key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
     """
+    if redis_key_prefix is None:
+        redis_key_prefix = config.redis_key_prefix
     cleanup_process_keys_for_pid(pid, redis_client, redis_key_prefix)
 
 
@@ -152,20 +161,20 @@ class CleanupUtilsMixin:
 
     @staticmethod
     def cleanup_process_keys_for_pid(
-        pid: int, redis_client, redis_key_prefix: str = "prometheus"
+        pid: int, redis_client, redis_key_prefix: str = None
     ) -> None:
         """Clean up Redis keys for a specific process ID.
 
         Args:
             pid: Process ID to clean up
             redis_client: Redis client instance
-            redis_key_prefix: Prefix for Redis keys
+            redis_key_prefix: Prefix for Redis keys (defaults to config)
         """
         cleanup_process_keys_for_pid(pid, redis_client, redis_key_prefix)
 
     @staticmethod
     def mark_process_as_dead(
-        pid: int, redis_client, redis_key_prefix: str = "prometheus"
+        pid: int, redis_client, redis_key_prefix: str = None
     ) -> None:
         """Mark a process as dead and clean up its keys.
 

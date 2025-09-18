@@ -413,6 +413,76 @@ class TestExporterConfigAdditional:
             elif "REDIS_ENABLED" in os.environ:
                 del os.environ["REDIS_ENABLED"]
 
+    def test_redis_configuration_properties(self):
+        """Test Redis configuration properties."""
+        # Save original environment
+        original_env = {
+            "REDIS_HOST": os.environ.get("REDIS_HOST"),
+            "REDIS_PORT": os.environ.get("REDIS_PORT"),
+            "REDIS_DB": os.environ.get("REDIS_DB"),
+            "REDIS_PASSWORD": os.environ.get("REDIS_PASSWORD"),
+            "REDIS_KEY_PREFIX": os.environ.get("REDIS_KEY_PREFIX"),
+        }
+
+        try:
+            # Test REDIS_HOST
+            os.environ["REDIS_HOST"] = "test-host"
+            config = ExporterConfig()
+            assert config.redis_host == "test-host"
+
+            # Test REDIS_HOST default
+            del os.environ["REDIS_HOST"]
+            config = ExporterConfig()
+            assert config.redis_host == "127.0.0.1"
+
+            # Test REDIS_PORT
+            os.environ["REDIS_PORT"] = "6380"
+            config = ExporterConfig()
+            assert config.redis_port == 6380
+
+            # Test REDIS_PORT default
+            del os.environ["REDIS_PORT"]
+            config = ExporterConfig()
+            assert config.redis_port == 6379
+
+            # Test REDIS_DB
+            os.environ["REDIS_DB"] = "1"
+            config = ExporterConfig()
+            assert config.redis_db == 1
+
+            # Test REDIS_DB default
+            del os.environ["REDIS_DB"]
+            config = ExporterConfig()
+            assert config.redis_db == 0
+
+            # Test REDIS_PASSWORD
+            os.environ["REDIS_PASSWORD"] = "test-password"
+            config = ExporterConfig()
+            assert config.redis_password == "test-password"
+
+            # Test REDIS_PASSWORD default (None)
+            del os.environ["REDIS_PASSWORD"]
+            config = ExporterConfig()
+            assert config.redis_password is None
+
+            # Test REDIS_KEY_PREFIX
+            os.environ["REDIS_KEY_PREFIX"] = "custom:prefix:"
+            config = ExporterConfig()
+            assert config.redis_key_prefix == "custom:prefix:"
+
+            # Test REDIS_KEY_PREFIX default
+            del os.environ["REDIS_KEY_PREFIX"]
+            config = ExporterConfig()
+            assert config.redis_key_prefix == "gunicorn"
+
+        finally:
+            # Restore original environment
+            for key, value in original_env.items():
+                if value is not None:
+                    os.environ[key] = value
+                elif key in os.environ:
+                    del os.environ[key]
+
     def test_validation_creates_multiproc_dir(self):
         """Test that validation creates multiprocess directory if it doesn't exist."""
         # Save original environment

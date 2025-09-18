@@ -178,8 +178,8 @@ The documentation includes:
 
 - `gunicorn_worker_requests_total`: Total requests processed
 - `gunicorn_worker_request_duration_seconds`: Request duration histogram
-- `gunicorn_worker_memory_usage_bytes`: Memory usage per worker
-- `gunicorn_worker_cpu_usage_percent`: CPU usage per worker
+- `gunicorn_worker_memory_bytes`: Memory usage per worker
+- `gunicorn_worker_cpu_percent`: CPU usage per worker
 - `gunicorn_worker_uptime_seconds`: Worker uptime
 
 ### Master Metrics
@@ -251,7 +251,11 @@ All async workers require their respective dependencies:
 | `PROMETHEUS_MULTIPROC_DIR` | Auto-generated           | Multiprocess directory                                    |
 | `REDIS_ENABLED`            | `false`                  | Enable Redis storage (no files created)                   |
 | `REDIS_FORWARD_ENABLED`    | `false`                  | Enable Redis forwarding (keeps files + forwards to Redis) |
-| `REDIS_URL`                | `redis://127.0.0.1:6379` | Redis connection URL (configure for your environment)     |
+| `REDIS_HOST`               | `127.0.0.1`              | Redis server hostname                                     |
+| `REDIS_PORT`               | `6379`                   | Redis server port                                         |
+| `REDIS_DB`                 | `0`                      | Redis database number                                     |
+| `REDIS_PASSWORD`           | *(none)*                 | Redis password (optional)                                 |
+| `REDIS_KEY_PREFIX`         | `gunicorn:metrics:`      | Prefix for Redis keys                                     |
 
 ### Gunicorn Hooks
 

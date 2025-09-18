@@ -39,6 +39,15 @@ class PrometheusMaster(Arbiter):
         except Exception as e:
             logger.error("Failed to set up master metrics: %s", e)
 
+    def _safe_inc_restart(self, reason: str) -> None:
+        """Safely increment MasterWorkerRestarts without blocking signal handling."""
+        try:
+            MasterWorkerRestarts.inc(reason=reason)
+        except Exception:  # nosec
+            logger.debug(
+                "Failed to inc MasterWorkerRestarts(reason=%s)", reason, exc_info=True
+            )
+
     def handle_int(self):
         """Handle INT signal (Ctrl+C)."""
         try:
@@ -46,8 +55,8 @@ class PrometheusMaster(Arbiter):
         except Exception:  # nosec
             # Avoid logging errors in signal handlers
             pass
-        MasterWorkerRestarts.labels(reason="int").inc()
         super().handle_int()
+        self._safe_inc_restart("int")
 
     def handle_hup(self):
         """Handle HUP signal."""
@@ -56,20 +65,28 @@ class PrometheusMaster(Arbiter):
         except Exception:  # nosec
             # Avoid logging errors in signal handlers
             pass
-        MasterWorkerRestarts.labels(reason="hup").inc()
         super().handle_hup()
+        self._safe_inc_restart("hup")
 
     def handle_ttin(self):
         """Handle TTIN signal."""
-        logger.info("Gunicorn master TTIN signal received")
-        MasterWorkerRestarts.labels(reason="ttin").inc()
+        try:
+            logger.info("Gunicorn master TTIN signal received")
+        except Exception:  # nosec
+            # Avoid logging errors in signal handlers
+            pass
         super().handle_ttin()
+        self._safe_inc_restart("ttin")
 
     def handle_ttou(self):
         """Handle TTOU signal."""
-        logger.info("Gunicorn master TTOU signal received")
-        MasterWorkerRestarts.labels(reason="ttou").inc()
+        try:
+            logger.info("Gunicorn master TTOU signal received")
+        except Exception:  # nosec
+            # Avoid logging errors in signal handlers
+            pass
         super().handle_ttou()
+        self._safe_inc_restart("ttou")
 
     def handle_chld(self, sig, frame):
         """Handle CHLD signal."""
@@ -78,8 +95,8 @@ class PrometheusMaster(Arbiter):
         except Exception:  # nosec
             # Avoid logging errors in signal handlers
             pass
-        MasterWorkerRestarts.labels(reason="chld").inc()
         super().handle_chld(sig, frame)
+        self._safe_inc_restart("chld")
 
     def handle_usr1(self):
         """Handle USR1 signal."""
@@ -88,8 +105,8 @@ class PrometheusMaster(Arbiter):
         except Exception:  # nosec
             # Avoid logging errors in signal handlers
             pass
-        MasterWorkerRestarts.labels(reason="usr1").inc()
         super().handle_usr1()
+        self._safe_inc_restart("usr1")
 
     def handle_usr2(self):
         """Handle USR2 signal."""
@@ -98,8 +115,8 @@ class PrometheusMaster(Arbiter):
         except Exception:  # nosec
             # Avoid logging errors in signal handlers
             pass
-        MasterWorkerRestarts.labels(reason="usr2").inc()
         super().handle_usr2()
+        self._safe_inc_restart("usr2")
 
     def init_signals(self):
         """Initialize signal handlers."""

@@ -5,6 +5,8 @@ import time
 from threading import Lock
 from typing import List, Tuple
 
+from ...config import config
+
 
 # Conditional Redis import - only import when needed
 try:
@@ -23,14 +25,14 @@ class RedisDict:
     Each metric is stored as a Redis hash with keys for value, timestamp, and metadata.
     """
 
-    def __init__(self, redis_client, key_prefix: str = "prometheus"):
+    def __init__(self, redis_client, key_prefix: str = None):
         if not REDIS_AVAILABLE:
             raise ImportError(
                 "Redis is not available. Install redis package to use RedisDict."
             )
 
         self._redis = redis_client
-        self._key_prefix = key_prefix
+        self._key_prefix = key_prefix or config.redis_key_prefix
         self._lock = Lock()
 
     def _get_metric_key(self, metric_key: str) -> str:
@@ -134,8 +136,10 @@ class RedisDict:
         # Redis client is typically managed externally
 
     @staticmethod
-    def read_all_values_from_redis(redis_client, key_prefix: str = "prometheus"):
+    def read_all_values_from_redis(redis_client, key_prefix: str = None):
         """Static method to read all values from Redis, similar to MmapedDict."""
+        if key_prefix is None:
+            key_prefix = config.redis_key_prefix
         redis_dict = RedisDict(redis_client, key_prefix)
         return redis_dict.read_all_values()
 

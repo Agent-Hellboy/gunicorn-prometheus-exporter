@@ -7,6 +7,8 @@ from prometheus_client.metrics_core import Metric
 from prometheus_client.samples import Sample
 from prometheus_client.utils import floatToGoString
 
+from ...config import config
+
 
 # Conditional Redis import - only import when needed
 try:
@@ -21,7 +23,7 @@ except ImportError:
 class RedisMultiProcessCollector:
     """Collector for Redis-based multi-process mode."""
 
-    def __init__(self, registry, redis_client=None, redis_key_prefix="prometheus"):
+    def __init__(self, registry, redis_client=None, redis_key_prefix=None):
         if not REDIS_AVAILABLE:
             raise ImportError(
                 "Redis is not available. Install redis package to use "
@@ -29,7 +31,7 @@ class RedisMultiProcessCollector:
             )
 
         self._redis_client = redis_client or self._get_default_redis_client()
-        self._redis_key_prefix = redis_key_prefix
+        self._redis_key_prefix = redis_key_prefix or config.redis_key_prefix
 
         if self._redis_client is None:
             raise ValueError(
@@ -54,13 +56,15 @@ class RedisMultiProcessCollector:
             return None
 
     @staticmethod
-    def merge_from_redis(redis_client, redis_key_prefix="prometheus", accumulate=True):
+    def merge_from_redis(redis_client, redis_key_prefix=None, accumulate=True):
         """Merge metrics from Redis.
 
         By default, histograms are accumulated, as per prometheus wire format.
         But if writing the merged data back to Redis, use
         accumulate=False to avoid compound accumulation.
         """
+        if redis_key_prefix is None:
+            redis_key_prefix = config.redis_key_prefix
         metrics = RedisMultiProcessCollector._read_metrics_from_redis(
             redis_client, redis_key_prefix
         )

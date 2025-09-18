@@ -10,6 +10,8 @@ import time
 
 from typing import Dict, Optional, Protocol, Tuple
 
+from ...config import config
+
 
 logger = logging.getLogger(__name__)
 
@@ -63,17 +65,15 @@ class StorageDictProtocol(Protocol):
 class RedisStorageDict:
     """Redis-backed dictionary for storing metric values with thread safety."""
 
-    def __init__(
-        self, redis_client: RedisClientProtocol, key_prefix: str = "prometheus"
-    ):
+    def __init__(self, redis_client: RedisClientProtocol, key_prefix: str = None):
         """Initialize Redis storage dictionary.
 
         Args:
             redis_client: Redis client instance
-            key_prefix: Prefix for Redis keys
+            key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
         """
         self._redis = redis_client
-        self._key_prefix = key_prefix
+        self._key_prefix = key_prefix or config.redis_key_prefix
         self._lock = threading.Lock()
         logger.debug("Initialized Redis storage dict with prefix: %s", key_prefix)
 
@@ -164,17 +164,15 @@ class RedisStorageDict:
 class RedisValueClass:
     """Redis-backed value class for Prometheus metrics."""
 
-    def __init__(
-        self, redis_client: RedisClientProtocol, key_prefix: str = "prometheus"
-    ):
+    def __init__(self, redis_client: RedisClientProtocol, key_prefix: str = None):
         """Initialize Redis value class.
 
         Args:
             redis_client: Redis client instance
-            key_prefix: Prefix for Redis keys
+            key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
         """
         self._redis_client = redis_client
-        self._key_prefix = key_prefix
+        self._key_prefix = key_prefix or config.redis_key_prefix
         logger.debug("Initialized Redis value class with prefix: %s", key_prefix)
 
     def __call__(self, *args, **kwargs):
@@ -192,19 +190,17 @@ class RedisValueClass:
 class RedisStorageClient:
     """Main client for Redis-based storage operations."""
 
-    def __init__(
-        self, redis_client: RedisClientProtocol, key_prefix: str = "prometheus"
-    ):
+    def __init__(self, redis_client: RedisClientProtocol, key_prefix: str = None):
         """Initialize Redis storage client.
 
         Args:
             redis_client: Redis client instance
-            key_prefix: Prefix for Redis keys
+            key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
         """
         self._redis_client = redis_client
-        self._key_prefix = key_prefix
-        self._redis_dict = RedisStorageDict(redis_client, key_prefix)
-        self._value_class = RedisValueClass(redis_client, key_prefix)
+        self._key_prefix = key_prefix or config.redis_key_prefix
+        self._redis_dict = RedisStorageDict(redis_client, self._key_prefix)
+        self._value_class = RedisValueClass(redis_client, self._key_prefix)
         logger.debug("Initialized Redis storage client with prefix: %s", key_prefix)
 
     def get_value_class(self):

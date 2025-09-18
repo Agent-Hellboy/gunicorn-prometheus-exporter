@@ -63,9 +63,9 @@ class ExporterConfig:
     def _setup_multiproc_dir(self):
         """Set up the Prometheus multiprocess directory."""
         if not os.environ.get(self.ENV_PROMETHEUS_MULTIPROC_DIR):
-            os.environ[self.ENV_PROMETHEUS_MULTIPROC_DIR] = (
-                self.PROMETHEUS_MULTIPROC_DIR
-            )
+            os.environ[
+                self.ENV_PROMETHEUS_MULTIPROC_DIR
+            ] = self.PROMETHEUS_MULTIPROC_DIR
 
     @property
     def prometheus_multiproc_dir(self) -> str:
@@ -175,7 +175,7 @@ class ExporterConfig:
     @property
     def redis_key_prefix(self) -> str:
         """Get Redis key prefix."""
-        return os.environ.get(self.ENV_REDIS_KEY_PREFIX, "gunicorn:metrics:")
+        return os.environ.get(self.ENV_REDIS_KEY_PREFIX, "gunicorn")
 
     @property
     def cleanup_db_files(self) -> bool:
