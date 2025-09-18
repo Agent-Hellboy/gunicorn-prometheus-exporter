@@ -58,9 +58,14 @@ old_meta_keys = redis_client.keys("gunicorn:meta:*")
 print(f"\nOld format metric keys: {len(old_metric_keys)}")
 print(f"Old format meta keys: {len(old_meta_keys)}")
 
-if old_metric_keys:
-    print("⚠ Still using old key format!")
-    for key in old_metric_keys[:3]:
-        print(f"  {key.decode('utf-8')}")
+if old_metric_keys or old_meta_keys:
+    print("✗ Still using old key format!")
+    for key in (old_metric_keys + old_meta_keys)[:3]:
+        print(f"  {key}")
+    sys.exit(2)
+elif not metric_keys and not meta_keys:
+    print("✗ No new-format keys found.")
+    sys.exit(3)
 else:
     print("✓ Using new key format!")
+    sys.exit(0)
