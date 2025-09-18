@@ -8,7 +8,7 @@ import logging
 import threading
 import time
 
-from typing import Dict, Iterable, Optional, Protocol, Tuple
+from typing import Dict, Iterable, Optional, Protocol, Tuple, Union
 
 from ...config import config
 
@@ -23,13 +23,13 @@ class RedisClientProtocol(Protocol):
         """Test Redis connection."""
         raise NotImplementedError
 
-    def hget(self, name: str | bytes, key: str) -> Optional[bytes | str]:
+    def hget(self, name: Union[str, bytes], key: str) -> Optional[Union[bytes, str]]:
         """Get hash field value."""
         raise NotImplementedError
 
     def hset(
         self,
-        name: str | bytes,
+        name: Union[str, bytes],
         key: str = None,
         value: str = None,
         mapping: Dict[str, object] = None,
@@ -37,7 +37,9 @@ class RedisClientProtocol(Protocol):
         """Set hash field value."""
         raise NotImplementedError
 
-    def hgetall(self, name: str | bytes) -> Dict[bytes | str, bytes | str]:
+    def hgetall(
+        self, name: Union[str, bytes]
+    ) -> Dict[Union[bytes, str], Union[bytes, str]]:
         """Get all hash fields."""
         raise NotImplementedError
 
@@ -49,7 +51,7 @@ class RedisClientProtocol(Protocol):
         """Iterate keys matching pattern (non-blocking)."""
         raise NotImplementedError
 
-    def delete(self, *keys: bytes | str) -> int:
+    def delete(self, *keys: Union[bytes, str]) -> int:
         """Delete keys."""
         raise NotImplementedError
 
