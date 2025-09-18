@@ -321,7 +321,7 @@ class TestRedisMultiProcessCollector:
             b"test_prefix:counter:12345:metric:hash", mock_redis
         )
 
-        expected_key = b"test_prefix:counter:12345:meta:hash"
+        expected_key = "test_prefix:counter:12345:meta:hash"
         mock_redis.hgetall.assert_called_once_with(expected_key)
         assert result == {b"key": b"value"}
 

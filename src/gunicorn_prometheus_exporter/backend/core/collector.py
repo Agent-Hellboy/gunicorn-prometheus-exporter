@@ -107,6 +107,24 @@ class RedisMultiProcessCollector:
         return metrics
 
     @staticmethod
+    def _extract_original_key_from_metadata(metadata):
+        """Extract original key from metadata, handling both bytes and string."""
+        original_raw = metadata.get(b"original_key") or metadata.get("original_key")
+        if isinstance(original_raw, (bytes, bytearray)):
+            return original_raw.decode("utf-8")
+        return str(original_raw or "")
+
+    @staticmethod
+    def _extract_pid_from_metric_key(metric_key, metric_type):
+        """Extract PID from metric key for gauge metrics."""
+        if metric_type != "gauge":
+            return "unknown"
+        if isinstance(metric_key, (bytes, bytearray)):
+            metric_key = metric_key.decode("utf-8")
+        key_parts = metric_key.split(":")
+        return key_parts[2] if len(key_parts) > 2 else "unknown"
+
+    @staticmethod
     def _process_metric_key(metric_key, redis_client, metrics, _parse_key):  # pylint: disable=too-many-locals
         """Process a single metric key from Redis."""
         try:
@@ -117,7 +135,9 @@ class RedisMultiProcessCollector:
             if not metadata:
                 return
 
-            original_key = metadata.get(b"original_key", b"").decode("utf-8")
+            original_key = (
+                RedisMultiProcessCollector._extract_original_key_from_metadata(metadata)
+            )
             if not original_key:
                 return
 
@@ -133,11 +153,9 @@ class RedisMultiProcessCollector:
                 return
 
             # Create metric and add sample
-            # Extract PID from metric_key for gauge metrics
-            pid = "unknown"
-            if typ == "gauge":
-                key_parts = metric_key.decode("utf-8").split(":")
-                pid = key_parts[-1] if len(key_parts) > 3 else "unknown"
+            pid = RedisMultiProcessCollector._extract_pid_from_metric_key(
+                metric_key, typ
+            )
 
             RedisMultiProcessCollector._add_sample_to_metric(
                 RedisMultiProcessCollector._get_or_create_metric(
@@ -160,9 +178,11 @@ class RedisMultiProcessCollector:
     @staticmethod
     def _get_metadata(metric_key, redis_client):
         """Get metadata for a metric key."""
-        # metric_key format: gunicorn:metric:{original_key}
-        # metadata_key format: gunicorn:meta:{original_key}
-        metadata_key = metric_key.replace(b"metric:", b"meta:")
+        # metric_key format: gunicorn:type:pid:metric:{original_key}
+        # metadata_key format: gunicorn:type:pid:meta:{original_key}
+        if isinstance(metric_key, (bytes, bytearray)):
+            metric_key = metric_key.decode("utf-8")
+        metadata_key = metric_key.replace(":metric:", ":meta:", 1)
         return redis_client.hgetall(metadata_key)
 
     @staticmethod

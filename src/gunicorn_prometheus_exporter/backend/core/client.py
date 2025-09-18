@@ -170,6 +170,28 @@ class RedisStorageDict:
             metadata_key, mapping={"original_key": key, "created_at": time.time()}
         )
 
+    def _extract_original_key(self, metadata):
+        """Extract original key from metadata, handling both bytes and string."""
+        original_raw = metadata.get(b"original_key") or metadata.get("original_key")
+        if isinstance(original_raw, (bytes, bytearray)):
+            return original_raw.decode("utf-8")
+        return str(original_raw or "")
+
+    def _extract_metric_values(self, metric_key):
+        """Extract value and timestamp from metric key."""
+        value_data = self._redis.hget(metric_key, "value")
+        timestamp_data = self._redis.hget(metric_key, "timestamp")
+
+        if value_data is None or timestamp_data is None:
+            return None, None
+
+        if isinstance(value_data, (bytes, bytearray)):
+            value_data = value_data.decode("utf-8")
+        if isinstance(timestamp_data, (bytes, bytearray)):
+            timestamp_data = timestamp_data.decode("utf-8")
+
+        return float(value_data), float(timestamp_data)
+
     def read_all_values(self) -> Iterable[Tuple[str, float, float]]:
         """Yield (key, value, timestamp) for all metrics."""
         pattern = f"{self._key_prefix}:*:*:metric:*"
@@ -178,29 +200,21 @@ class RedisStorageDict:
             for metric_key in self._redis.scan_iter(match=pattern):
                 if isinstance(metric_key, (bytes, bytearray)):
                     metric_key = metric_key.decode("utf-8")
-                # Derive meta key deterministically
-                metadata_key = metric_key.replace(
-                    f"{self._key_prefix}:metric:", f"{self._key_prefix}:meta:", 1
-                )
-                metadata = self._redis.hgetall(metadata_key)
 
+                # Get metadata and original key
+                metadata_key = metric_key.replace(":metric:", ":meta:", 1)
+                metadata = self._redis.hgetall(metadata_key)
                 if not metadata:
                     continue
 
-                original_key = metadata.get(b"original_key", b"").decode("utf-8")
+                original_key = self._extract_original_key(metadata)
                 if not original_key:
                     continue
 
                 # Get value and timestamp
-                value_data = self._redis.hget(metric_key, "value")
-                timestamp_data = self._redis.hget(metric_key, "timestamp")
-
-                if value_data is not None and timestamp_data is not None:
-                    if isinstance(value_data, (bytes, bytearray)):
-                        value_data = value_data.decode("utf-8")
-                    if isinstance(timestamp_data, (bytes, bytearray)):
-                        timestamp_data = timestamp_data.decode("utf-8")
-                    yield original_key, float(value_data), float(timestamp_data)
+                value, timestamp = self._extract_metric_values(metric_key)
+                if value is not None and timestamp is not None:
+                    yield original_key, value, timestamp
 
     @staticmethod
     def read_all_values_from_redis(redis_client, key_prefix: str = None):
