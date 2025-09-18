@@ -31,13 +31,9 @@ repos:
     hooks:
       - id: radon-cc
         name: radon-cc
-        entry: bash
+        entry: .tox/lint/bin/radon
         language: system
-        args:
-          [
-            -c,
-            ".tox/lint/bin/radon cc src -a || echo 'Radon CC scan completed'",
-          ]
+        args: [cc, src, -a]
         pass_filenames: false
         always_run: true
 
@@ -46,10 +42,9 @@ repos:
     hooks:
       - id: radon-mi
         name: radon-mi
-        entry: bash
+        entry: .tox/lint/bin/radon
         language: system
-        args:
-          [-c, ".tox/lint/bin/radon mi src || echo 'Radon MI scan completed'"]
+        args: [mi, src]
         pass_filenames: false
         always_run: true
 
