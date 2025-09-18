@@ -8,7 +8,7 @@ import logging
 import threading
 import time
 
-from typing import Dict, Optional, Protocol, Tuple
+from typing import Dict, Iterable, Optional, Protocol, Tuple
 
 from ...config import config
 
@@ -170,12 +170,14 @@ class RedisStorageDict:
             metadata_key, mapping={"original_key": key, "created_at": time.time()}
         )
 
-    def read_all_values(self):
+    def read_all_values(self) -> Iterable[Tuple[str, float, float]]:
         """Yield (key, value, timestamp) for all metrics."""
         pattern = f"{self._key_prefix}:*:*:metric:*"
 
         with self._lock:
             for metric_key in self._redis.scan_iter(match=pattern):
+                if isinstance(metric_key, (bytes, bytearray)):
+                    metric_key = metric_key.decode("utf-8")
                 # Get the original key from metadata
                 metadata_key = metric_key.replace("metric:", "meta:")
                 metadata = self._redis.hgetall(metadata_key)
@@ -192,6 +194,10 @@ class RedisStorageDict:
                 timestamp_data = self._redis.hget(metric_key, "timestamp")
 
                 if value_data is not None and timestamp_data is not None:
+                    if isinstance(value_data, (bytes, bytearray)):
+                        value_data = value_data.decode("utf-8")
+                    if isinstance(timestamp_data, (bytes, bytearray)):
+                        timestamp_data = timestamp_data.decode("utf-8")
                     yield original_key, float(value_data), float(timestamp_data)
 
     @staticmethod
