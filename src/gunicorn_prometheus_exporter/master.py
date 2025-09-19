@@ -1,6 +1,7 @@
 import logging
 import os
 import queue
+import signal
 import threading
 import time
 
@@ -141,53 +142,49 @@ class PrometheusMaster(Arbiter):
     def handle_int(self):
         """Handle INT signal (Ctrl+C)."""
         try:
-            logger.info("Gunicorn master INT signal received (Ctrl+C)")
-        except Exception:  # nosec
-            # Avoid logging errors in signal handlers
-            pass
-
-        # For SIGINT, capture metric synchronously BEFORE calling super().handle_int()
-        # because super().handle_int() will terminate the process immediately
-        try:
-            logger.info("Capturing SIGINT metric synchronously before termination")
+            logger.info("SIGINT received - capturing metric")
             MasterWorkerRestarts.inc(reason="int")
+            logger.info("SIGINT metric incremented")
 
-            # Force a small delay to ensure the metric is written to storage
-            # This is critical for SIGINT since the process terminates immediately
-            time.sleep(0.1)  # 100ms delay to allow metric to be written
-
-            # Try to force flush metrics to storage (if possible)
+            # Force flush to storage for SIGINT to ensure metric is written before
+            # termination
             try:
                 from .config import config
 
                 if config.redis_enabled:
-                    # For Redis storage, try to force flush Redis connection
-                    try:
-                        from .backend import get_redis_storage_manager
+                    logger.info("SIGINT - forcing Redis flush")
+                    # For Redis storage
+                    from .backend import get_redis_storage_manager
 
-                        manager = get_redis_storage_manager()
-                        if hasattr(manager, "_redis_client") and manager._redis_client:
-                            # Force Redis to flush any pending writes
-                            manager._redis_client.ping()  # Test connection and flush
-                            logger.info("Forced Redis metrics flush")
-                    except Exception as redis_e:
-                        logger.debug("Could not force Redis flush: %s", redis_e)
+                    manager = get_redis_storage_manager()
+                    # Ensure Redis manager is set up
+                    if (
+                        not hasattr(manager, "_redis_client")
+                        or not manager._redis_client
+                    ):
+                        logger.info("SIGINT - setting up Redis manager")
+                        manager.setup()
+                    if hasattr(manager, "_redis_client") and manager._redis_client:
+                        manager._redis_client.ping()  # Force Redis flush
+                        logger.info("SIGINT - Redis flush completed")
                 else:
+                    logger.info("SIGINT - forcing file flush")
                     # For file-based multiprocess storage
                     from prometheus_client import values
 
                     if hasattr(values, "ValueClass") and hasattr(
                         values.ValueClass, "_write_to_file"
                     ):
-                        # Force write to multiprocess files
-                        values.ValueClass._write_to_file()
-                        logger.info("Forced file-based metrics flush")
-            except Exception as flush_e:
-                logger.debug("Could not force metrics flush: %s", flush_e)
+                        values.ValueClass._write_to_file()  # Force file flush
+                        logger.info("SIGINT - file flush completed")
+            except Exception as e:  # nosec
+                logger.error("SIGINT flush error: %s", e)
+                # Ignore flush errors in signal handler
 
-            logger.info("SIGINT metric captured successfully before termination")
-        except Exception as e:
-            logger.error("Failed to capture SIGINT metric: %s", e)
+            logger.info("SIGINT - calling super().handle_int()")
+        except Exception as e:  # nosec
+            logger.error("SIGINT error: %s", e)
+            # Avoid logging errors in signal handlers
 
         # Now call the parent handler which will terminate the process
         super().handle_int()
@@ -262,32 +259,21 @@ class PrometheusMaster(Arbiter):
 
     def stop(self, graceful=True):
         """Stop the master and clean up resources."""
-        # Wait for queued metrics to drain
-        if hasattr(self, "_signal_queue"):
-            try:
-                self._signal_queue.join()
-            except Exception:  # nosec
-                pass
-
-        # Signal shutdown to background thread
+        # Signal shutdown to background thread immediately
         if hasattr(self, "_shutdown_event"):
             self._shutdown_event.set()
-
-        # Wait for signal processing thread to finish (with timeout)
-        if (
-            hasattr(self, "_signal_thread")
-            and self._signal_thread
-            and self._signal_thread.is_alive()
-        ):
-            self._signal_thread.join(timeout=2.0)
-            if self._signal_thread.is_alive():
-                logger.warning("Signal metrics thread did not stop gracefully")
 
         # Call parent stop method
         super().stop(graceful)
 
     def signal(self, sig, frame):  # pylint: disable=unused-argument
         """Override signal method to queue signals for processing."""
+        # Allow SIGINT to be processed normally for immediate termination
+        if sig == signal.SIGINT:
+            super().signal(sig, frame)
+            return
+
+        # Queue other signals for processing
         if len(self.SIG_QUEUE) < 5:
             self.SIG_QUEUE.append(sig)
             self.wakeup()

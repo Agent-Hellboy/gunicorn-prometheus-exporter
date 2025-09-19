@@ -252,9 +252,59 @@ flush_redis() {
         else
             print_success "Redis cleanup complete ($key_count keys remaining)"
         fi
+
+        # Additional validation: Check for any signal metrics
+        local signal_metrics
+        signal_metrics=$(eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\" | wc -l" 2>/dev/null || echo "0")
+        if [ "$signal_metrics" -eq 0 ]; then
+            print_success "No signal metrics found in Redis (clean state)"
+        else
+            print_warning "Found $signal_metrics signal metric keys in Redis - forcing cleanup"
+            eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\"" | xargs -r eval "$REDIS_CLI UNLINK" >/dev/null 2>&1 || true
+            print_success "Signal metrics cleaned from Redis"
+        fi
     else
         print_warning "redis-cli not available, skipping Redis flush"
     fi
+}
+
+# Function to validate Redis is clean before signal testing
+validate_redis_clean() {
+    print_status "Validating Redis is clean before signal testing..."
+
+    if ! command -v redis-cli >/dev/null 2>&1; then
+        print_warning "redis-cli not available, skipping Redis validation"
+        return 0
+    fi
+
+    # Check total key count
+    local key_count
+    key_count=$(eval "$REDIS_CLI DBSIZE" 2>/dev/null || echo "0")
+    print_status "Redis key count: $key_count"
+
+    # Check for any signal metrics specifically
+    local signal_metrics
+    signal_metrics=$(eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\" | wc -l" 2>/dev/null || echo "0")
+    print_status "Signal metric keys found: $signal_metrics"
+
+    if [ "$signal_metrics" -gt 0 ]; then
+        print_warning "Found $signal_metrics signal metric keys - cleaning Redis before signal test"
+        eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\"" | xargs -r eval "$REDIS_CLI UNLINK" >/dev/null 2>&1 || true
+        print_success "Signal metrics cleaned from Redis"
+
+        # Verify cleanup
+        signal_metrics=$(eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\" | wc -l" 2>/dev/null || echo "0")
+        if [ "$signal_metrics" -eq 0 ]; then
+            print_success "✓ Redis validated clean for signal testing"
+        else
+            print_error "✗ Redis still contains $signal_metrics signal metric keys"
+            return 1
+        fi
+    else
+        print_success "✓ Redis validated clean for signal testing"
+    fi
+
+    return 0
 }
 
 # Function to verify Redis contains metrics
@@ -951,6 +1001,9 @@ verify_redis_expiration() {
 test_signal_handling() {
     print_status "Testing comprehensive signal handling and metric capture..."
 
+    # Validate Redis is clean before signal testing
+    validate_redis_clean
+
     if [ -n "$GUNICORN_PID" ] && kill -0 "$GUNICORN_PID" 2>/dev/null; then
         print_status "Testing various signals and metric capture..."
 
@@ -980,6 +1033,18 @@ test_signal_handling() {
 
         # Final test: SIGINT (Ctrl+C) - this should terminate the process
         print_status "Testing SIGINT (Ctrl+C) - should terminate process..."
+
+        # Validate Redis is clean before SIGINT test
+        print_status "Validating Redis is clean before SIGINT test..."
+        local signal_metrics_before
+        signal_metrics_before=$(eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\" | wc -l" 2>/dev/null || echo "0")
+        print_status "Signal metrics in Redis before SIGINT: $signal_metrics_before"
+
+        if [ "$signal_metrics_before" -gt 0 ]; then
+            print_warning "Found $signal_metrics_before signal metrics in Redis - cleaning before SIGINT test"
+            eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\"" | xargs -r eval "$REDIS_CLI UNLINK" >/dev/null 2>&1 || true
+            print_success "Signal metrics cleaned from Redis before SIGINT test"
+        fi
 
         # Check metrics before SIGINT to establish baseline
         print_status "Checking metrics before SIGINT..."
@@ -1011,6 +1076,18 @@ test_signal_handling() {
 
         # Wait for process to terminate
         sleep 2
+
+        # Check if SIGINT metric was written to Redis
+        print_status "Checking if SIGINT metric was written to Redis..."
+        local signal_metrics_after
+        signal_metrics_after=$(eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\" | wc -l" 2>/dev/null || echo "0")
+        print_status "Signal metrics in Redis after SIGINT: $signal_metrics_after"
+
+        if [ "$signal_metrics_after" -gt "$signal_metrics_before" ]; then
+            print_success "✓ SIGINT metric written to Redis (found $signal_metrics_after signal metrics)"
+        else
+            print_warning "⚠ SIGINT metric may not have been written to Redis (still $signal_metrics_after signal metrics)"
+        fi
 
         # Check if process is still running
         if kill -0 "$GUNICORN_PID" 2>/dev/null; then
