@@ -427,6 +427,11 @@ def test_master_chld_signal_handling(master):
 
             master.handle_chld(sig, frame)
 
+            # Wait for async signal processing to complete
+            import time
+
+            time.sleep(0.1)
+
             # Metric check
             samples = list(MASTER_WORKER_RESTARTS.collect())[0].samples
             matched = [s for s in samples if s.labels.get("reason") == "chld"]
