@@ -154,16 +154,16 @@ class PrometheusMaster(Arbiter):
                     from .backend import get_redis_storage_manager
 
                     manager = get_redis_storage_manager()
-                    # Ensure Redis manager is set up
-                    if (
-                        not hasattr(manager, "_redis_client")
-                        or not manager._redis_client
-                    ):
-                        logger.debug("SIGINT - setting up Redis manager")
-                        manager.setup()
-                    if hasattr(manager, "_redis_client") and manager._redis_client:
-                        manager._redis_client.ping()  # Force Redis flush
-                        logger.debug("SIGINT - Redis flush completed")
+                    client = manager.get_client()
+                    if client and hasattr(client, "ping"):
+                        try:
+                            client.ping()
+                            logger.debug("SIGINT - Redis flush completed")
+                        except Exception:
+                            logger.warning(
+                                "Redis ping failed while forcing metrics flush",
+                                exc_info=True,
+                            )
                 else:
                     logger.debug("SIGINT - forcing file flush")
                     # For file-based multiprocess storage
@@ -174,14 +174,12 @@ class PrometheusMaster(Arbiter):
                     ):
                         values.ValueClass._write_to_file()  # Force file flush
                         logger.debug("SIGINT - file flush completed")
-            except Exception as e:  # nosec
-                logger.error("SIGINT flush error: %s", e)
-                # Ignore flush errors in signal handler
+            except Exception:  # nosec
+                logger.debug("Could not force metrics flush", exc_info=True)
 
             logger.debug("SIGINT - metric capture and flush completed")
-        except Exception as e:  # nosec
-            logger.error("SIGINT error: %s", e)
-            # Avoid logging errors in signal handlers
+        except Exception:  # nosec
+            logger.error("Failed to capture SIGINT metric", exc_info=True)
 
         logger.debug("SIGINT - calling super().handle_int()")
         super().handle_int()
