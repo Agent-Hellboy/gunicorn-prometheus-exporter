@@ -495,7 +495,7 @@ class TestRedisStorageEdgeCases:
 
         # Should handle connection error gracefully
         try:
-            storage_dict.write_value("test_key", 1.5, 987654321.0, 1234567890.0)
+            storage_dict.write_value("test_key", 1.5, 987654321.0)
             # If no exception is raised, that's also acceptable behavior
         except Exception:
             # If any exception is raised, that's also acceptable behavior
@@ -523,7 +523,7 @@ class TestRedisStorageEdgeCases:
 
         # Should handle memory error gracefully
         try:
-            storage_dict.write_value("test_key", 1.5, 987654321.0, 1234567890.0)
+            storage_dict.write_value("test_key", 1.5, 987654321.0)
             # If no exception is raised, that's also acceptable behavior
         except Exception:
             # If any exception is raised, that's also acceptable behavior
@@ -548,7 +548,7 @@ class TestRedisStorageEdgeCases:
 
         # Should handle partial failure gracefully
         try:
-            storage_dict.write_value("test_key", 1.5, 987654321.0, 1234567890.0)
+            storage_dict.write_value("test_key", 1.5, 987654321.0)
             # If no exception is raised, that's also acceptable behavior
         except Exception:
             # If any exception is raised, that's also acceptable behavior
@@ -563,7 +563,7 @@ class TestRedisStorageEdgeCases:
 
         # Should handle TTL failure gracefully
         try:
-            storage_dict.write_value("test_key", 1.5, 987654321.0, 1234567890.0)
+            storage_dict.write_value("test_key", 1.5, 987654321.0)
             # If no exception is raised, that's also acceptable behavior
         except Exception:
             # If any exception is raised, that's also acceptable behavior
