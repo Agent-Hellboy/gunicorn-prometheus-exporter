@@ -77,7 +77,7 @@ class TestRedisStorageManager:
             assert mock_values.ValueClass is mock_value_class
 
             # Verify logging
-            mock_logger.info.assert_called_with(
+            mock_logger.debug.assert_called_with(
                 "Redis metrics storage enabled - using Redis instead of files"
             )
 
@@ -136,7 +136,7 @@ class TestRedisStorageManager:
             # Verify original value class was restored
             assert mock_values.ValueClass is original_value_class
 
-            mock_logger.info.assert_called_with("Redis storage teardown completed")
+            mock_logger.debug.assert_called_with("Redis storage teardown completed")
 
     def test_is_enabled(self):
         """Test is_enabled method."""

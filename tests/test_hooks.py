@@ -166,7 +166,7 @@ class TestHelperFunctions(unittest.TestCase):
         env_manager._update_workers_env(server.cfg)
 
         self.assertEqual(os.environ.get("GUNICORN_WORKERS"), "4")
-        mock_logger.info.assert_called_once_with(
+        mock_logger.debug.assert_called_once_with(
             "Updated GUNICORN_WORKERS from CLI: %s", 4
         )
 
@@ -197,7 +197,7 @@ class TestHelperFunctions(unittest.TestCase):
         env_manager._update_bind_env(server.cfg)
 
         self.assertEqual(os.environ.get("GUNICORN_BIND"), "0.0.0.0:8000")
-        mock_logger.info.assert_called_once_with(
+        mock_logger.debug.assert_called_once_with(
             "Updated GUNICORN_BIND from CLI: %s", "0.0.0.0:8000"
         )
 
@@ -316,7 +316,7 @@ class TestMetricsServerManager(unittest.TestCase):
 
                     self.assertEqual(registry, metrics_registry)
                     mock_collector.assert_called_once_with(metrics_registry)
-                    mock_logger.info.assert_called_once_with(
+                    mock_logger.debug.assert_called_once_with(
                         "Successfully initialized MultiProcessCollector"
                     )
 
@@ -375,7 +375,7 @@ class TestMetricsServerManager(unittest.TestCase):
 
             self.assertTrue(result)
             mock_start.assert_called_once_with(port, registry=registry)
-            mock_logger.info.assert_called_once_with(
+            mock_logger.debug.assert_called_once_with(
                 "HTTP metrics server started successfully on :%s", port
             )
 
@@ -439,7 +439,7 @@ class TestMetricsServerManager(unittest.TestCase):
 
             self.assertTrue(result)
             mock_start.assert_called_once_with(port, registry=registry)
-            mock_logger.info.assert_called_once_with(
+            mock_logger.debug.assert_called_once_with(
                 "HTTP metrics server started successfully on :%s", port
             )
 
@@ -926,7 +926,7 @@ class TestRedisForwarder(unittest.TestCase):
                 _setup_redis_storage_if_enabled(mock_logger)
 
                 mock_setup_redis.assert_called_once()
-                mock_logger.info.assert_called_once_with(
+                mock_logger.debug.assert_called_once_with(
                     "Redis storage enabled - using Redis instead of files"
                 )
 
@@ -939,7 +939,7 @@ class TestRedisForwarder(unittest.TestCase):
 
             _setup_redis_storage_if_enabled(mock_logger)
 
-            mock_logger.info.assert_called_once_with("Redis storage disabled")
+            mock_logger.debug.assert_called_once_with("Redis storage disabled")
 
     def test_start_redis_forwarder_exception(self):
         """Test _setup_redis_storage_if_enabled with exception."""

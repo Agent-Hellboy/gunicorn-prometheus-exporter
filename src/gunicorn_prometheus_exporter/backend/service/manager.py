@@ -121,7 +121,7 @@ class RedisStorageManager:
 
             # Test connection
             self._redis_client.ping()
-            logger.info(
+            logger.debug(
                 "Connected to Redis at %s:%s (TTL: %s)",
                 config.redis_host,
                 config.redis_port,
@@ -140,7 +140,7 @@ class RedisStorageManager:
             self._replace_prometheus_value_class()
 
             self._is_initialized = True
-            logger.info("Redis metrics storage enabled - using Redis instead of files")
+            logger.debug("Redis metrics storage enabled - using Redis instead of files")
             return True
 
         except Exception as e:
@@ -160,7 +160,7 @@ class RedisStorageManager:
         self._cleanup()
 
         self._is_initialized = False
-        logger.info("Redis storage teardown completed")
+        logger.debug("Redis storage teardown completed")
 
     def is_enabled(self) -> bool:
         """Check if Redis storage is enabled and working."""
@@ -244,7 +244,7 @@ class RedisStorageManager:
 
             values.ValueClass = self._original_value_class
             self._original_value_class = None
-            logger.info("Restored original Prometheus value class")
+            logger.debug("Restored original Prometheus value class")
 
     def _cleanup(self) -> None:
         """Clean up resources."""
@@ -262,7 +262,7 @@ class RedisStorageManager:
 
                 try:
                     self._redis_client.close()
-                    logger.info("Disconnected from Redis")
+                    logger.debug("Disconnected from Redis")
                 except TimeoutError:
                     logger.warning(
                         "Redis close operation timed out, forcing disconnect"

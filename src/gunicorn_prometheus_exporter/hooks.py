@@ -103,13 +103,13 @@ class EnvironmentManager:
             and cfg.workers != self._defaults["workers"]
         ):
             os.environ["GUNICORN_WORKERS"] = str(cfg.workers)
-            self.logger.info("Updated GUNICORN_WORKERS from CLI: %s", cfg.workers)
+            self.logger.debug("Updated GUNICORN_WORKERS from CLI: %s", cfg.workers)
 
     def _update_bind_env(self, cfg: Any) -> None:
         """Update GUNICORN_BIND environment variable from CLI."""
         if hasattr(cfg, "bind") and cfg.bind and cfg.bind != self._defaults["bind"]:
             os.environ["GUNICORN_BIND"] = str(cfg.bind)
-            self.logger.info("Updated GUNICORN_BIND from CLI: %s", cfg.bind)
+            self.logger.debug("Updated GUNICORN_BIND from CLI: %s", cfg.bind)
 
     def _update_worker_class_env(self, cfg: Any) -> None:
         """Update GUNICORN_WORKER_CLASS environment variable from CLI."""
@@ -148,7 +148,7 @@ class MetricsServerManager:
                 manager = get_redis_storage_manager()
                 redis_collector = manager.get_collector()
                 if redis_collector:
-                    self.logger.info("Successfully initialized Redis-based collector")
+                    self.logger.debug("Successfully initialized Redis-based collector")
                     return port, registry
             except Exception as e:
                 self.logger.warning("Failed to initialize Redis collector: %s", e)
@@ -163,7 +163,7 @@ class MetricsServerManager:
 
         try:
             MultiProcessCollector(registry)
-            self.logger.info("Successfully initialized MultiProcessCollector")
+            self.logger.debug("Successfully initialized MultiProcessCollector")
             return port, registry
         except Exception as e:
             self.logger.error("Failed to initialize MultiProcessCollector: %s", e)
@@ -196,7 +196,7 @@ class MetricsServerManager:
             try:
                 # The prometheus_client start_http_server runs in a daemon thread
                 # which should automatically terminate when the main process exits
-                self.logger.info("Metrics server will be stopped when process exits")
+                self.logger.debug("Metrics server will be stopped when process exits")
             except Exception as e:
                 self.logger.error("Failed to stop metrics server: %s", e)
             finally:
@@ -236,7 +236,7 @@ class MetricsServerManager:
                 # Store references to prevent garbage collection
                 self._server_thread = thread
                 self._httpd = httpd
-                self.logger.info(
+                self.logger.debug(
                     "HTTPS metrics server started successfully on %s:%s",
                     bind_address,
                     port,
@@ -246,7 +246,7 @@ class MetricsServerManager:
 
                 # Start HTTP server (default) without addr to preserve test expectations
                 start_http_server(port, registry=registry)
-                self.logger.info(
+                self.logger.debug(
                     "HTTP metrics server started successfully on :%s", port
                 )
 
@@ -391,7 +391,7 @@ def default_worker_int(worker: Any) -> None:
         worker: Gunicorn worker instance
     """
     logger = logging.getLogger(__name__)
-    logger.info("Worker received interrupt signal")
+    logger.debug("Worker received interrupt signal")
 
     # Update worker metrics if the worker has the method
     if hasattr(worker, "update_worker_metrics"):
@@ -460,14 +460,14 @@ def redis_when_ready(_server: Any) -> None:
 def _setup_redis_storage_if_enabled(logger: logging.Logger) -> None:
     """Setup Redis storage if enabled in configuration."""
     if not config.redis_enabled:
-        logger.info("Redis storage disabled")
+        logger.debug("Redis storage disabled")
         return
 
     try:
         from .backend import setup_redis_metrics
 
         if setup_redis_metrics():
-            logger.info("Redis storage enabled - using Redis instead of files")
+            logger.debug("Redis storage enabled - using Redis instead of files")
         else:
             logger.warning(
                 "Failed to setup Redis storage, falling back to file storage"

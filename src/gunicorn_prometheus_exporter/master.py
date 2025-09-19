@@ -58,32 +58,30 @@ class PrometheusMaster(Arbiter):
             daemon=True,
         )
         self._signal_thread.start()
-        logger.info(
+        logger.debug(
             "Asynchronous signal metric capture started (thread: %s)",
             self._signal_thread.name,
         )
 
         # Verify thread is running
         if self._signal_thread.is_alive():
-            logger.info("Signal metrics processor thread is running")
+            logger.debug("Signal metrics processor thread is running")
         else:
             logger.warning("Signal metrics processor thread failed to start")
 
     def _process_signal_metrics(self):
         """Background thread that processes signal metrics asynchronously."""
-        logger.info("Signal metrics processor thread started")  # Add debug logging
+        logger.debug("Signal metrics processor thread started")
         while not self._shutdown_event.is_set():
             try:
                 # Wait for signal metric with timeout
                 reason = self._signal_queue.get(timeout=1.0)
-                logger.info("Processing signal metric: %s", reason)  # Add debug logging
+                logger.debug("Processing signal metric: %s", reason)
 
                 # Safely increment metric
                 try:
                     MasterWorkerRestarts.inc(reason=reason)
-                    logger.info(
-                        "Signal metric captured successfully: %s", reason
-                    )  # Change to info level
+                    logger.debug("Signal metric captured successfully: %s", reason)
                 except Exception as e:
                     logger.warning("Failed to capture signal metric %s: %s", reason, e)
 
@@ -97,15 +95,15 @@ class PrometheusMaster(Arbiter):
                 logger.error("Error in signal metrics processor: %s", e)
                 time.sleep(0.1)  # Brief pause before retry
 
-        logger.info("Signal metrics processor thread stopped")  # Add debug logging
+        logger.debug("Signal metrics processor thread stopped")
 
     def _queue_signal_metric(self, reason: str) -> None:
         """Queue a signal metric for asynchronous processing with fallback."""
         # Try asynchronous approach first
         try:
-            logger.info("Queuing signal metric: %s", reason)
+            logger.debug("Queuing signal metric: %s", reason)
             self._signal_queue.put(reason, timeout=0.1)
-            logger.info("Signal metric queued successfully: %s", reason)
+            logger.debug("Signal metric queued successfully: %s", reason)
             return
         except queue.Full:
             logger.warning(
@@ -120,9 +118,9 @@ class PrometheusMaster(Arbiter):
 
         # Fallback: synchronous approach
         try:
-            logger.info("Fallback: synchronous metric capture for %s", reason)
+            logger.debug("Fallback: synchronous metric capture for %s", reason)
             MasterWorkerRestarts.inc(reason=reason)
-            logger.info("Fallback synchronous metric capture successful: %s", reason)
+            logger.debug("Fallback synchronous metric capture successful: %s", reason)
         except Exception as fallback_e:
             logger.error(
                 "Fallback synchronous metric capture also failed for %s: %s",
@@ -142,9 +140,9 @@ class PrometheusMaster(Arbiter):
     def handle_int(self):
         """Handle INT signal (Ctrl+C)."""
         try:
-            logger.info("SIGINT received - capturing metric")
+            logger.debug("SIGINT received - capturing metric")
             MasterWorkerRestarts.inc(reason="int")
-            logger.info("SIGINT metric incremented")
+            logger.debug("SIGINT metric incremented")
 
             # Force flush to storage for SIGINT to ensure metric is written before
             # termination
@@ -152,7 +150,7 @@ class PrometheusMaster(Arbiter):
                 from .config import config
 
                 if config.redis_enabled:
-                    logger.info("SIGINT - forcing Redis flush")
+                    logger.debug("SIGINT - forcing Redis flush")
                     # For Redis storage
                     from .backend import get_redis_storage_manager
 
@@ -162,13 +160,13 @@ class PrometheusMaster(Arbiter):
                         not hasattr(manager, "_redis_client")
                         or not manager._redis_client
                     ):
-                        logger.info("SIGINT - setting up Redis manager")
+                        logger.debug("SIGINT - setting up Redis manager")
                         manager.setup()
                     if hasattr(manager, "_redis_client") and manager._redis_client:
                         manager._redis_client.ping()  # Force Redis flush
-                        logger.info("SIGINT - Redis flush completed")
+                        logger.debug("SIGINT - Redis flush completed")
                 else:
-                    logger.info("SIGINT - forcing file flush")
+                    logger.debug("SIGINT - forcing file flush")
                     # For file-based multiprocess storage
                     from prometheus_client import values
 
@@ -176,25 +174,23 @@ class PrometheusMaster(Arbiter):
                         values.ValueClass, "_write_to_file"
                     ):
                         values.ValueClass._write_to_file()  # Force file flush
-                        logger.info("SIGINT - file flush completed")
+                        logger.debug("SIGINT - file flush completed")
             except Exception as e:  # nosec
                 logger.error("SIGINT flush error: %s", e)
                 # Ignore flush errors in signal handler
 
-            logger.info("SIGINT - metric capture and flush completed")
+            logger.debug("SIGINT - metric capture and flush completed")
         except Exception as e:  # nosec
             logger.error("SIGINT error: %s", e)
             # Avoid logging errors in signal handlers
 
-        # Always call the parent handler which will terminate the process
-        # This must be outside the try-except to ensure it's always called
-        logger.info("SIGINT - calling super().handle_int()")
+        logger.debug("SIGINT - calling super().handle_int()")
         super().handle_int()
 
     def handle_hup(self):
         """Handle HUP signal."""
         try:
-            logger.info("Gunicorn master HUP signal received")
+            logger.debug("Gunicorn master HUP signal received")
         except Exception:  # nosec
             # Avoid logging errors in signal handlers
             pass
@@ -205,23 +201,19 @@ class PrometheusMaster(Arbiter):
     def handle_ttin(self):
         """Handle TTIN signal."""
         try:
-            logger.info("Gunicorn master TTIN signal received")
+            logger.debug("Gunicorn master TTIN signal received")
         except Exception:  # nosec
-            # Avoid logging errors in signal handlers
             pass
         super().handle_ttin()
-        # Queue signal metric for asynchronous processing (non-blocking)
         self._queue_signal_metric("ttin")
 
     def handle_ttou(self):
         """Handle TTOU signal."""
         try:
-            logger.info("Gunicorn master TTOU signal received")
+            logger.debug("Gunicorn master TTOU signal received")
         except Exception:  # nosec
-            # Avoid logging errors in signal handlers
             pass
         super().handle_ttou()
-        # Queue signal metric for asynchronous processing (non-blocking)
         self._queue_signal_metric("ttou")
 
     def handle_chld(self, sig, frame):
@@ -229,29 +221,24 @@ class PrometheusMaster(Arbiter):
         # Note: No logging here to avoid reentrant call issues
         # CHLD signals are very frequent and logging can cause recursion
         super().handle_chld(sig, frame)
-        # Queue signal metric for asynchronous processing (non-blocking)
         self._queue_signal_metric("chld")
 
     def handle_usr1(self):
         """Handle USR1 signal."""
         try:
-            logger.info("Gunicorn master USR1 signal received")
+            logger.debug("Gunicorn master USR1 signal received")
         except Exception:  # nosec
-            # Avoid logging errors in signal handlers
             pass
         super().handle_usr1()
-        # Queue signal metric for asynchronous processing (non-blocking)
         self._queue_signal_metric("usr1")
 
     def handle_usr2(self):
         """Handle USR2 signal."""
         try:
-            logger.info("Gunicorn master USR2 signal received")
+            logger.debug("Gunicorn master USR2 signal received")
         except Exception:  # nosec
-            # Avoid logging errors in signal handlers
             pass
         super().handle_usr2()
-        # Queue signal metric for asynchronous processing (non-blocking)
         self._queue_signal_metric("usr2")
 
     def init_signals(self):
