@@ -194,9 +194,11 @@ class RedisMultiProcessCollector:
         """Get metadata for a metric key."""
         # metric_key format: gunicorn:type:pid:metric:{original_key}
         # metadata_key format: gunicorn:type:pid:meta:{original_key}
-        if isinstance(metric_key, (bytes, bytearray)):
-            metric_key = metric_key.decode("utf-8")
-        metadata_key = metric_key.replace(":metric:", ":meta:", 1)
+        metadata_key = (
+            metric_key.replace(b":metric:", b":meta:", 1)
+            if isinstance(metric_key, (bytes, bytearray))
+            else metric_key.replace(":metric:", ":meta:", 1)
+        )
         return redis_client.hgetall(metadata_key)
 
     @staticmethod

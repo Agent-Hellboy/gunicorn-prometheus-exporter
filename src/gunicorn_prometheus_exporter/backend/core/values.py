@@ -55,6 +55,13 @@ class RedisValue:
             multiprocess_mode,
         )
         self._key = redis_key(metric_name, name, labelnames, labelvalues, help_text)
+        # Ensure metadata is present for accurate merging later
+        if hasattr(self._redis_dict, "ensure_metadata"):
+            self._redis_dict.ensure_metadata(
+                self._key,
+                typ=typ or "counter",
+                multiprocess_mode=multiprocess_mode or "all",
+            )
         self._value, self._timestamp = self._redis_dict.read_value(
             self._key, self._params[0]
         )

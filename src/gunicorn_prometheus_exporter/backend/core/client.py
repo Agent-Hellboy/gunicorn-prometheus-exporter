@@ -230,11 +230,12 @@ class RedisStorageDict:
 
         with self._lock:
             for metric_key in self._redis.scan_iter(match=pattern):
-                if isinstance(metric_key, (bytes, bytearray)):
-                    metric_key = metric_key.decode("utf-8")
-
-                # Get metadata and original key
-                metadata_key = metric_key.replace(":metric:", ":meta:", 1)
+                # Get the original key from metadata
+                metadata_key = (
+                    metric_key.replace(b":metric:", b":meta:", 1)
+                    if isinstance(metric_key, (bytes, bytearray))
+                    else metric_key.replace(":metric:", ":meta:", 1)
+                )
                 metadata = self._redis.hgetall(metadata_key)
                 if not metadata:
                     continue
@@ -255,6 +256,49 @@ class RedisStorageDict:
             key_prefix = config.redis_key_prefix
         redis_dict = RedisStorageDict(redis_client, key_prefix)
         return redis_dict.read_all_values()
+
+    def ensure_metadata(
+        self, key: str, typ: str = "counter", multiprocess_mode: str = "all"
+    ):
+        """Ensure metadata exists for a metric key.
+
+        Args:
+            key: The metric key
+            typ: Metric type (counter, gauge, histogram, summary)
+            multiprocess_mode: Multiprocess mode (all, liveall, live, max, min, sum)
+        """
+        metadata_key = self._get_metadata_key(key)
+
+        with self._lock:
+            try:
+                # Check if metadata already exists
+                existing_metadata = self._redis.hgetall(metadata_key)
+                if existing_metadata:
+                    # Metadata already exists, no need to create
+                    return
+
+                # Create metadata if it doesn't exist
+                metadata = {
+                    "typ": typ,
+                    "multiprocess_mode": multiprocess_mode,
+                    "created_at": str(time.time()),
+                }
+
+                self._redis.hset(metadata_key, mapping=metadata)
+
+                # Set TTL if configured
+                if config.redis_ttl_seconds > 0:
+                    self._redis.expire(metadata_key, config.redis_ttl_seconds)
+
+                logger.debug(
+                    "Created metadata for key %s: typ=%s, mode=%s",
+                    key,
+                    typ,
+                    multiprocess_mode,
+                )
+
+            except Exception as e:
+                logger.warning("Failed to ensure metadata for key %s: %s", key, e)
 
     def close(self):
         """Close Redis connection if needed."""
