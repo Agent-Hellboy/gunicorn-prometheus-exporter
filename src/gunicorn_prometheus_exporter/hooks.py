@@ -403,35 +403,23 @@ def default_worker_int(worker: Any) -> None:
 
 
 def default_on_exit(_server: Any) -> None:
-    """Default on_exit hook for cleanup."""
+    """Default on_exit hook - minimal cleanup only."""
     context = HookContext(server=_server, logger=_get_hook_manager().get_logger())
 
-    context.logger.info("Server shutting down - cleaning up Prometheus metrics server")
+    context.logger.info("Server shutting down")
 
-    try:
-        # Stop the metrics server
-        _get_metrics_manager().stop_server()
+    # No metrics cleanup needed:
+    # - Redis TTL handles automatic cleanup
+    # - Metrics should persist for Prometheus scraping
+    # - File-based metrics are cleaned up by OS on process exit
 
-        # Cleanup Redis metrics if enabled
-        if config.redis_enabled:
-            from .backend import get_redis_storage_manager
+    # No process cleanup needed:
+    # - OS will clean up child processes when parent exits
+    # - Avoids blocking signal handling
 
-            manager = get_redis_storage_manager()
-            manager.cleanup_keys()
-            manager.teardown()
-            context.logger.info("Redis metrics cleanup completed")
-
-        # Force cleanup of any remaining processes
-        _get_process_manager().cleanup_processes()
-
-        context.logger.info("Server shutdown complete")
-    except Exception as e:
-        context.logger.error("Error during server shutdown: %s", e)
-        # Still try to cleanup processes even if metrics server cleanup failed
-        try:
-            _get_process_manager().cleanup_processes()
-        except Exception as cleanup_error:
-            context.logger.error("Error during process cleanup: %s", cleanup_error)
+    context.logger.info(
+        "Server shutdown complete - Redis TTL handles automatic cleanup"
+    )
 
 
 def redis_when_ready(_server: Any) -> None:

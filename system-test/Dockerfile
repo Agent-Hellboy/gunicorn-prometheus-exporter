@@ -10,7 +10,15 @@ RUN apt-get update && apt-get install -y \
     curl \
     procps \
     coreutils \
+    wget \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Prometheus
+RUN wget https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz \
+    && tar xzf prometheus-2.45.0.linux-amd64.tar.gz \
+    && mv prometheus-2.45.0.linux-amd64/prometheus /usr/local/bin/ \
+    && mv prometheus-2.45.0.linux-amd64/promtool /usr/local/bin/ \
+    && rm -rf prometheus-2.45.0.linux-amd64*
 
 # Set working directory
 WORKDIR /app
@@ -32,7 +40,24 @@ ENV PYTHONPATH=/app/src
 ENV PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
 
 # Expose ports
-EXPOSE 8088 9093 6379
+EXPOSE 8088 9093 6379 9090
+
+# Create Prometheus configuration
+RUN echo 'global:\n\
+  scrape_interval: 15s\n\
+  evaluation_interval: 15s\n\
+\n\
+rule_files:\n\
+  # - "first_rules.yml"\n\
+  # - "second_rules.yml"\n\
+\n\
+scrape_configs:\n\
+  - job_name: "gunicorn-prometheus-exporter"\n\
+    static_configs:\n\
+      - targets: ["localhost:9093"]\n\
+    scrape_interval: 5s\n\
+    metrics_path: "/metrics"\n\
+' > /etc/prometheus.yml
 
 # Create startup script
 RUN echo '#!/bin/bash\n\
@@ -42,6 +67,15 @@ redis-server --daemonize yes\n\
 # Wait for Redis to be ready\n\
 while ! redis-cli -h 127.0.0.1 -p 6379 -n 0 ping > /dev/null 2>&1; do\n\
     echo "Waiting for Redis..."\n\
+    sleep 1\n\
+done\n\
+\n\
+# Start Prometheus in background\n\
+prometheus --config.file=/etc/prometheus.yml --storage.tsdb.path=/tmp/prometheus --web.console.libraries=/usr/local/share/prometheus/console_libraries --web.console.templates=/usr/local/share/prometheus/consoles --web.enable-lifecycle --web.listen-address=:9090 &\n\
+\n\
+# Wait for Prometheus to be ready\n\
+while ! curl -s http://localhost:9090/-/ready > /dev/null 2>&1; do\n\
+    echo "Waiting for Prometheus..."\n\
     sleep 1\n\
 done\n\
 \n\

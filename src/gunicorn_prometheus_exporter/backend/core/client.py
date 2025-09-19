@@ -137,11 +137,19 @@ class RedisStorageDict:
                 },
             )
 
+            # Set TTL if not disabled
+            if not config.redis_ttl_disabled:
+                self._redis.expire(metric_key, config.redis_ttl_seconds)
+
             # Store metadata separately for easier querying
             metadata_key = self._get_metadata_key(key, metric_type)
             self._redis.hset(
                 metadata_key, mapping={"original_key": key, "created_at": time.time()}
             )
+
+            # Set TTL for metadata key as well
+            if not config.redis_ttl_disabled:
+                self._redis.expire(metadata_key, config.redis_ttl_seconds)
 
     def _get_metric_key(self, key: str, metric_type: str = "counter") -> str:
         """Get Redis key for metric data."""
@@ -172,11 +180,19 @@ class RedisStorageDict:
             mapping={"value": 0.0, "timestamp": 0.0, "updated_at": time.time()},
         )
 
+        # Set TTL for metric key if not disabled
+        if not config.redis_ttl_disabled:
+            self._redis.expire(metric_key, config.redis_ttl_seconds)
+
         # Store metadata separately for easier querying
         metadata_key = self._get_metadata_key(key, metric_type)
         self._redis.hset(
             metadata_key, mapping={"original_key": key, "created_at": time.time()}
         )
+
+        # Set TTL for metadata key as well
+        if not config.redis_ttl_disabled:
+            self._redis.expire(metadata_key, config.redis_ttl_seconds)
 
     def _extract_original_key(self, metadata):
         """Extract original key from metadata, handling both bytes and string."""
@@ -291,10 +307,36 @@ class RedisStorageClient:
         """
         try:
             pattern = f"{self._key_prefix}:*:{pid}:*"
-            keys_to_delete = list(self._redis_client.scan_iter(match=pattern))
+            # Use scan_iter with timeout to avoid blocking
+            keys_to_delete = []
+            try:
+                # Limit scan to avoid blocking for too long
+                for key in self._redis_client.scan_iter(match=pattern, count=100):
+                    keys_to_delete.append(key)
+                    # Limit to 1000 keys to avoid blocking
+                    if len(keys_to_delete) >= 1000:
+                        break
+            except Exception as scan_error:
+                logger.warning(
+                    "Failed to scan Redis keys for process %d: %s", pid, scan_error
+                )
+                return
 
             if keys_to_delete:
-                self._redis_client.delete(*keys_to_delete)
+                # Delete keys in batches to avoid blocking
+                batch_size = 100
+                for i in range(0, len(keys_to_delete), batch_size):
+                    batch = keys_to_delete[i : i + batch_size]
+                    try:
+                        self._redis_client.delete(*batch)
+                    except Exception as delete_error:
+                        logger.warning(
+                            "Failed to delete Redis key batch for process %d: %s",
+                            pid,
+                            delete_error,
+                        )
+                        # Continue with next batch even if this one fails
+
                 logger.debug(
                     "Cleaned up %d Redis keys for process %d", len(keys_to_delete), pid
                 )

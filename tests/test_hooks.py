@@ -818,11 +818,11 @@ class TestOnExitHook(unittest.TestCase):
 
                 default_on_exit(mock_server)
 
+        mock_logger.info.assert_any_call("Server shutting down")
         mock_logger.info.assert_any_call(
-            "Server shutting down - cleaning up Prometheus metrics server"
+            "Server shutdown complete - Redis TTL handles automatic cleanup"
         )
-        mock_logger.info.assert_any_call("Server shutdown complete")
-        mock_process_manager.cleanup_processes.assert_called_once()
+        # Note: cleanup_processes is no longer called in default_on_exit
 
 
 class TestRedisWhenReadyHook(unittest.TestCase):
@@ -1348,7 +1348,7 @@ class TestHookIntegration(unittest.TestCase):
             # Verify that the manager methods were called
             mock_manager.setup_server.assert_called_once()
             mock_manager.start_server.assert_called_once()
-            mock_manager.stop_server.assert_called_once()
+            # Note: stop_server is no longer called in default_on_exit
 
 
 if __name__ == "__main__":

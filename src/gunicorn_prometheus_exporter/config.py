@@ -39,6 +39,8 @@ class ExporterConfig:
     ENV_REDIS_DB = "REDIS_DB"
     ENV_REDIS_PASSWORD = "REDIS_PASSWORD"  # nosec - environment variable name
     ENV_REDIS_KEY_PREFIX = "REDIS_KEY_PREFIX"
+    ENV_REDIS_TTL_SECONDS = "REDIS_TTL_SECONDS"
+    ENV_REDIS_TTL_DISABLED = "REDIS_TTL_DISABLED"
 
     # Cleanup environment variables
     ENV_CLEANUP_DB_FILES = "CLEANUP_DB_FILES"
@@ -176,6 +178,23 @@ class ExporterConfig:
     def redis_key_prefix(self) -> str:
         """Get Redis key prefix."""
         return os.environ.get(self.ENV_REDIS_KEY_PREFIX, "gunicorn")
+
+    @property
+    def redis_ttl_seconds(self) -> int:
+        """Get Redis TTL in seconds for metric keys."""
+        return int(
+            os.environ.get(self.ENV_REDIS_TTL_SECONDS, "300")
+        )  # 5 minutes default
+
+    @property
+    def redis_ttl_disabled(self) -> bool:
+        """Check if Redis TTL is disabled (keys persist indefinitely)."""
+        return os.environ.get(self.ENV_REDIS_TTL_DISABLED, "false").lower() in (
+            "true",
+            "1",
+            "yes",
+            "on",
+        )
 
     @property
     def cleanup_db_files(self) -> bool:

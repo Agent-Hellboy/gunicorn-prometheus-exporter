@@ -83,8 +83,12 @@ class RedisValue:
         return
 
     def get(self):
-        """Get the current value and timestamp."""
-        return self._value, self._timestamp
+        """Get the current value."""
+        return self._value
+
+    def get_timestamp(self):
+        """Get the current timestamp."""
+        return self._timestamp
 
     def get_exemplar(self):
         """Get exemplar (not implemented for Redis yet)."""

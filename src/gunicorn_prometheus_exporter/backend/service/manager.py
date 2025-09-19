@@ -122,7 +122,12 @@ class RedisStorageManager:
             # Test connection
             self._redis_client.ping()
             logger.info(
-                "Connected to Redis at %s:%s", config.redis_host, config.redis_port
+                "Connected to Redis at %s:%s (TTL: %s)",
+                config.redis_host,
+                config.redis_port,
+                "disabled"
+                if config.redis_ttl_disabled
+                else f"{config.redis_ttl_seconds}s",
             )
 
             # Create value class
@@ -210,7 +215,14 @@ class RedisStorageManager:
             )
 
         os.environ["PROMETHEUS_REDIS_URL"] = redis_url
-        return redis.from_url(redis_url, decode_responses=False)
+        return redis.from_url(
+            redis_url,
+            decode_responses=False,
+            socket_timeout=5.0,  # 5 second timeout for socket operations
+            socket_connect_timeout=5.0,  # 5 second timeout for connection
+            retry_on_timeout=True,  # Retry on timeout
+            health_check_interval=30,  # Health check every 30 seconds
+        )
 
     def _create_value_class(self, client: RedisClientProtocol, prefix: str):
         """Create Redis value class."""
@@ -238,8 +250,27 @@ class RedisStorageManager:
         """Clean up resources."""
         if self._redis_client is not None:
             try:
-                self._redis_client.close()
-                logger.info("Disconnected from Redis")
+                # Close Redis connection with timeout to avoid blocking
+                import signal
+
+                def timeout_handler(signum, frame):
+                    raise TimeoutError("Redis close operation timed out")
+
+                # Set a 2-second timeout for Redis close operation
+                old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(2)
+
+                try:
+                    self._redis_client.close()
+                    logger.info("Disconnected from Redis")
+                except TimeoutError:
+                    logger.warning(
+                        "Redis close operation timed out, forcing disconnect"
+                    )
+                finally:
+                    signal.alarm(0)  # Cancel the alarm
+                    signal.signal(signal.SIGALRM, old_handler)  # Restore old handler
+
             except Exception as e:
                 logger.warning("Error disconnecting from Redis: %s", e)
             finally:

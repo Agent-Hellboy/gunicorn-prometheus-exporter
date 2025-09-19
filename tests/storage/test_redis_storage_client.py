@@ -325,7 +325,7 @@ class TestRedisStorageClient:
 
         # Verify Redis calls
         expected_pattern = "test_prefix:*:12345:*"
-        mock_redis.scan_iter.assert_called_once_with(match=expected_pattern)
+        mock_redis.scan_iter.assert_called_once_with(match=expected_pattern, count=100)
         mock_redis.delete.assert_called_once_with(b"key1", b"key2", b"key3")
 
         # Verify logging
@@ -347,7 +347,7 @@ class TestRedisStorageClient:
 
         # Verify Redis calls
         expected_pattern = "test_prefix:*:12345:*"
-        mock_redis.scan_iter.assert_called_once_with(match=expected_pattern)
+        mock_redis.scan_iter.assert_called_once_with(match=expected_pattern, count=100)
         mock_redis.delete.assert_not_called()
 
         # Verify no debug logging
@@ -368,7 +368,7 @@ class TestRedisStorageClient:
         # Verify warning logging - the exception object is passed, not the string
         mock_logger.warning.assert_called_once()
         call_args = mock_logger.warning.call_args
-        assert call_args[0][0] == "Failed to cleanup Redis keys for process %d: %s"
+        assert call_args[0][0] == "Failed to scan Redis keys for process %d: %s"
         assert call_args[0][1] == 12345
         assert str(call_args[0][2]) == "Redis error"
 

@@ -31,6 +31,18 @@ os.environ.setdefault(
 )  # Configure for your environment  # noqa: E501
 os.environ.setdefault("REDIS_PORT", "6379")  # noqa: E501
 os.environ.setdefault("REDIS_DB", "0")  # noqa: E501
+os.environ.setdefault("REDIS_TTL_SECONDS", "300")  # 5 minutes TTL
+os.environ.setdefault("REDIS_TTL_DISABLED", "false")  # Enable TTL by default
+
+# Redis TTL Configuration:
+# - REDIS_TTL_SECONDS: How long metrics persist in Redis (default: 300 seconds)
+# - REDIS_TTL_DISABLED: Set to "true" to disable TTL (metrics persist indefinitely)
+#
+# TTL Benefits:
+# - Prevents Redis memory from growing indefinitely
+# - Allows metrics to persist across worker restarts
+# - Covers multiple Prometheus scrape cycles
+# - Automatic cleanup of dead process metrics
 
 from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
     default_on_exit,
@@ -44,6 +56,7 @@ from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
 bind = "0.0.0.0:8088"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+timeout = 300  # Set timeout to match basic config
 
 # Use Redis-enabled hooks for Redis-based metrics storage
 when_ready = redis_when_ready

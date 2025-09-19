@@ -82,7 +82,14 @@ class TestRedisMultiProcessCollector:
 
                 collector = RedisMultiProcessCollector(Mock(), None, "test_prefix")
 
-                mock_from_url.assert_called_once_with("redis://localhost:6379/0")
+                mock_from_url.assert_called_once_with(
+                    "redis://localhost:6379/0",
+                    decode_responses=False,
+                    socket_timeout=5.0,
+                    socket_connect_timeout=5.0,
+                    retry_on_timeout=True,
+                    health_check_interval=30,
+                )
                 assert collector._redis_client is mock_client
 
     def test_get_default_redis_client_local(self):
@@ -97,7 +104,14 @@ class TestRedisMultiProcessCollector:
                 collector = RedisMultiProcessCollector(Mock(), None, "test_prefix")
 
                 mock_redis_class.assert_called_once_with(
-                    host="localhost", port=6379, db=0, decode_responses=False
+                    host="localhost",
+                    port=6379,
+                    db=0,
+                    decode_responses=False,
+                    socket_timeout=5.0,
+                    socket_connect_timeout=5.0,
+                    retry_on_timeout=True,
+                    health_check_interval=30,
                 )
                 assert collector._redis_client is mock_client
 
@@ -888,7 +902,9 @@ class TestMarkProcessDeadRedis:
 
         mark_process_dead_redis(12345, mock_redis, "test_prefix")
 
-        mock_redis.scan_iter.assert_called_once_with(match="test_prefix:*:12345:*")
+        mock_redis.scan_iter.assert_called_once_with(
+            match="test_prefix:*:12345:*", count=100
+        )
         mock_redis.delete.assert_called_once_with(b"key1", b"key2")
 
     def test_mark_process_dead_redis_without_client_from_env(self):
@@ -910,5 +926,7 @@ class TestMarkProcessDeadRedis:
 
         mark_process_dead_redis(12345, mock_redis, "test_prefix")
 
-        mock_redis.scan_iter.assert_called_once_with(match="test_prefix:*:12345:*")
+        mock_redis.scan_iter.assert_called_once_with(
+            match="test_prefix:*:12345:*", count=100
+        )
         mock_redis.delete.assert_not_called()

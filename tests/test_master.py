@@ -89,6 +89,11 @@ def test_master_hup(master):
         mock_value_class.return_value = _create_mock_value_class()()
         master.handle_hup()
 
+        # Wait for async signal processing to complete
+        import time
+
+        time.sleep(0.1)
+
         # Metric check
         samples = list(MASTER_WORKER_RESTARTS.collect())[0].samples
         matched = [s for s in samples if s.labels.get("reason") == "hup"]
@@ -108,6 +113,11 @@ def test_master_ttin(master):
         mock_value_class.return_value = _create_mock_value_class()()
         master.handle_ttin()
 
+        # Wait for async signal processing to complete
+        import time
+
+        time.sleep(0.1)
+
         # Metric check
         samples = list(MASTER_WORKER_RESTARTS.collect())[0].samples
         matched = [s for s in samples if s.labels.get("reason") == "ttin"]
@@ -126,6 +136,11 @@ def test_master_ttou(master):
     ):
         mock_value_class.return_value = _create_mock_value_class()()
         master.handle_ttou()
+
+        # Wait for async signal processing to complete
+        import time
+
+        time.sleep(0.1)
 
         # Metric check
         samples = list(MASTER_WORKER_RESTARTS.collect())[0].samples
@@ -163,6 +178,11 @@ def test_master_usr1(master):
         mock_value_class.return_value = _create_mock_value_class()()
         master.handle_usr1()
 
+        # Wait for async signal processing to complete
+        import time
+
+        time.sleep(0.1)
+
         # Metric check
         samples = list(MASTER_WORKER_RESTARTS.collect())[0].samples
         matched = [s for s in samples if s.labels.get("reason") == "usr1"]
@@ -181,6 +201,11 @@ def test_master_usr2(master):
     ):
         mock_value_class.return_value = _create_mock_value_class()()
         master.handle_usr2()
+
+        # Wait for async signal processing to complete
+        import time
+
+        time.sleep(0.1)
 
         # Metric check
         samples = list(MASTER_WORKER_RESTARTS.collect())[0].samples
@@ -210,6 +235,11 @@ def test_multiple_signal_handlers(master):
         master.handle_hup()
         master.handle_usr1()
         master.handle_usr2()
+
+        # Wait for async signal processing to complete
+        import time
+
+        time.sleep(0.2)
 
         # Check that all metrics are incremented
         samples = list(MASTER_WORKER_RESTARTS.collect())[0].samples

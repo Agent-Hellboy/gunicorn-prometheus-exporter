@@ -7,10 +7,12 @@ This directory contains a comprehensive system test for the Gunicorn Prometheus 
 The system test validates the complete functionality of the Gunicorn Prometheus Exporter, including:
 
 - ✅ **Dependency Installation**: Automatic setup of required packages
-- ✅ **Redis Integration**: Full Redis backend functionality
+- ✅ **Redis Integration**: Full Redis backend functionality with TTL support
 - ✅ **Gunicorn Server**: Multi-worker setup with Redis storage
 - ✅ **Metrics Collection**: All metric types (counters, gauges, histograms)
 - ✅ **Request Processing**: Real HTTP request handling and metrics capture
+- ✅ **Prometheus Scraping**: Verification that Prometheus can scrape metrics (15 seconds)
+- ✅ **Redis TTL Testing**: Automatic key expiration and cleanup (30 seconds TTL)
 - ✅ **Signal Handling**: Proper shutdown and cleanup
 - ✅ **CI/CD Ready**: Automated testing for continuous integration
 - ✅ **Cross-Platform**: Works consistently on Mac, Windows, and Linux via Docker
@@ -51,7 +53,7 @@ docker-compose up --build
 
 # Or manually with Docker
 docker build -f Dockerfile -t gunicorn-prometheus-exporter-test ..
-docker run --rm -p 8088:8088 -p 9093:9093 -p 6379:6379 gunicorn-prometheus-exporter-test
+docker run --rm -p 8088:8088 -p 9093:9093 -p 6379:6379 -p 9090:9090 gunicorn-prometheus-exporter-test
 ```
 
 #### Option 2: Using Make (Requires Local Redis)
@@ -107,6 +109,8 @@ make clean
 - ✅ Request processing
 - ✅ Key metrics collection
 - ✅ Redis integration
+- ✅ Prometheus scraping verification
+- ✅ Redis TTL configuration
 - ✅ Signal handling
 
 **Usage**:
@@ -135,6 +139,8 @@ sudo systemctl start redis  # Linux
 - ✅ Request generation and processing
 - ✅ All metric types verification
 - ✅ Redis key validation
+- ✅ Prometheus scraping verification (15 seconds)
+- ✅ Redis TTL configuration and expiration testing (30 seconds)
 - ✅ Signal handling and cleanup
 - ✅ Error scenarios
 
@@ -222,6 +228,7 @@ sudo systemctl start redis  # Linux
 - **Application**: `8088`
 - **Metrics**: `9093`
 - **Redis**: `6379`
+- **Prometheus**: `9090`
 
 ### Environment Variables
 
@@ -232,6 +239,8 @@ REDIS_ENABLED=true
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_DB=0
+REDIS_TTL_SECONDS=30          # TTL for Redis keys (30 seconds for testing)
+REDIS_TTL_DISABLED=false       # Enable TTL (set to "true" to disable)
 GUNICORN_WORKERS=2
 ```
 
@@ -246,6 +255,45 @@ GUNICORN_WORKERS=2
 | **Gauge**     | `gunicorn_worker_uptime_seconds`           | Uptime > 0            |
 | **Gauge**     | `gunicorn_worker_state`                    | State transitions     |
 | **Counter**   | `gunicorn_master_worker_restart_total`     | Restart tracking      |
+
+## Enhanced Testing Features
+
+### Prometheus Scraping Verification
+
+The system test now includes comprehensive Prometheus integration testing:
+
+- **Target Health Check**: Verifies Prometheus can reach the metrics endpoint
+- **API Accessibility**: Tests Prometheus API at `http://localhost:9090`
+- **Metrics Scraping**: Confirms Prometheus successfully scrapes `gunicorn_requests_total`
+- **Data Validation**: Counts scraped data points to ensure metrics are being collected
+- **Timing**: 15-second wait for Prometheus to perform scraping cycles
+
+### Redis TTL (Time To Live) Testing
+
+Advanced Redis key lifecycle management testing:
+
+- **TTL Configuration**: Tests 30-second TTL for Redis metric keys
+- **Automatic Expiration**: Verifies Redis automatically cleans up expired keys
+- **Key Lifecycle**: Monitors key creation → TTL setting → expiration → cleanup
+- **No Manual Cleanup**: Confirms Redis handles cleanup without application intervention
+- **Memory Management**: Prevents Redis memory from growing indefinitely
+
+### Test Flow Timeline
+
+```
+0-15s:  Generate requests and verify metrics
+15-30s: Prometheus scraping verification
+30-60s: Redis TTL expiration verification
+60s+:   Signal handling and cleanup
+```
+
+### Redis TTL Benefits
+
+- **Automatic Cleanup**: No manual Redis key management needed
+- **Memory Efficiency**: Prevents Redis memory bloat
+- **Process Restart Safe**: Metrics persist across worker restarts
+- **Prometheus Friendly**: Covers multiple scrape cycles before expiration
+- **Configurable**: TTL can be adjusted via `REDIS_TTL_SECONDS` environment variable
 
 ## CI/CD Integration
 
@@ -299,6 +347,32 @@ pip install gunicorn
 ```bash
 # Make scripts executable
 chmod +x *.sh
+```
+
+#### 5. Prometheus Scraping Issues
+
+```bash
+# Check if Prometheus is running
+curl -s http://localhost:9090/api/v1/targets
+
+# Check metrics endpoint
+curl -s http://localhost:9093/metrics | head -20
+
+# Verify Prometheus configuration
+curl -s http://localhost:9090/api/v1/query?query=gunicorn_requests_total
+```
+
+#### 6. Redis TTL Issues
+
+```bash
+# Check Redis TTL on sample keys
+redis-cli --scan --pattern "gunicorn:*:metric:*" | head -1 | xargs redis-cli ttl
+
+# Check if keys are expiring
+redis-cli --scan --pattern "gunicorn:*" | wc -l
+
+# Monitor Redis memory usage
+redis-cli info memory | grep used_memory_human
 ```
 
 ### Debug Mode
@@ -363,6 +437,9 @@ A successful test run should show:
 - ✅ All metric types verified
 - ✅ Request metrics captured
 - ✅ Redis keys created
+- ✅ Prometheus scraping verified
+- ✅ Redis TTL configuration working
+- ✅ Redis keys expired and cleaned up automatically
 - ✅ Signal handling working
 - ✅ Clean shutdown
 

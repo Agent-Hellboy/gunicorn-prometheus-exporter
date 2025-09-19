@@ -45,12 +45,26 @@ class RedisMultiProcessCollector:
         """Get default Redis client from environment variables."""
         redis_url = os.environ.get("PROMETHEUS_REDIS_URL")
         if redis_url:
-            return redis.from_url(redis_url)
+            return redis.from_url(
+                redis_url,
+                decode_responses=False,
+                socket_timeout=5.0,  # 5 second timeout for socket operations
+                socket_connect_timeout=5.0,  # 5 second timeout for connection
+                retry_on_timeout=True,  # Retry on timeout
+                health_check_interval=30,  # Health check every 30 seconds
+            )
 
         # Try to connect to local Redis
         try:
             return redis.Redis(
-                host="localhost", port=6379, db=0, decode_responses=False
+                host="localhost",
+                port=6379,
+                db=0,
+                decode_responses=False,
+                socket_timeout=5.0,  # 5 second timeout for socket operations
+                socket_connect_timeout=5.0,  # 5 second timeout for connection
+                retry_on_timeout=True,  # Retry on timeout
+                health_check_interval=30,  # Health check every 30 seconds
             )
         except redis.ConnectionError:
             return None
