@@ -267,7 +267,7 @@ class RedisStorageDict:
             typ: Metric type (counter, gauge, histogram, summary)
             multiprocess_mode: Multiprocess mode (all, liveall, live, max, min, sum)
         """
-        metadata_key = self._get_metadata_key(key)
+        metadata_key = self._get_metadata_key(key, typ)
 
         with self._lock:
             try:
