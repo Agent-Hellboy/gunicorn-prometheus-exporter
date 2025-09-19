@@ -47,7 +47,8 @@ class PrometheusMaster(Arbiter):
 
     def _setup_async_signal_capture(self):
         """Set up async signal metric capture to avoid blocking signal handlers."""
-        self._signal_queue = queue.Queue()
+        # Bound queue to prevent unbounded growth under CHLD storms
+        self._signal_queue = queue.Queue(maxsize=1024)
         self._signal_thread = None
         self._shutdown_event = threading.Event()
 
@@ -64,9 +65,7 @@ class PrometheusMaster(Arbiter):
         )
 
         # Verify thread is running
-        if self._signal_thread.is_alive():
-            logger.debug("Signal metrics processor thread is running")
-        else:
+        if not self._signal_thread.is_alive():
             logger.warning("Signal metrics processor thread failed to start")
 
     def _process_signal_metrics(self):
@@ -102,7 +101,7 @@ class PrometheusMaster(Arbiter):
         # Try asynchronous approach first
         try:
             logger.debug("Queuing signal metric: %s", reason)
-            self._signal_queue.put(reason, timeout=0.1)
+            self._signal_queue.put_nowait(reason)
             logger.debug("Signal metric queued successfully: %s", reason)
             return
         except queue.Full:
