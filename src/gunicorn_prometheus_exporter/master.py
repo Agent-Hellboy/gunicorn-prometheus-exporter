@@ -262,6 +262,13 @@ class PrometheusMaster(Arbiter):
 
     def stop(self, graceful=True):
         """Stop the master and clean up resources."""
+        # Wait for queued metrics to drain
+        if hasattr(self, "_signal_queue"):
+            try:
+                self._signal_queue.join()
+            except Exception:  # nosec
+                pass
+
         # Signal shutdown to background thread
         if hasattr(self, "_shutdown_event"):
             self._shutdown_event.set()

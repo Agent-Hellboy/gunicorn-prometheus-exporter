@@ -23,6 +23,10 @@ class RedisClientProtocol(Protocol):
         """Test Redis connection."""
         raise NotImplementedError
 
+    def expire(self, name: Union[str, bytes], time: int) -> bool:
+        """Set expiration time for a key in seconds."""
+        raise NotImplementedError
+
     def hget(self, name: Union[str, bytes], key: str) -> Optional[Union[bytes, str]]:
         """Get hash field value."""
         raise NotImplementedError
