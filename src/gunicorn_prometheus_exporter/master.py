@@ -181,12 +181,14 @@ class PrometheusMaster(Arbiter):
                 logger.error("SIGINT flush error: %s", e)
                 # Ignore flush errors in signal handler
 
-            logger.info("SIGINT - calling super().handle_int()")
+            logger.info("SIGINT - metric capture and flush completed")
         except Exception as e:  # nosec
             logger.error("SIGINT error: %s", e)
             # Avoid logging errors in signal handlers
 
-        # Now call the parent handler which will terminate the process
+        # Always call the parent handler which will terminate the process
+        # This must be outside the try-except to ensure it's always called
+        logger.info("SIGINT - calling super().handle_int()")
         super().handle_int()
 
     def handle_hup(self):

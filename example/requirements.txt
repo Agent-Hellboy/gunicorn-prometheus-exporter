@@ -1,4 +1,4 @@
 flask>=3.0.0
 gunicorn>=21.2.0
 gunicorn-prometheus-exporter[redis]>=0.1.5
-prometheus-client>=0.20.0
+prometheus-client>=0.22.1
