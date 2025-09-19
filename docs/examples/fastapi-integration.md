@@ -194,7 +194,7 @@ CMD ["gunicorn", "-c", "gunicorn.conf.py", "main:app"]
 fastapi>=0.68.0
 uvicorn>=0.15.0
 gunicorn>=21.2.0
-gunicorn-prometheus-exporter>=0.1.0
+gunicorn-prometheus-exporter>=0.1.5
 ```
 
 ### Docker Compose

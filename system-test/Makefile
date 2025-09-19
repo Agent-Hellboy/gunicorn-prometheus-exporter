@@ -1,6 +1,6 @@
 # Makefile for Gunicorn Prometheus Exporter
 
-.PHONY: help install test quick-test system-test ci-test docker-test docker-build basic-test basic-quick-test docker-basic-test docker-basic-build clean lint format
+.PHONY: help install test quick-test system-test ci-test force-test docker-test docker-build basic-test basic-quick-test docker-basic-test docker-basic-build clean lint format
 
 # Default target
 help:
@@ -23,7 +23,7 @@ help:
 
 # Install dependencies
 install:
-	pip install -e ../src/
+	pip install -e ..
 	pip install -r requirements-dev.txt
 
 # Run unit tests
@@ -73,13 +73,13 @@ clean:
 
 # Run linting
 lint:
-	flake8 src/
-	pylint src/
+	flake8 ../src/
+	pylint ../src/
 
 # Format code
 format:
-	black src/
-	isort src/
+	black ../src/
+	isort ../src/
 
 # Docker-based Redis system test (works on Mac/Windows/Linux)
 docker-build:

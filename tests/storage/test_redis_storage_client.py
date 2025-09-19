@@ -189,24 +189,40 @@ class TestRedisStorageDict:
         with patch("time.time", return_value=1234567890.0):
             storage_dict.write_value("test_key", 1.5, 987654321.0)
 
-        # Verify Redis calls - check that hset was called with the correct pattern
-        assert mock_redis.hset.call_count == 2
+        # Verify Redis calls - check that hset was called once for metric data
+        assert mock_redis.hset.call_count == 1
+        assert mock_redis.hsetnx.call_count == 2  # Two hsetnx calls for metadata
 
         # Check that the calls match the new key format pattern
         calls = mock_redis.hset.call_args_list
         metric_key = calls[0][0][0]  # First argument of first call
-        metadata_key = calls[1][0][0]  # First argument of second call
 
         assert metric_key.startswith("test_prefix:counter:")
         assert metric_key.endswith(":metric:test_key")
-        assert metadata_key.startswith("test_prefix:counter:")
-        assert metadata_key.endswith(":meta:test_key")
 
         # Check the mapping content
         metric_mapping = calls[0][1]["mapping"]
         assert metric_mapping["value"] == 1.5
         assert metric_mapping["timestamp"] == 987654321.0
         assert metric_mapping["updated_at"] == 1234567890.0
+
+        # Check hsetnx calls for metadata
+        hsetnx_calls = mock_redis.hsetnx.call_args_list
+        assert len(hsetnx_calls) == 2
+
+        # First hsetnx call for original_key
+        metadata_key_1 = hsetnx_calls[0][0][0]
+        assert metadata_key_1.startswith("test_prefix:counter:")
+        assert metadata_key_1.endswith(":meta:test_key")
+        assert hsetnx_calls[0][0][1] == "original_key"
+        assert hsetnx_calls[0][0][2] == "test_key"
+
+        # Second hsetnx call for created_at
+        metadata_key_2 = hsetnx_calls[1][0][0]
+        assert metadata_key_2.startswith("test_prefix:counter:")
+        assert metadata_key_2.endswith(":meta:test_key")
+        assert hsetnx_calls[1][0][1] == "created_at"
+        assert hsetnx_calls[1][0][2] == "1234567890.0"
 
     def test_init_value(self):
         """Test initializing value."""
@@ -225,24 +241,40 @@ class TestRedisStorageDict:
         with patch("time.time", return_value=1234567890.0):
             storage_dict._init_value_unlocked("test_key")
 
-        # Verify Redis calls - check that hset was called with the correct pattern
-        assert mock_redis.hset.call_count == 2
+        # Verify Redis calls - check that hset was called once for metric data
+        assert mock_redis.hset.call_count == 1
+        assert mock_redis.hsetnx.call_count == 2  # Two hsetnx calls for metadata
 
         # Check that the calls match the new key format pattern
         calls = mock_redis.hset.call_args_list
         metric_key = calls[0][0][0]  # First argument of first call
-        metadata_key = calls[1][0][0]  # First argument of second call
 
         assert metric_key.startswith("test_prefix:counter:")
         assert metric_key.endswith(":metric:test_key")
-        assert metadata_key.startswith("test_prefix:counter:")
-        assert metadata_key.endswith(":meta:test_key")
 
         # Check the mapping content
         metric_mapping = calls[0][1]["mapping"]
         assert metric_mapping["value"] == 0.0
         assert metric_mapping["timestamp"] == 0.0
         assert metric_mapping["updated_at"] == 1234567890.0
+
+        # Check hsetnx calls for metadata
+        hsetnx_calls = mock_redis.hsetnx.call_args_list
+        assert len(hsetnx_calls) == 2
+
+        # First hsetnx call for original_key
+        metadata_key_1 = hsetnx_calls[0][0][0]
+        assert metadata_key_1.startswith("test_prefix:counter:")
+        assert metadata_key_1.endswith(":meta:test_key")
+        assert hsetnx_calls[0][0][1] == "original_key"
+        assert hsetnx_calls[0][0][2] == "test_key"
+
+        # Second hsetnx call for created_at
+        metadata_key_2 = hsetnx_calls[1][0][0]
+        assert metadata_key_2.startswith("test_prefix:counter:")
+        assert metadata_key_2.endswith(":meta:test_key")
+        assert hsetnx_calls[1][0][1] == "created_at"
+        assert hsetnx_calls[1][0][2] == "1234567890.0"
 
 
 class TestRedisValueClass:

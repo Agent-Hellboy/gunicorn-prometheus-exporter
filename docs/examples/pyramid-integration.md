@@ -225,7 +225,7 @@ CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:main"]
 pyramid>=2.0.0
 sqlalchemy>=1.4.0
 gunicorn>=21.2.0
-gunicorn-prometheus-exporter>=0.1.0
+gunicorn-prometheus-exporter>=0.1.5
 ```
 
 ### Docker Compose

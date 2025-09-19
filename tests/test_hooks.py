@@ -390,9 +390,9 @@ class TestMetricsServerManager(unittest.TestCase):
             # First call raises OSError, second call succeeds
             mock_start.side_effect = [OSError(98, "Address already in use"), None]
 
-            # The OSError with errno 98 gets re-raised, so we expect it
-            with self.assertRaises(OSError):
-                manager.start_server(port, registry)
+            # The retry logic should succeed on the second attempt
+            result = manager.start_server(port, registry)
+            self.assertTrue(result)
 
     def test_start_server_all_attempts_fail(self):
         """Test start_server when all attempts fail."""
@@ -405,9 +405,10 @@ class TestMetricsServerManager(unittest.TestCase):
             "prometheus_client.exposition.start_http_server",
             side_effect=OSError(98, "Address already in use"),
         ):
-            # All attempts will fail with OSError that gets re-raised
-            with self.assertRaises(OSError):
-                manager.start_server(port, registry)
+            with patch("time.sleep"):  # Mock sleep to speed up test
+                # All attempts will fail with OSError that is now handled gracefully
+                result = manager.start_server(port, registry)
+                self.assertFalse(result)
 
     def test_start_server_other_oserror_handled(self):
         """Test start_server when OSError with other errno is handled."""
@@ -420,12 +421,13 @@ class TestMetricsServerManager(unittest.TestCase):
             "prometheus_client.exposition.start_http_server",
             side_effect=OSError(13, "Permission denied"),
         ):
-            result = manager.start_server(port, registry)
+            with patch("time.sleep"):  # Mock sleep to speed up test
+                result = manager.start_server(port, registry)
 
-            self.assertFalse(result)
-            mock_logger.error.assert_called_with(
-                "Failed to start metrics server after %s attempts", 3
-            )
+                self.assertFalse(result)
+                mock_logger.error.assert_called_with(
+                    "Failed to start metrics server after %s attempts", 5
+                )
 
     def test_start_single_attempt_success(self):
         """Test _start_single_attempt with success."""
@@ -454,8 +456,9 @@ class TestMetricsServerManager(unittest.TestCase):
             "prometheus_client.exposition.start_http_server",
             side_effect=OSError(98, "Address already in use"),
         ):
-            with self.assertRaises(OSError):
-                manager._start_single_attempt(port, registry)
+            # OSError with errno 98 is now handled gracefully and returns False
+            result = manager._start_single_attempt(port, registry)
+            self.assertFalse(result)
 
     def test_start_single_attempt_oserror_other(self):
         """Test _start_single_attempt with other OSError."""
@@ -1138,8 +1141,8 @@ class TestMetricsServerManagerComprehensive(unittest.TestCase):
 
         self.assertEqual(manager.logger, mock_logger)
         self.assertIsNone(manager._server_thread)
-        self.assertEqual(manager.max_retries, 3)
-        self.assertEqual(manager.retry_delay, 1)
+        self.assertEqual(manager.max_retries, 5)
+        self.assertEqual(manager.retry_delay, 2)
 
     def test_setup_server_success(self):
         """Test setup_server with success."""
@@ -1201,11 +1204,12 @@ class TestMetricsServerManagerComprehensive(unittest.TestCase):
         with patch.object(
             manager, "_start_single_attempt", return_value=False
         ) as mock_start:
-            result = manager.start_server(9091, Mock())
+            with patch("time.sleep"):  # Mock sleep to speed up test
+                result = manager.start_server(9091, Mock())
 
-            self.assertFalse(result)
-            # Should be called multiple times due to retry logic
-            self.assertGreaterEqual(mock_start.call_count, 1)
+                self.assertFalse(result)
+                # Should be called multiple times due to retry logic
+                self.assertGreaterEqual(mock_start.call_count, 1)
 
     def test_stop_server(self):
         """Test stop_server method."""

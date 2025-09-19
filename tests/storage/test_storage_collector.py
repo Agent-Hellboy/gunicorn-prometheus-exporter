@@ -8,6 +8,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+
+try:
+    import redis
+except ImportError:
+    redis = None
+
 from gunicorn_prometheus_exporter.backend.core.collector import (
     RedisMultiProcessCollector,
 )

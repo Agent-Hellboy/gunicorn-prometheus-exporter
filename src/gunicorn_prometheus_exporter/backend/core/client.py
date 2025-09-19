@@ -41,6 +41,10 @@ class RedisClientProtocol(Protocol):
         """Set hash field value."""
         raise NotImplementedError
 
+    def hsetnx(self, name: Union[str, bytes], key: str, value: str) -> bool:
+        """Set hash field value only if field does not exist."""
+        raise NotImplementedError
+
     def hgetall(
         self, name: Union[str, bytes]
     ) -> Dict[Union[bytes, str], Union[bytes, str]]:
@@ -147,9 +151,9 @@ class RedisStorageDict:
 
             # Store metadata separately for easier querying
             metadata_key = self._get_metadata_key(key, metric_type)
-            self._redis.hset(
-                metadata_key, mapping={"original_key": key, "created_at": time.time()}
-            )
+            # Set metadata only once - don't overwrite created_at on subsequent writes
+            self._redis.hsetnx(metadata_key, "original_key", key)
+            self._redis.hsetnx(metadata_key, "created_at", str(time.time()))
 
             # Set TTL for metadata key as well
             if not config.redis_ttl_disabled:
@@ -190,9 +194,9 @@ class RedisStorageDict:
 
         # Store metadata separately for easier querying
         metadata_key = self._get_metadata_key(key, metric_type)
-        self._redis.hset(
-            metadata_key, mapping={"original_key": key, "created_at": time.time()}
-        )
+        # Set metadata only once - don't overwrite created_at on subsequent writes
+        self._redis.hsetnx(metadata_key, "original_key", key)
+        self._redis.hsetnx(metadata_key, "created_at", str(time.time()))
 
         # Set TTL for metadata key as well
         if not config.redis_ttl_disabled:

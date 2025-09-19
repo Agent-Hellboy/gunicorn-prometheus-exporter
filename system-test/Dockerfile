@@ -6,6 +6,7 @@ FROM python:3.11-slim
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     redis-server \
+    redis-tools \
     lsof \
     curl \
     procps \
@@ -14,11 +15,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Prometheus
-RUN wget https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz \
-    && tar xzf prometheus-2.45.0.linux-amd64.tar.gz \
-    && mv prometheus-2.45.0.linux-amd64/prometheus /usr/local/bin/ \
-    && mv prometheus-2.45.0.linux-amd64/promtool /usr/local/bin/ \
-    && rm -rf prometheus-2.45.0.linux-amd64*
+ARG PROM_VERSION=2.45.0
+RUN set -eux; \
+    url="https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/prometheus-${PROM_VERSION}.linux-amd64.tar.gz"; \
+    wget -O /tmp/prometheus.tgz "$url"; \
+    tar -xzf /tmp/prometheus.tgz -C /tmp; \
+    mv /tmp/prometheus-${PROM_VERSION}.linux-amd64/prometheus /usr/local/bin/; \
+    mv /tmp/prometheus-${PROM_VERSION}.linux-amd64/promtool /usr/local/bin/; \
+    rm -rf /tmp/prometheus*;
 
 # Set working directory
 WORKDIR /app
@@ -82,7 +86,12 @@ done\n\
 # Run the Redis integration system test (already in Docker, so no --docker flag needed)\n\
 cd system-test\n\
 export SKIP_VENV=true\n\
-./system_test_redis_integ.sh --ci\n\
+# Use environment variables to determine test mode\n\
+if [ "$QUICK_MODE" = "true" ]; then\n\
+    ./system_test_redis_integ.sh --quick --ci\n\
+else\n\
+    ./system_test_redis_integ.sh --ci\n\
+fi\n\
 ' > /start_test.sh && chmod +x /start_test.sh
 
 # Default command

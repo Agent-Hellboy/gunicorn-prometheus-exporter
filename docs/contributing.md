@@ -286,7 +286,7 @@ What actually happened.
 - Python version: 3.9.0
 - Gunicorn version: 21.2.0
 - Operating system: Ubuntu 20.04
-- Package version: 0.1.0
+- Package version: 0.1.5
 
 **Configuration**
 

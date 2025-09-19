@@ -220,7 +220,7 @@ flask>=2.0.0
 flask-cors>=3.0.10
 flask-sqlalchemy>=2.5.0
 gunicorn>=21.2.0
-gunicorn-prometheus-exporter>=0.1.0
+gunicorn-prometheus-exporter>=0.1.5
 ```
 
 ### Docker Compose

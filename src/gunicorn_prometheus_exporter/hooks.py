@@ -129,8 +129,8 @@ class MetricsServerManager:
 
     def __init__(self, logger: logging.Logger):
         self.logger = logger
-        self.max_retries = 3
-        self.retry_delay = 1
+        self.max_retries = 5  # Increased retries for restart scenarios
+        self.retry_delay = 2  # Increased delay for port release
         self._server_thread = None  # Store the server thread
 
     def setup_server(self) -> Optional[tuple[int, Any]]:
@@ -183,7 +183,9 @@ class MetricsServerManager:
                     self.max_retries,
                     self.retry_delay,
                 )
-                time.sleep(self.retry_delay)
+                # Wait longer for port to be released during restart scenarios
+                wait_time = self.retry_delay * (attempt + 1)  # Progressive backoff
+                time.sleep(wait_time)
 
         self.logger.error(
             "Failed to start metrics server after %s attempts", self.max_retries
@@ -202,9 +204,26 @@ class MetricsServerManager:
             finally:
                 self._server_thread = None
 
+    def _is_port_available(self, port: int) -> bool:
+        """Check if a port is available for binding."""
+        import socket
+
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(1)
+                result = sock.connect_ex(("localhost", port))
+                return result != 0  # Port is available if connection fails
+        except Exception:
+            return False
+
     def _start_single_attempt(self, port: int, registry: Any) -> bool:
         """Start metrics server in a single attempt."""
         try:
+            # Check if port is available before attempting to bind
+            if not self._is_port_available(port):
+                self.logger.debug("Port %s is not available, skipping attempt", port)
+                return False
+
             # Get the bind address from configuration
             bind_address = config.prometheus_bind_address
 
@@ -253,7 +272,11 @@ class MetricsServerManager:
             return True
         except OSError as e:
             if e.errno == 98:  # Address already in use
-                raise
+                self.logger.warning(
+                    "Port %s already in use, metrics server may already be running",
+                    port,
+                )
+                return False
             self.logger.error("Failed to start metrics server: %s", e)
             return False
         except Exception as e:

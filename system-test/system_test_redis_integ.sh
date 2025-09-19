@@ -37,13 +37,13 @@ REDIS_PORT=6379
 REDIS_HOST_OPT="${REDIS_HOST:-127.0.0.1}"
 REDIS_PORT_OPT="${REDIS_PORT:-6379}"
 REDIS_DB_OPT="${REDIS_DB:-0}"
-REDIS_CLI="redis-cli -h \"$REDIS_HOST_OPT\" -p \"$REDIS_PORT_OPT\" -n \"$REDIS_DB_OPT\""
+REDIS_CLI=("redis-cli" "-h" "$REDIS_HOST_OPT" "-p" "$REDIS_PORT_OPT" "-n" "$REDIS_DB_OPT")
 
 # Controls whether to allow FLUSHALL during tests (default: false)
 : "${REDIS_DESTRUCTIVE_FLUSH:=false}"
 TEST_DURATION=30
 REQUESTS_PER_SECOND=5
-TIMEOUT=60
+TIMEOUT=300
 
 # Mode flags
 QUICK_MODE=false
@@ -65,11 +65,17 @@ while [[ $# -gt 0 ]]; do
             QUICK_MODE=true
             TEST_DURATION=10
             REQUESTS_PER_SECOND=2
+            # Increase timeout for quick mode to allow for cleanup
+            TIMEOUT=300
             shift
             ;;
         --ci)
             CI_MODE=true
-            TIMEOUT=30
+            # Increase timeout to allow for test execution and cleanup
+            # But don't override quick mode settings if already set
+            if [ "$QUICK_MODE" != true ]; then
+                TIMEOUT=300
+            fi
             shift
             ;;
         --no-redis)
@@ -83,12 +89,24 @@ while [[ $# -gt 0 ]]; do
         --docker)
             # Run the test in Docker container instead of locally
             echo "Running system test in Docker container..."
-            docker build -f Dockerfile -t gunicorn-prometheus-exporter-test .. >/dev/null 2>&1
+            cd "$(dirname "$0")/.."  # Change to project root
+            docker build -f system-test/Dockerfile -t gunicorn-prometheus-exporter-test . >/dev/null 2>&1
+
+            # Set environment variables to pass test mode to Docker container
+            DOCKER_ENV_ARGS=""
+            if [ "$QUICK_MODE" = true ]; then
+                DOCKER_ENV_ARGS="$DOCKER_ENV_ARGS -e QUICK_MODE=true"
+            fi
+            if [ "$CI_MODE" = true ]; then
+                DOCKER_ENV_ARGS="$DOCKER_ENV_ARGS -e CI_MODE=true"
+            fi
+
             docker run --rm \
                 --name gunicorn-prometheus-test \
                 -p 8088:8088 \
                 -p 9093:9093 \
                 -p 6379:6379 \
+                $DOCKER_ENV_ARGS \
                 gunicorn-prometheus-exporter-test
             exit $?
             ;;
@@ -240,7 +258,8 @@ flush_redis() {
             # Safer: delete only test keys by prefix
             prefix="${REDIS_KEY_PREFIX:-gunicorn}"
             # Batch unlink for performance
-            eval "$REDIS_CLI --scan --pattern \"${prefix}:*\"" | xargs -r -L100 eval "$REDIS_CLI UNLINK" >/dev/null 2>&1 || true
+            "${REDIS_CLI[@]}" --scan --pattern "${prefix}:*" | \
+              xargs -r -n1 -P4 -I{} "${REDIS_CLI[@]}" UNLINK "{}" >/dev/null 2>&1 || true
             print_success "Deleted keys with prefix ${prefix}:*"
         fi
 
@@ -260,7 +279,8 @@ flush_redis() {
             print_success "No signal metrics found in Redis (clean state)"
         else
             print_warning "Found $signal_metrics signal metric keys in Redis - forcing cleanup"
-            eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\"" | xargs -r eval "$REDIS_CLI UNLINK" >/dev/null 2>&1 || true
+            "${REDIS_CLI[@]}" --scan --pattern "*master_worker_restart*" | \
+              xargs -r -n1 -P4 -I{} "${REDIS_CLI[@]}" UNLINK "{}" >/dev/null 2>&1 || true
             print_success "Signal metrics cleaned from Redis"
         fi
     else
@@ -289,7 +309,8 @@ validate_redis_clean() {
 
     if [ "$signal_metrics" -gt 0 ]; then
         print_warning "Found $signal_metrics signal metric keys - cleaning Redis before signal test"
-        eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\"" | xargs -r eval "$REDIS_CLI UNLINK" >/dev/null 2>&1 || true
+        "${REDIS_CLI[@]}" --scan --pattern "*master_worker_restart*" | \
+          xargs -r -n1 -P4 -I{} "${REDIS_CLI[@]}" UNLINK "{}" >/dev/null 2>&1 || true
         print_success "Signal metrics cleaned from Redis"
 
         # Verify cleanup
@@ -376,7 +397,8 @@ cleanup_redis() {
                 # Safer: delete only test keys by prefix
                 prefix="${REDIS_KEY_PREFIX:-gunicorn}"
                 # Batch unlink for performance
-                eval "$REDIS_CLI --scan --pattern \"${prefix}:*\"" | xargs -r -L100 eval "$REDIS_CLI UNLINK" >/dev/null 2>&1 || true
+                "${REDIS_CLI[@]}" --scan --pattern "${prefix}:*" | \
+                  xargs -r -n1 -P4 -I{} "${REDIS_CLI[@]}" UNLINK "{}" >/dev/null 2>&1 || true
                 print_success "Deleted keys with prefix ${prefix}:*"
             fi
         else
@@ -1042,7 +1064,8 @@ test_signal_handling() {
 
         if [ "$signal_metrics_before" -gt 0 ]; then
             print_warning "Found $signal_metrics_before signal metrics in Redis - cleaning before SIGINT test"
-            eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\"" | xargs -r eval "$REDIS_CLI UNLINK" >/dev/null 2>&1 || true
+            "${REDIS_CLI[@]}" --scan --pattern "*master_worker_restart*" | \
+              xargs -r -n1 -P4 -I{} "${REDIS_CLI[@]}" UNLINK "{}" >/dev/null 2>&1 || true
             print_success "Signal metrics cleaned from Redis before SIGINT test"
         fi
 
@@ -1188,5 +1211,20 @@ main() {
     echo -e "${GREEN}========================================${NC}"
 }
 
-# Run main function
-main "$@"
+# Run main function with timeout in CI mode
+# Only execute main if this script is being run directly (not sourced)
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+    if [ "$CI_MODE" = true ]; then
+        if command -v timeout >/dev/null 2>&1; then
+            timeout "$TIMEOUT" bash -c "source '$0'; main '$@'" || {
+                print_error "System test timed out after $TIMEOUT seconds"
+                exit 1
+            }
+        else
+            print_warning "timeout not found; running without timeout"
+            main "$@"
+        fi
+    else
+        main "$@"
+    fi
+fi

@@ -103,7 +103,10 @@ class TestRedisStorageDict:
 
         assert value == 10.5
         assert timestamp == 1234567890.0
-        assert mock_client.hset.call_count == 2  # Called twice: metric data + metadata
+        assert mock_client.hset.call_count == 1  # Called once: metric data only
+        assert (
+            mock_client.hsetnx.call_count == 2
+        )  # Called twice: metadata (original_key + created_at)
 
     def test_read_all_values(self):
         """Test reading all values."""

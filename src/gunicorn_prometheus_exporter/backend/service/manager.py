@@ -11,6 +11,7 @@ from typing import Optional, Protocol
 
 from ...config import config
 from ..core import get_redis_value_class
+from ..core.client import RedisClientProtocol
 
 
 # Conditional Redis import - only import when needed
@@ -26,18 +27,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class RedisClientProtocol(Protocol):
-    """Protocol for Redis client interface."""
-
-    def ping(self) -> bool:
-        """Test Redis connection."""
-        raise NotImplementedError
-
-    def close(self) -> None:
-        """Close Redis connection."""
-        raise NotImplementedError
-
-
 class PrometheusValueClassProtocol(Protocol):
     """Protocol for Prometheus value class interface."""
 
@@ -49,16 +38,19 @@ class PrometheusValueClassProtocol(Protocol):
 class FactoryUtilsMixin:
     """Mixin class for factory utilities."""
 
-    def create_redis_value_class(self, redis_client, redis_key_prefix="prometheus"):
+    def create_redis_value_class(self, redis_client, redis_key_prefix=None):
         """Create a RedisValue class configured with Redis client.
 
         Args:
             redis_client: Redis client instance
-            redis_key_prefix: Prefix for Redis keys
+            redis_key_prefix: Prefix for Redis keys (defaults to \
+                config.redis_key_prefix)
 
         Returns:
             Configured RedisValue class
         """
+        if redis_key_prefix is None:
+            redis_key_prefix = config.redis_key_prefix
         return get_redis_value_class(redis_client, redis_key_prefix)
 
     def create_storage_manager(

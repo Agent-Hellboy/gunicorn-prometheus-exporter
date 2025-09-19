@@ -412,25 +412,32 @@ class TestConfigEdgeCases:
 
     def test_invalid_port_values(self):
         """Test handling of invalid port values."""
-        test_cases = [
-            ("-1", "Negative port should be handled"),
-            ("0", "Zero port should be handled"),
-            ("65536", "Port too large should be handled"),
-            ("invalid", "Non-numeric port should be handled"),
-            ("", "Empty port should be handled"),
-        ]
+        # Test negative port - should fail validation
+        with patch.dict(os.environ, {"PROMETHEUS_METRICS_PORT": "-1"}):
+            config = ExporterConfig()
+            assert config.validate() is False
 
-        for port_value, description in test_cases:
-            with patch.dict(os.environ, {"PROMETHEUS_METRICS_PORT": port_value}):
-                try:
-                    config = ExporterConfig()
-                    # Should handle invalid port gracefully
-                    assert isinstance(
-                        config.prometheus_metrics_port, int
-                    ), f"{description}: {port_value}"
-                except ValueError:
-                    # If ValueError is raised, that's also acceptable behavior
-                    pass
+        # Test port 0 - should fail validation
+        with patch.dict(os.environ, {"PROMETHEUS_METRICS_PORT": "0"}):
+            config = ExporterConfig()
+            assert config.validate() is False
+
+        # Test port too large - should fail validation
+        with patch.dict(os.environ, {"PROMETHEUS_METRICS_PORT": "65536"}):
+            config = ExporterConfig()
+            assert config.validate() is False
+
+        # Test non-numeric port - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"PROMETHEUS_METRICS_PORT": "invalid"}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.prometheus_metrics_port
+
+        # Test empty port - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"PROMETHEUS_METRICS_PORT": ""}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.prometheus_metrics_port
 
     def test_invalid_worker_count_values(self):
         """Test handling of invalid worker count values."""
@@ -456,90 +463,115 @@ class TestConfigEdgeCases:
 
     def test_invalid_timeout_values(self):
         """Test handling of invalid timeout values."""
-        test_cases = [
-            ("-1", "Negative timeout should be handled"),
-            ("0", "Zero timeout should be handled"),
-            ("invalid", "Non-numeric timeout should be handled"),
-            ("", "Empty timeout should be handled"),
-            ("999999", "Very large timeout should be handled"),
-        ]
+        # Test negative timeout - should fail validation
+        with patch.dict(os.environ, {"GUNICORN_TIMEOUT": "-1"}):
+            config = ExporterConfig()
+            assert config.validate() is False
 
-        for timeout_value, description in test_cases:
-            with patch.dict(os.environ, {"GUNICORN_TIMEOUT": timeout_value}):
-                try:
-                    config = ExporterConfig()
-                    # Should handle invalid timeout gracefully
-                    assert isinstance(
-                        config.gunicorn_timeout, int
-                    ), f"{description}: {timeout_value}"
-                except ValueError:
-                    # If ValueError is raised, that's also acceptable behavior
-                    pass
+        # Test zero timeout - should fail validation
+        with patch.dict(os.environ, {"GUNICORN_TIMEOUT": "0"}):
+            config = ExporterConfig()
+            assert config.validate() is False
+
+        # Test non-numeric timeout - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"GUNICORN_TIMEOUT": "invalid"}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.gunicorn_timeout
+
+        # Test empty timeout - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"GUNICORN_TIMEOUT": ""}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.gunicorn_timeout
+
+        # Test very large timeout - should pass validation (no upper limit)
+        with patch.dict(os.environ, {"GUNICORN_TIMEOUT": "999999"}):
+            config = ExporterConfig()
+            # Should not raise ValueError - large timeouts are allowed
+            assert config.gunicorn_timeout == 999999
 
     def test_invalid_keepalive_values(self):
         """Test handling of invalid keepalive values."""
-        test_cases = [
-            ("-1", "Negative keepalive should be handled"),
-            ("0", "Zero keepalive should be handled"),
-            ("invalid", "Non-numeric keepalive should be handled"),
-            ("", "Empty keepalive should be handled"),
-            ("999999", "Very large keepalive should be handled"),
-        ]
+        # Test negative keepalive - should pass (no validation)
+        with patch.dict(os.environ, {"GUNICORN_KEEPALIVE": "-1"}):
+            config = ExporterConfig()
+            assert config.gunicorn_keepalive == -1
 
-        for keepalive_value, description in test_cases:
-            with patch.dict(os.environ, {"GUNICORN_KEEPALIVE": keepalive_value}):
-                try:
-                    config = ExporterConfig()
-                    # Should handle invalid keepalive gracefully
-                    assert isinstance(
-                        config.gunicorn_keepalive, int
-                    ), f"{description}: {keepalive_value}"
-                except ValueError:
-                    # If ValueError is raised, that's also acceptable behavior
-                    pass
+        # Test zero keepalive - should pass (no validation)
+        with patch.dict(os.environ, {"GUNICORN_KEEPALIVE": "0"}):
+            config = ExporterConfig()
+            assert config.gunicorn_keepalive == 0
+
+        # Test non-numeric keepalive - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"GUNICORN_KEEPALIVE": "invalid"}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.gunicorn_keepalive
+
+        # Test empty keepalive - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"GUNICORN_KEEPALIVE": ""}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.gunicorn_keepalive
+
+        # Test very large keepalive - should pass (no upper limit)
+        with patch.dict(os.environ, {"GUNICORN_KEEPALIVE": "999999"}):
+            config = ExporterConfig()
+            assert config.gunicorn_keepalive == 999999
 
     def test_invalid_redis_db_values(self):
         """Test handling of invalid Redis DB values."""
-        test_cases = [
-            ("-1", "Negative DB should be handled"),
-            ("invalid", "Non-numeric DB should be handled"),
-            ("", "Empty DB should be handled"),
-            ("999999", "Very large DB should be handled"),
-        ]
+        # Test negative DB - should pass (no validation)
+        with patch.dict(os.environ, {"REDIS_DB": "-1"}):
+            config = ExporterConfig()
+            assert config.redis_db == -1
 
-        for db_value, description in test_cases:
-            with patch.dict(os.environ, {"REDIS_DB": db_value}):
-                try:
-                    config = ExporterConfig()
-                    # Should handle invalid DB gracefully
-                    assert isinstance(
-                        config.redis_db, int
-                    ), f"{description}: {db_value}"
-                except ValueError:
-                    # If ValueError is raised, that's also acceptable behavior
-                    pass
+        # Test non-numeric DB - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"REDIS_DB": "invalid"}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.redis_db
+
+        # Test empty DB - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"REDIS_DB": ""}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.redis_db
+
+        # Test very large DB - should pass (no upper limit)
+        with patch.dict(os.environ, {"REDIS_DB": "999999"}):
+            config = ExporterConfig()
+            assert config.redis_db == 999999
 
     def test_invalid_redis_port_values(self):
         """Test handling of invalid Redis port values."""
-        test_cases = [
-            ("-1", "Negative Redis port should be handled"),
-            ("0", "Zero Redis port should be handled"),
-            ("65536", "Redis port too large should be handled"),
-            ("invalid", "Non-numeric Redis port should be handled"),
-            ("", "Empty Redis port should be handled"),
-        ]
+        # Test negative Redis port - should pass (no validation)
+        with patch.dict(os.environ, {"REDIS_PORT": "-1"}):
+            config = ExporterConfig()
+            assert config.redis_port == -1
 
-        for port_value, description in test_cases:
-            with patch.dict(os.environ, {"REDIS_PORT": port_value}):
-                try:
-                    config = ExporterConfig()
-                    # Should handle invalid Redis port gracefully
-                    assert isinstance(
-                        config.redis_port, int
-                    ), f"{description}: {port_value}"
-                except ValueError:
-                    # If ValueError is raised, that's also acceptable behavior
-                    pass
+        # Test zero Redis port - should pass (no validation)
+        with patch.dict(os.environ, {"REDIS_PORT": "0"}):
+            config = ExporterConfig()
+            assert config.redis_port == 0
+
+        # Test Redis port too large - should pass (no validation)
+        with patch.dict(os.environ, {"REDIS_PORT": "65536"}):
+            config = ExporterConfig()
+            assert config.redis_port == 65536
+
+        # Test non-numeric Redis port - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"REDIS_PORT": "invalid"}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.redis_port
+
+        # Test empty Redis port - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"REDIS_PORT": ""}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.redis_port
 
     def test_malformed_bind_address(self):
         """Test handling of malformed bind addresses."""
