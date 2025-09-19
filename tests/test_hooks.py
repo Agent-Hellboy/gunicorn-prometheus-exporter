@@ -908,57 +908,56 @@ class TestRedisWhenReadyHook(unittest.TestCase):
         mock_logger.error.assert_called_once_with("Failed to start metrics server")
 
 
-class TestRedisForwarder(unittest.TestCase):
-    """Test Redis forwarder functionality."""
+def test_setup_redis_storage_enabled():
+    """Test _setup_redis_storage_if_enabled when Redis is enabled."""
+    mock_logger = MagicMock()
 
-    def test_start_redis_forwarder_enabled(self):
-        """Test _setup_redis_storage_if_enabled when Redis is enabled."""
-        mock_logger = MagicMock()
+    with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
+        mock_config.redis_enabled = True
 
-        with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
-            mock_config.redis_enabled = True
-
-            with patch(
-                "gunicorn_prometheus_exporter.backend.setup_redis_metrics"
-            ) as mock_setup_redis:
-                mock_setup_redis.return_value = True
-
-                _setup_redis_storage_if_enabled(mock_logger)
-
-                mock_setup_redis.assert_called_once()
-                mock_logger.debug.assert_called_once_with(
-                    "Redis storage enabled - using Redis instead of files"
-                )
-
-    def test_start_redis_forwarder_disabled(self):
-        """Test _setup_redis_storage_if_enabled when Redis is disabled."""
-        mock_logger = MagicMock()
-
-        with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
-            mock_config.redis_enabled = False
+        with patch(
+            "gunicorn_prometheus_exporter.backend.setup_redis_metrics"
+        ) as mock_setup_redis:
+            mock_setup_redis.return_value = True
 
             _setup_redis_storage_if_enabled(mock_logger)
 
-            mock_logger.debug.assert_called_once_with("Redis storage disabled")
+            mock_setup_redis.assert_called_once()
+            mock_logger.debug.assert_called_once_with(
+                "Redis storage enabled - using Redis instead of files"
+            )
 
-    def test_start_redis_forwarder_exception(self):
-        """Test _setup_redis_storage_if_enabled with exception."""
-        mock_logger = MagicMock()
 
-        with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
-            mock_config.redis_enabled = True
+def test_setup_redis_storage_disabled():
+    """Test _setup_redis_storage_if_enabled when Redis is disabled."""
+    mock_logger = MagicMock()
 
-            with patch(
-                "gunicorn_prometheus_exporter.backend.setup_redis_metrics",
-                side_effect=Exception("Test error"),
-            ):
-                _setup_redis_storage_if_enabled(mock_logger)
+    with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
+        mock_config.redis_enabled = False
 
-                mock_logger.error.assert_called_once()
-                call_args = mock_logger.error.call_args
-                self.assertEqual(call_args[0][0], "Failed to setup Redis storage: %s")
-                self.assertIsInstance(call_args[0][1], Exception)
-                self.assertEqual(str(call_args[0][1]), "Test error")
+        _setup_redis_storage_if_enabled(mock_logger)
+
+        mock_logger.debug.assert_called_once_with("Redis storage disabled")
+
+
+def test_setup_redis_storage_exception():
+    """Test _setup_redis_storage_if_enabled with exception."""
+    mock_logger = MagicMock()
+
+    with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
+        mock_config.redis_enabled = True
+
+        with patch(
+            "gunicorn_prometheus_exporter.backend.setup_redis_metrics",
+            side_effect=Exception("Test error"),
+        ):
+            _setup_redis_storage_if_enabled(mock_logger)
+
+            mock_logger.error.assert_called_once()
+            call_args = mock_logger.error.call_args
+            assert call_args[0][0] == "Failed to setup Redis storage: %s"
+            assert isinstance(call_args[0][1], Exception)
+            assert str(call_args[0][1]) == "Test error"
 
 
 class TestHookContextComprehensive(unittest.TestCase):

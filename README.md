@@ -188,10 +188,6 @@ The documentation includes:
 - `gunicorn_master_worker_restarts_total`: Worker restart counts
 - `gunicorn_master_workers_current`: Current worker count
 
-### Redis Metrics (if Redis storage enabled)
-
-- `gunicorn_redis_connection_status`: Redis connection health status
-- `gunicorn_redis_errors_total`: Redis operation error counts
 
 ## Examples
 
