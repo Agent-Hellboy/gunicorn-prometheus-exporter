@@ -80,7 +80,7 @@ class PrometheusMaster(Arbiter):
 
                 # Safely increment metric
                 try:
-                    MasterWorkerRestarts.inc(reason=reason)
+                    self._safe_inc_restart(reason)
                     logger.debug("Signal metric captured successfully: %s", reason)
                 except Exception as e:
                     logger.warning("Failed to capture signal metric %s: %s", reason, e)
@@ -119,7 +119,7 @@ class PrometheusMaster(Arbiter):
         # Fallback: synchronous approach
         try:
             logger.debug("Fallback: synchronous metric capture for %s", reason)
-            MasterWorkerRestarts.inc(reason=reason)
+            self._safe_inc_restart(reason)
             logger.debug("Fallback synchronous metric capture successful: %s", reason)
         except Exception as fallback_e:
             logger.error(
@@ -141,7 +141,7 @@ class PrometheusMaster(Arbiter):
         """Handle INT signal (Ctrl+C)."""
         try:
             logger.debug("SIGINT received - capturing metric")
-            MasterWorkerRestarts.inc(reason="int")
+            self._safe_inc_restart("int")
             logger.debug("SIGINT metric incremented")
 
             # Force flush to storage for SIGINT to ensure metric is written before
