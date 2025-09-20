@@ -1216,7 +1216,7 @@ main() {
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     if [ "$CI_MODE" = true ]; then
         if command -v timeout >/dev/null 2>&1; then
-            timeout "$TIMEOUT" bash -c "source '$0'; main '$@'" || {
+            timeout "$TIMEOUT" bash -c 'source "$1"; shift; main "$@"' _ "$0" "$@" || {
                 print_error "System test timed out after $TIMEOUT seconds"
                 exit 1
             }

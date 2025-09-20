@@ -413,17 +413,38 @@ class TestConfigEdgeCases:
     def test_invalid_port_values(self):
         """Test handling of invalid port values."""
         # Test negative port - should fail validation
-        with patch.dict(os.environ, {"PROMETHEUS_METRICS_PORT": "-1"}):
+        with patch.dict(
+            os.environ,
+            {
+                "PROMETHEUS_METRICS_PORT": "-1",
+                "PROMETHEUS_BIND_ADDRESS": "127.0.0.1",
+                "GUNICORN_WORKERS": "2",
+            },
+        ):
             config = ExporterConfig()
             assert config.validate() is False
 
         # Test port 0 - should fail validation
-        with patch.dict(os.environ, {"PROMETHEUS_METRICS_PORT": "0"}):
+        with patch.dict(
+            os.environ,
+            {
+                "PROMETHEUS_METRICS_PORT": "0",
+                "PROMETHEUS_BIND_ADDRESS": "127.0.0.1",
+                "GUNICORN_WORKERS": "2",
+            },
+        ):
             config = ExporterConfig()
             assert config.validate() is False
 
         # Test port too large - should fail validation
-        with patch.dict(os.environ, {"PROMETHEUS_METRICS_PORT": "65536"}):
+        with patch.dict(
+            os.environ,
+            {
+                "PROMETHEUS_METRICS_PORT": "65536",
+                "PROMETHEUS_BIND_ADDRESS": "127.0.0.1",
+                "GUNICORN_WORKERS": "2",
+            },
+        ):
             config = ExporterConfig()
             assert config.validate() is False
 
@@ -464,12 +485,28 @@ class TestConfigEdgeCases:
     def test_invalid_timeout_values(self):
         """Test handling of invalid timeout values."""
         # Test negative timeout - should fail validation
-        with patch.dict(os.environ, {"GUNICORN_TIMEOUT": "-1"}):
+        with patch.dict(
+            os.environ,
+            {
+                "GUNICORN_TIMEOUT": "-1",
+                "PROMETHEUS_BIND_ADDRESS": "127.0.0.1",
+                "PROMETHEUS_METRICS_PORT": "9091",
+                "GUNICORN_WORKERS": "2",
+            },
+        ):
             config = ExporterConfig()
             assert config.validate() is False
 
         # Test zero timeout - should fail validation
-        with patch.dict(os.environ, {"GUNICORN_TIMEOUT": "0"}):
+        with patch.dict(
+            os.environ,
+            {
+                "GUNICORN_TIMEOUT": "0",
+                "PROMETHEUS_BIND_ADDRESS": "127.0.0.1",
+                "PROMETHEUS_METRICS_PORT": "9091",
+                "GUNICORN_WORKERS": "2",
+            },
+        ):
             config = ExporterConfig()
             assert config.validate() is False
 
@@ -637,51 +674,41 @@ class TestConfigEdgeCases:
                 ), f"Boolean parsing failed for: {value}"
 
     def test_config_validation_with_invalid_values(self):
-        """Test configuration validation with various invalid values."""
-        # Test with multiple invalid values at once
+        """Explicit expectations when multiple envs are invalid/malformed."""
         with patch.dict(
             os.environ,
             {
-                "PROMETHEUS_METRICS_PORT": "invalid",
-                "GUNICORN_WORKERS": "-1",
-                "REDIS_TTL_SECONDS": "invalid",
-                "PROMETHEUS_BIND_ADDRESS": "invalid_address",
+                "PROMETHEUS_METRICS_PORT": "invalid",  # raises on access
+                "GUNICORN_WORKERS": "-1",  # parses; invalid only in validate()
+                "REDIS_TTL_SECONDS": "invalid",  # raises on access
+                "PROMETHEUS_BIND_ADDRESS": "invalid_address",  # no validation
             },
         ):
-            try:
-                config = ExporterConfig()
-                # Should handle multiple invalid values gracefully
-                assert isinstance(config.prometheus_metrics_port, int)
-                assert isinstance(config.gunicorn_workers, int)
-                assert isinstance(config.redis_ttl_seconds, int)
-                assert isinstance(config.prometheus_bind_address, str)
-            except ValueError:
-                # If ValueError is raised, that's also acceptable behavior
-                pass
+            cfg = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = cfg.prometheus_metrics_port
+            assert cfg.gunicorn_workers == -1
+            with pytest.raises(ValueError):
+                _ = cfg.redis_ttl_seconds
+            assert cfg.prometheus_bind_address == "invalid_address"
 
     def test_config_with_mixed_valid_invalid_values(self):
-        """Test configuration with mix of valid and invalid values."""
+        """Mixed valid/invalid envs with explicit expectations."""
         with patch.dict(
             os.environ,
             {
-                "PROMETHEUS_METRICS_PORT": "9090",  # Valid
-                "GUNICORN_WORKERS": "invalid",  # Invalid
-                "REDIS_TTL_SECONDS": "30",  # Valid
-                "PROMETHEUS_BIND_ADDRESS": "0.0.0.0",  # Valid
+                "PROMETHEUS_METRICS_PORT": "9090",
+                "GUNICORN_WORKERS": "invalid",
+                "REDIS_TTL_SECONDS": "30",
+                "PROMETHEUS_BIND_ADDRESS": "0.0.0.0",
             },
         ):
-            try:
-                config = ExporterConfig()
-                # Should handle mixed values gracefully
-                assert config.prometheus_metrics_port == 9090
-                assert isinstance(
-                    config.gunicorn_workers, int
-                )  # Should fallback to default
-                assert config.redis_ttl_seconds == 30
-                assert config.prometheus_bind_address == "0.0.0.0"
-            except ValueError:
-                # If ValueError is raised, that's also acceptable behavior
-                pass
+            cfg = ExporterConfig()
+            assert cfg.prometheus_metrics_port == 9090
+            with pytest.raises(ValueError):
+                _ = cfg.gunicorn_workers
+            assert cfg.redis_ttl_seconds == 30
+            assert cfg.prometheus_bind_address == "0.0.0.0"
 
     def test_redis_enabled_property(self):
         """Test Redis enabled property."""
