@@ -229,7 +229,7 @@ wait_for_service() {
 
 # Function to check if Redis is running
 check_redis() {
-    if eval "$REDIS_CLI ping" >/dev/null 2>&1; then
+    if "${REDIS_CLI[@]}" ping >/dev/null 2>&1; then
         return 0
     else
         return 1
@@ -243,11 +243,11 @@ flush_redis() {
     if command -v redis-cli >/dev/null 2>&1; then
         if [ "$REDIS_DESTRUCTIVE_FLUSH" = true ]; then
             # Destructive flush - use FLUSHALL
-            if eval "$REDIS_CLI FLUSHALL" >/dev/null 2>&1; then
+            if "${REDIS_CLI[@]}" FLUSHALL >/dev/null 2>&1; then
                 print_success "Redis all databases flushed (FLUSHALL)"
             else
                 # Fallback to flushing current database only
-                if eval "$REDIS_CLI FLUSHDB" >/dev/null 2>&1; then
+                if "${REDIS_CLI[@]}" FLUSHDB >/dev/null 2>&1; then
                     print_success "Redis current database flushed (FLUSHDB)"
                 else
                     print_warning "Failed to flush Redis database"
@@ -265,7 +265,7 @@ flush_redis() {
 
         # Verify Redis is empty (or only has non-test keys)
         local key_count
-        key_count=$(eval "$REDIS_CLI DBSIZE" 2>/dev/null || echo "0")
+        key_count=$("${REDIS_CLI[@]}" DBSIZE 2>/dev/null || echo "0")
         if [ "$key_count" -eq 0 ]; then
             print_success "Redis confirmed empty (0 keys)"
         else
@@ -274,7 +274,7 @@ flush_redis() {
 
         # Additional validation: Check for any signal metrics
         local signal_metrics
-        signal_metrics=$(eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\" | wc -l" 2>/dev/null || echo "0")
+        signal_metrics=$("${REDIS_CLI[@]}" --scan --pattern "*master_worker_restart*" 2>/dev/null | wc -l || echo "0")
         if [ "$signal_metrics" -eq 0 ]; then
             print_success "No signal metrics found in Redis (clean state)"
         else
@@ -299,12 +299,12 @@ validate_redis_clean() {
 
     # Check total key count
     local key_count
-    key_count=$(eval "$REDIS_CLI DBSIZE" 2>/dev/null || echo "0")
+    key_count=$("${REDIS_CLI[@]}" DBSIZE 2>/dev/null || echo "0")
     print_status "Redis key count: $key_count"
 
     # Check for any signal metrics specifically
     local signal_metrics
-    signal_metrics=$(eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\" | wc -l" 2>/dev/null || echo "0")
+    signal_metrics=$("${REDIS_CLI[@]}" --scan --pattern "*master_worker_restart*" 2>/dev/null | wc -l || echo "0")
     print_status "Signal metric keys found: $signal_metrics"
 
     if [ "$signal_metrics" -gt 0 ]; then
@@ -314,7 +314,7 @@ validate_redis_clean() {
         print_success "Signal metrics cleaned from Redis"
 
         # Verify cleanup
-        signal_metrics=$(eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\" | wc -l" 2>/dev/null || echo "0")
+        signal_metrics=$("${REDIS_CLI[@]}" --scan --pattern "*master_worker_restart*" 2>/dev/null | wc -l || echo "0")
         if [ "$signal_metrics" -eq 0 ]; then
             print_success "✓ Redis validated clean for signal testing"
         else
@@ -339,7 +339,7 @@ verify_redis_metrics() {
 
     # Check if Redis has any keys
     local key_count
-    key_count=$(eval "$REDIS_CLI DBSIZE" 2>/dev/null || echo "0")
+    key_count=$("${REDIS_CLI[@]}" DBSIZE 2>/dev/null || echo "0")
 
     if [ "$key_count" -eq 0 ]; then
         print_error "Redis database is empty - no metrics stored"
@@ -350,9 +350,9 @@ verify_redis_metrics() {
 
     # Check for specific metric patterns
     local metric_keys
-    metric_keys=$(eval "$REDIS_CLI --scan --pattern \"*metric*\"" 2>/dev/null | wc -l)
+    metric_keys=$("${REDIS_CLI[@]}" --scan --pattern "*metric*" 2>/dev/null | wc -l)
     local meta_keys
-    meta_keys=$(eval "$REDIS_CLI --scan --pattern \"*meta*\"" 2>/dev/null | wc -l)
+    meta_keys=$("${REDIS_CLI[@]}" --scan --pattern "*meta*" 2>/dev/null | wc -l)
 
     if [ "$metric_keys" -gt 0 ]; then
         print_success "Found $metric_keys metric keys in Redis"
@@ -370,7 +370,7 @@ verify_redis_metrics() {
 
     # Show sample keys
     print_status "Sample Redis keys:"
-    eval "$REDIS_CLI --scan --pattern \"*\"" 2>/dev/null | head -5 | while read -r key; do
+    "${REDIS_CLI[@]}" --scan --pattern "*" 2>/dev/null | head -5 | while read -r key; do
         echo "  - $key"
     done
 
@@ -383,14 +383,14 @@ cleanup_redis() {
 
     if command -v redis-cli >/dev/null 2>&1; then
         # Try to connect to Redis and flush database
-        if eval "$REDIS_CLI ping" >/dev/null 2>&1; then
+        if "${REDIS_CLI[@]}" ping >/dev/null 2>&1; then
             if [ "$REDIS_DESTRUCTIVE_FLUSH" = true ]; then
                 # Destructive cleanup - use FLUSHALL
-                if eval "$REDIS_CLI FLUSHALL" >/dev/null 2>&1; then
+                if "${REDIS_CLI[@]}" FLUSHALL >/dev/null 2>&1; then
                     print_success "Redis all databases cleaned (FLUSHALL)"
                 else
                     # Fallback to FLUSHDB
-                    eval "$REDIS_CLI FLUSHDB" >/dev/null 2>&1 || true
+                    "${REDIS_CLI[@]}" FLUSHDB >/dev/null 2>&1 || true
                     print_success "Redis current database cleaned (FLUSHDB)"
                 fi
             else
@@ -756,7 +756,7 @@ verify_metrics() {
 
     # Check Redis keys
     local redis_keys
-    redis_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:*\"" | wc -l)
+    redis_keys=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:*" | wc -l)
     print_status "Redis keys count: $redis_keys"
 
     if [ $redis_keys -gt 10 ]; then
@@ -768,9 +768,9 @@ verify_metrics() {
 
     # Test specific Redis key patterns
     local metric_keys
-    metric_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:*:metric:*\"" | wc -l)
+    metric_keys=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:*:metric:*" | wc -l)
     local meta_keys
-    meta_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:*:meta:*\"" | wc -l)
+    meta_keys=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:*:meta:*" | wc -l)
 
     print_status "Redis metric keys: $metric_keys, meta keys: $meta_keys"
 
@@ -783,7 +783,7 @@ verify_metrics() {
 
     # Test Redis key values
     local sample_key
-    sample_key=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:*:metric:*\"" | head -1)
+    sample_key=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:*:metric:*" | head -1)
     if [ ! -z "$sample_key" ]; then
         print_status "Testing Redis key: $sample_key"
 
@@ -841,11 +841,11 @@ verify_metrics() {
 
     # Check Redis key patterns
     local counter_keys
-    counter_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:counter:*\"" | wc -l)
+    counter_keys=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:counter:*" | wc -l)
     local gauge_keys
-    gauge_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:gauge:*\"" | wc -l)
+    gauge_keys=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:gauge:*" | wc -l)
     local histogram_keys
-    histogram_keys=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:histogram:*\"" | wc -l)
+    histogram_keys=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:histogram:*" | wc -l)
 
     print_status "Redis key distribution:"
     print_status "  - Counter keys: $counter_keys"
@@ -854,7 +854,7 @@ verify_metrics() {
 
     # Show sample Redis keys
     print_status "Sample Redis keys:"
-    eval "$REDIS_CLI --scan --pattern \"gunicorn:*\"" 2>/dev/null | head -5 | while read -r key; do
+    "${REDIS_CLI[@]}" --scan --pattern "gunicorn:*" 2>/dev/null | head -5 | while read -r key; do
         echo "  - $key"
     done
 
@@ -942,7 +942,7 @@ verify_redis_ttl() {
 
     # Check if Redis has any keys
     local key_count
-    key_count=$(eval "$REDIS_CLI DBSIZE" 2>/dev/null || echo "0")
+    key_count=$("${REDIS_CLI[@]}" DBSIZE 2>/dev/null || echo "0")
 
     if [ "$key_count" -eq 0 ]; then
         print_warning "No Redis keys found for TTL verification"
@@ -951,7 +951,7 @@ verify_redis_ttl() {
 
     # Get a sample key to check TTL
     local sample_key
-    sample_key=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:*:metric:*\"" 2>/dev/null | head -1)
+    sample_key=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:*:metric:*" 2>/dev/null | head -1)
 
     if [ ! -z "$sample_key" ]; then
         local ttl_value
@@ -993,13 +993,13 @@ verify_redis_expiration() {
 
     # Check if Redis keys have expired
     local key_count_after
-    key_count_after=$(eval "$REDIS_CLI DBSIZE" 2>/dev/null || echo "0")
+    key_count_after=$("${REDIS_CLI[@]}" DBSIZE 2>/dev/null || echo "0")
 
     print_status "Redis keys after TTL expiration: ${key_count_after}"
 
     # Check if any metric keys still exist
     local metric_keys_count
-    metric_keys_count=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:*:metric:*\"" 2>/dev/null | wc -l)
+    metric_keys_count=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:*:metric:*" 2>/dev/null | wc -l)
 
     if [ "$metric_keys_count" -eq 0 ]; then
         print_success "All metric keys have expired and been cleaned up by Redis TTL"
@@ -1008,7 +1008,7 @@ verify_redis_expiration() {
 
         # Check TTL of remaining keys
         local remaining_key
-        remaining_key=$(eval "$REDIS_CLI --scan --pattern \"gunicorn:*:metric:*\"" 2>/dev/null | head -1)
+        remaining_key=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:*:metric:*" 2>/dev/null | head -1)
         if [ ! -z "$remaining_key" ]; then
             local remaining_ttl
             remaining_ttl=$(redis-cli -h "$REDIS_HOST_OPT" -p "$REDIS_PORT_OPT" -n "$REDIS_DB_OPT" ttl "$remaining_key" 2>/dev/null || echo "-1")
@@ -1059,7 +1059,7 @@ test_signal_handling() {
         # Validate Redis is clean before SIGINT test
         print_status "Validating Redis is clean before SIGINT test..."
         local signal_metrics_before
-        signal_metrics_before=$(eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\" | wc -l" 2>/dev/null || echo "0")
+        signal_metrics_before=$("${REDIS_CLI[@]}" --scan --pattern "*master_worker_restart*" | wc -l 2>/dev/null || echo "0")
         print_status "Signal metrics in Redis before SIGINT: $signal_metrics_before"
 
         if [ "$signal_metrics_before" -gt 0 ]; then
@@ -1103,7 +1103,7 @@ test_signal_handling() {
         # Check if SIGINT metric was written to Redis
         print_status "Checking if SIGINT metric was written to Redis..."
         local signal_metrics_after
-        signal_metrics_after=$(eval "$REDIS_CLI --scan --pattern \"*master_worker_restart*\" | wc -l" 2>/dev/null || echo "0")
+        signal_metrics_after=$("${REDIS_CLI[@]}" --scan --pattern "*master_worker_restart*" | wc -l 2>/dev/null || echo "0")
         print_status "Signal metrics in Redis after SIGINT: $signal_metrics_after"
 
         if [ "$signal_metrics_after" -gt "$signal_metrics_before" ]; then
