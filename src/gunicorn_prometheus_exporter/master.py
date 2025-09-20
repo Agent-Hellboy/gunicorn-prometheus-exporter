@@ -103,70 +103,59 @@ class PrometheusMaster(Arbiter):
         """Queue a signal metric for asynchronous processing with fallback."""
         # Try asynchronous approach first
         try:
-            logger.debug("Queuing signal metric: %s", reason)
             self._signal_queue.put_nowait(reason)
-            logger.debug("Signal metric queued successfully: %s", reason)
             return
         except queue.Full:
-            logger.warning(
-                "Signal metric queue full, trying synchronous fallback: %s", reason
-            )
-        except Exception as e:
-            logger.error(
-                "Failed to queue signal metric %s, trying synchronous fallback: %s",
-                reason,
-                e,
-            )
+            pass
+        except Exception:  # nosec
+            pass
 
         # Fallback: synchronous approach
         try:
-            logger.debug("Fallback: synchronous metric capture for %s", reason)
             self._safe_inc_restart(reason)
-            logger.debug("Fallback synchronous metric capture successful: %s", reason)
-        except Exception as fallback_e:
-            logger.error(
-                "Fallback synchronous metric capture also failed for %s: %s",
-                reason,
-                fallback_e,
-            )
+        except Exception:  # nosec
+            pass
 
     def _safe_inc_restart(self, reason: str) -> None:
         """Safely increment MasterWorkerRestarts without blocking signal handling."""
         try:
             MasterWorkerRestarts.inc(reason=reason)
         except Exception:  # nosec
-            logger.debug(
-                "Failed to inc MasterWorkerRestarts(reason=%s)", reason, exc_info=True
-            )
+            # Avoid logging in signal handlers to prevent reentrancy issues
+            pass
 
     def _safe_inc_signal(self, signal_type: str) -> None:
         """Safely increment MasterSignals without blocking signal handling."""
         try:
             MasterSignals.inc(signal_type=signal_type)
         except Exception:  # nosec
-            logger.debug(
-                "Failed to inc MasterSignals(signal_type=%s)",
-                signal_type,
-                exc_info=True,
-            )
+            # Avoid logging in signal handlers to prevent reentrancy issues
+            pass
 
     def _safe_set_worker_count(self, count: int) -> None:
         """Safely set MasterWorkersCurrent without blocking signal handling."""
         try:
             MasterWorkersCurrent.set(count)
         except Exception:  # nosec
-            logger.debug(
-                "Failed to set MasterWorkersCurrent(count=%s)", count, exc_info=True
-            )
+            # Avoid logging in signal handlers to prevent reentrancy issues
+            pass
 
     def update_worker_count(self):
         """Update current worker count metric."""
         try:
-            current_workers = len(self.WORKERS)
+            # Try different possible attribute names for worker tracking
+            current_workers = 0
+            if hasattr(self, "workers") and self.workers:
+                current_workers = len(self.workers)
+            elif hasattr(self, "WORKERS") and self.WORKERS:
+                current_workers = len(self.WORKERS)
+            elif hasattr(self, "worker_class") and hasattr(self, "num_workers"):
+                current_workers = getattr(self, "num_workers", 0)
+
             self._safe_set_worker_count(current_workers)
-            logger.debug("Updated worker count: %s", current_workers)
-        except Exception as e:
-            logger.error("Failed to update worker count: %s", e)
+        except Exception:  # nosec
+            # Avoid logging in signal handlers to prevent reentrancy issues
+            pass
 
     def handle_int(self):
         """Handle INT signal (Ctrl+C)."""
@@ -220,20 +209,19 @@ class PrometheusMaster(Arbiter):
     def handle_hup(self):
         """Handle HUP signal."""
         try:
-            logger.debug("Gunicorn master HUP signal received")
             # Track signal count
             self._safe_inc_signal("hup")
         except Exception:  # nosec
-            # Avoid logging errors in signal handlers
             pass
         super().handle_hup()
+        # Update worker count after HUP (workers may have been restarted)
+        self.update_worker_count()
         # Queue signal metric for asynchronous processing (non-blocking)
         self._queue_signal_metric("hup")
 
     def handle_ttin(self):
         """Handle TTIN signal."""
         try:
-            logger.debug("Gunicorn master TTIN signal received")
             # Track signal count
             self._safe_inc_signal("ttin")
         except Exception:  # nosec
@@ -246,7 +234,6 @@ class PrometheusMaster(Arbiter):
     def handle_ttou(self):
         """Handle TTOU signal."""
         try:
-            logger.debug("Gunicorn master TTOU signal received")
             # Track signal count
             self._safe_inc_signal("ttou")
         except Exception:  # nosec

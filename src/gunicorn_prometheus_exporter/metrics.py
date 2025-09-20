@@ -107,18 +107,30 @@ class BaseMetric(metaclass=MetricMeta):
 
     @classmethod
     def inc(cls, **labels):
+        if not labels and not cls._metric._labelnames:
+            # No labels needed, call inc directly
+            return cls._metric.inc()
         return cls._metric.labels(**labels).inc()
 
     @classmethod
     def dec(cls, **labels):
+        if not labels and not cls._metric._labelnames:
+            # No labels needed, call dec directly
+            return cls._metric.dec()
         return cls._metric.labels(**labels).dec()
 
     @classmethod
     def set(cls, value, **labels):
+        if not labels and not cls._metric._labelnames:
+            # No labels needed, call set directly
+            return cls._metric.set(value)
         return cls._metric.labels(**labels).set(value)
 
     @classmethod
     def observe(cls, value, **labels):
+        if not labels and not cls._metric._labelnames:
+            # No labels needed, call observe directly
+            return cls._metric.observe(value)
         return cls._metric.labels(**labels).observe(value)
 
     @classmethod
