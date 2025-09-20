@@ -62,25 +62,6 @@ We've extended the Prometheus Python client to support **Redis-based storage** a
 - **Zero Configuration**: Works out-of-the-box with minimal setup
 - **Production Ready**: Retry logic, error handling, health monitoring
 
-## Compatibility Issues
-
-### TornadoWorker Removal
-
-**The `PrometheusTornadoWorker` has been completely removed** because:
-
-- **We never supported it**: Tornado worker was never properly implemented or supported
-- **Nobody uses Tornado anymore**: Tornado is deprecated and not actively maintained
-- **Signal handling issues**: Master signals (HUP, USR1, CHLD) did not work correctly
-- **Async compatibility problems**: Tornado's async model conflicted with Prometheus metrics collection
-- **No production usage**: Tornado worker was never used in production environments
-
-**We are not supporting Tornado workers** - use the recommended alternatives below.
-
-**Recommended alternatives:**
-- Use `PrometheusEventletWorker` for async applications requiring eventlet
-- Use `PrometheusGeventWorker` for async applications requiring gevent
-- Use `PrometheusWorker` (sync worker) for most applications
-
 ## Quick Start
 
 ### Installation

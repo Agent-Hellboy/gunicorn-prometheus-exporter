@@ -1,11 +1,10 @@
 """
-Async-compatible WSGI application for testing eventlet, gevent, and tornado workers.
+Async-compatible WSGI application for testing eventlet and gevent workers.
 
 This application uses async/await patterns that are compatible with:
 
 - Eventlet workers (greenlets)
 - Gevent workers (greenlets)
-- Tornado workers (async IOLoop)
 """
 
 import time

@@ -1,7 +1,7 @@
 [project]
 name = "gunicorn-prometheus-exporter"
 version = "0.1.5"
-description = "A comprehensive Prometheus metrics exporter for Gunicorn with support for all worker types (sync, thread, eventlet, gevent, tornado)"
+description = "A comprehensive Prometheus metrics exporter for Gunicorn with support for all worker types (sync, thread, eventlet, gevent)"
 readme = "README.md"
 authors = [
     {name = "Prince Roshan", email = "princekrroshan01@gmail.com"}
@@ -57,13 +57,9 @@ eventlet = [
 gevent = [
     "gevent>=23.0.0",
 ]
-tornado = [
-    "tornado>=6.0.0",
-]
 async = [
     "eventlet>=0.33.0",
     "gevent>=23.0.0",
-    "tornado>=6.0.0",
 ]
 redis = [
     "redis>=4.0.0",
@@ -71,7 +67,6 @@ redis = [
 all = [
     "eventlet>=0.33.0",
     "gevent>=23.0.0",
-    "tornado>=6.0.0",
     "redis>=4.0.0",
 ]
 

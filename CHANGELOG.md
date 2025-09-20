@@ -69,7 +69,7 @@ All notable changes to this project will be documented in this file.
 - **Request Object Detection**: Improved robustness across different worker types and method signatures
 - **Code Duplication**: Eliminated duplicate endpoint normalization logic with `_extract_request_info()` helper method
 - **Return Value Handling**: Fixed return value propagation in signal handlers and request methods
-- **Import Errors**: Resolved import issues after Tornado worker removal
+- **Import Errors**: Resolved import issues after worker cleanup
 
 ### Technical Details
 
@@ -88,10 +88,6 @@ All notable changes to this project will be documented in this file.
 - **Redis Forwarding References**: Removed all outdated Redis forwarding documentation and configuration
 - **Outdated Architecture**: Removed references to old forwarding-based Redis integration
 - **Request/Response Size Metrics**: Removed `gunicorn_worker_request_size_bytes` and `gunicorn_worker_response_size_bytes` metrics
-- **Tornado Worker Support**: Completely removed `PrometheusTornadoWorker` and all related functionality
-  - Removed Tornado worker from documentation and examples
-  - Updated installation instructions to exclude Tornado dependencies
-  - Added clear documentation that Tornado workers are not supported
 - **Unused Methods**: Removed `_extract_request_size` and related unused methods
 
 ## [0.1.3] - 2025-07-28
@@ -102,7 +98,6 @@ All notable changes to this project will be documented in this file.
   - `PrometheusThreadWorker`: Thread-based workers for I/O-bound applications
   - `PrometheusEventletWorker`: Eventlet-based workers for async I/O
   - `PrometheusGeventWorker`: Gevent-based workers for async I/O
-  - `PrometheusTornadoWorker`: Tornado-based workers for async applications
 - **Comprehensive Testing**: Added test applications and configurations for all worker types
 - **Enhanced Documentation**: Updated all documentation to include new worker types
 - **Improved Error Handling**: Better error handling and metrics collection for different worker signatures

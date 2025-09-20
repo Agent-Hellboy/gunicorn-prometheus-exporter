@@ -363,28 +363,6 @@ worker_connections = 1000
 
 **Best for:** Async applications, high concurrency.
 
-### Tornado Worker (Not Recommended)
-
-```python
-# gunicorn_tornado.conf.py
-import os
-
-# Environment variables must be set before imports
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
-os.environ.setdefault("GUNICORN_WORKERS", "4")
-
-# Gunicorn settings
-bind = "0.0.0.0:8000"
-workers = 4
-worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
-```
-
-**Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
-
-**Best for:** Tornado-based applications (Not recommended for production).
-
 ## 🔧 Advanced Configuration
 
 ### Hooks Architecture

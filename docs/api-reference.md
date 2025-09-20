@@ -336,31 +336,6 @@ pip install gunicorn-prometheus-exporter[gevent]
 - Gevent-based async I/O
 - High concurrency for async applications
 
-### PrometheusTornadoWorker (Not Recommended)
-
-Tornado-based worker for async applications.
-
-```python
-from gunicorn_prometheus_exporter import PrometheusTornadoWorker
-
-# Usage in gunicorn.conf.py
-worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
-```
-
-**Requirements:**
-
-```bash
-pip install gunicorn-prometheus-exporter[tornado]
-```
-
-**Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
-
-**Features:**
-
-- All features of PrometheusWorker
-- Tornado-based async IOLoop
-- High concurrency for async applications
-- **Known issues with metrics collection**
 
 ## 🔌 Plugin Architecture
 
