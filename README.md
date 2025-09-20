@@ -34,6 +34,7 @@ We've extended the Prometheus Python client to support **Redis-based storage** a
 - Shared metrics across multiple Gunicorn instances
 - No local files created - pure Redis storage
 - Better performance and scalability
+- **Direct Redis integration** - no forwarding layer needed
 
 ### **Key Benefits:**
 
@@ -58,7 +59,6 @@ We've extended the Prometheus Python client to support **Redis-based storage** a
 - **Master Process Intelligence**: Signal tracking, restart analytics
 - **Multiprocess Support**: Full Prometheus multiprocess compatibility
 - **Redis Storage**: Store metrics directly in Redis (no files created)
-- **Redis Forwarding**: Forward metrics to Redis while keeping file storage
 - **Zero Configuration**: Works out-of-the-box with minimal setup
 - **Production Ready**: Retry logic, error handling, health monitoring
 
@@ -246,7 +246,6 @@ All async workers require their respective dependencies:
 | `GUNICORN_WORKERS`         | `1`                      | Number of workers                                         |
 | `PROMETHEUS_MULTIPROC_DIR` | Auto-generated           | Multiprocess directory                                    |
 | `REDIS_ENABLED`            | `false`                  | Enable Redis storage (no files created)                   |
-| `REDIS_FORWARD_ENABLED`    | `false`                  | Enable Redis forwarding (keeps files + forwards to Redis) |
 | `REDIS_HOST`               | `127.0.0.1`              | Redis server hostname                                     |
 | `REDIS_PORT`               | `6379`                   | Redis server port                                         |
 | `REDIS_DB`                 | `0`                      | Redis database number                                     |
