@@ -847,7 +847,7 @@ verify_metrics() {
     local counter_keys
     counter_keys=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:counter:*" | wc -l)
     local gauge_keys
-    gauge_keys=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:gauge:*" | wc -l)
+    gauge_keys=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:gauge*:*" | wc -l)
     local histogram_keys
     histogram_keys=$("${REDIS_CLI[@]}" --scan --pattern "gunicorn:histogram:*" | wc -l)
 
