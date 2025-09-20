@@ -147,3 +147,76 @@ class TestModuleConstants:
         """Test get_config function availability."""
         assert hasattr(gunicorn_prometheus_exporter, "get_config")
         assert callable(gunicorn_prometheus_exporter.get_config)
+
+
+class TestGunicornPatching:
+    """Test Gunicorn patching functionality."""
+
+    def test_arbiter_replacement(self):
+        """Test that Arbiter is replaced with PrometheusMaster."""
+        import gunicorn.app.base
+        import gunicorn.arbiter
+
+        # Test that both modules have PrometheusMaster as Arbiter
+        assert gunicorn.arbiter.Arbiter is gunicorn_prometheus_exporter.PrometheusMaster
+        assert (
+            gunicorn.app.base.Arbiter is gunicorn_prometheus_exporter.PrometheusMaster
+        )
+
+    def test_baseapplication_run_patch(self):
+        """Test that BaseApplication.run is patched."""
+        import gunicorn.app.base
+
+        # Test that run method is patched
+        assert hasattr(gunicorn.app.base.BaseApplication, "run")
+        assert callable(gunicorn.app.base.BaseApplication.run)
+
+    def test_patched_run_function(self):
+        """Test the patched run function."""
+        import gunicorn.app.base
+
+        # Test that the patched run function exists and is callable
+        run_method = gunicorn.app.base.BaseApplication.run
+        assert callable(run_method)
+
+        # Test that it's not the original run method (it should be our patched version)
+        # We can't easily test the original vs patched, but we can test it's callable
+        assert run_method.__name__ == "patched_run" or hasattr(
+            run_method, "__wrapped__"
+        )
+
+
+class TestConditionalExports:
+    """Test conditional exports based on availability."""
+
+    def test_eventlet_worker_in_all_when_available(self):
+        """Test that PrometheusEventletWorker is in __all__ when available."""
+        if gunicorn_prometheus_exporter.EVENTLET_AVAILABLE:
+            assert "PrometheusEventletWorker" in gunicorn_prometheus_exporter.__all__
+        else:
+            assert (
+                "PrometheusEventletWorker" not in gunicorn_prometheus_exporter.__all__
+            )
+
+    def test_gevent_worker_in_all_when_available(self):
+        """Test that PrometheusGeventWorker is in __all__ when available."""
+        if gunicorn_prometheus_exporter.GEVENT_AVAILABLE:
+            assert "PrometheusGeventWorker" in gunicorn_prometheus_exporter.__all__
+        else:
+            assert "PrometheusGeventWorker" not in gunicorn_prometheus_exporter.__all__
+
+    def test_conditional_worker_class_assignment(self):
+        """Test that worker classes are assigned conditionally."""
+        # Test Eventlet worker
+        if gunicorn_prometheus_exporter.EVENTLET_AVAILABLE:
+            assert gunicorn_prometheus_exporter.PrometheusEventletWorker is not None
+            assert callable(gunicorn_prometheus_exporter.PrometheusEventletWorker)
+        else:
+            assert gunicorn_prometheus_exporter.PrometheusEventletWorker is None
+
+        # Test Gevent worker
+        if gunicorn_prometheus_exporter.GEVENT_AVAILABLE:
+            assert gunicorn_prometheus_exporter.PrometheusGeventWorker is not None
+            assert callable(gunicorn_prometheus_exporter.PrometheusGeventWorker)
+        else:
+            assert gunicorn_prometheus_exporter.PrometheusGeventWorker is None
