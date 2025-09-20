@@ -65,11 +65,16 @@ class TestRedisMultiProcessCollector:
         """Test initialization raises error when no Redis client available."""
         mock_registry = Mock()
 
-        with patch.object(
-            RedisMultiProcessCollector, "_get_default_redis_client", return_value=None
-        ), pytest.raises(
-            ValueError,
-            match="Redis client must be provided or PROMETHEUS_REDIS_URL must be set",
+        with (
+            patch.object(
+                RedisMultiProcessCollector,
+                "_get_default_redis_client",
+                return_value=None,
+            ),
+            pytest.raises(
+                ValueError,
+                match="Redis client must be provided or PROMETHEUS_REDIS_URL must be set",
+            ),
         ):
             RedisMultiProcessCollector(mock_registry, None, "test_prefix")
 
