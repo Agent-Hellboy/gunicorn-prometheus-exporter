@@ -55,7 +55,9 @@ class RedisClientProtocol(Protocol):
         """Get keys matching pattern."""
         raise NotImplementedError
 
-    def scan_iter(self, match: str) -> Iterable[bytes]:
+    def scan_iter(
+        self, match: Union[str, bytes] = None, count: Optional[int] = None
+    ) -> Iterable[bytes]:
         """Iterate keys matching pattern (non-blocking)."""
         raise NotImplementedError
 
