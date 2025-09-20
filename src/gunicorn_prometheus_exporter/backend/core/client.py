@@ -282,7 +282,7 @@ class RedisStorageDict:
                 self._redis.expire(metric_key, config.redis_ttl_seconds)
 
             # Store metadata separately for easier querying
-            metadata_key = self._get_metadata_key(key, metric_type)
+            metadata_key = self._get_metadata_key(key, metric_type, multiprocess_mode)
             # Set metadata only once - don't overwrite created_at on subsequent writes
             self._redis.hsetnx(metadata_key, "original_key", key)
             self._redis.hsetnx(metadata_key, "created_at", str(self._redis_now()))
@@ -347,7 +347,7 @@ class RedisStorageDict:
             self._redis.expire(metric_key, config.redis_ttl_seconds)
 
         # Store metadata separately for easier querying
-        metadata_key = self._get_metadata_key(key, metric_type)
+        metadata_key = self._get_metadata_key(key, metric_type, multiprocess_mode)
         # Set metadata only once - don't overwrite created_at on subsequent writes
         self._redis.hsetnx(metadata_key, "original_key", key)
         self._redis.hsetnx(metadata_key, "created_at", str(self._redis_now()))
