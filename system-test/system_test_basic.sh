@@ -327,7 +327,9 @@ verify_metrics() {
 
     # Optional metrics (may not have values)
     local optional_metrics=(
-        "gunicorn_master_worker_restart_total"
+        "gunicorn_master_worker_restart"
+        "gunicorn_master_signals"
+        "gunicorn_master_workers_current"
     )
 
     local failed_checks=0
@@ -478,6 +480,19 @@ verify_metrics() {
         failed_checks=$((failed_checks + 1))
     fi
 
+    # Check for master workers current metric
+    if echo "$metrics_output" | grep -q "gunicorn_master_workers_current.*[0-9]"; then
+        print_success "Master workers current metric is being captured"
+
+        # Show master workers current metric value
+        print_status "Master workers current metric value:"
+        echo "$metrics_output" | grep "gunicorn_master_workers_current.*[0-9]" | head -1 | while read line; do
+            echo "  - $line"
+        done
+    else
+        print_warning "Master workers current metric not found (may not be initialized yet)"
+    fi
+
     return $failed_checks
 }
 
@@ -559,7 +574,7 @@ test_signal_handling() {
             # Check if the signal metric was captured
             print_status "Checking if SIG${signal} metric was captured..."
             local metrics_response
-            metrics_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart_total" | grep "reason=\"${reason}\"" || echo "")
+            metrics_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart" | grep "reason=\"${reason}\"" || echo "")
 
             if [ ! -z "$metrics_response" ]; then
                 print_success "✓ SIG${signal} metric captured: ${metrics_response}"
@@ -573,7 +588,7 @@ test_signal_handling() {
 
         # Check metrics before SIGINT to establish baseline
         print_status "Checking metrics before SIGINT..."
-        local int_count_before=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart_total" | grep "reason=\"int\"" | wc -l)
+        local int_count_before=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart" | grep "reason=\"int\"" | wc -l)
         print_status "SIGINT metrics before: $int_count_before"
 
         kill -INT "$GUNICORN_PID" 2>/dev/null || true
@@ -583,14 +598,14 @@ test_signal_handling() {
         print_status "Checking if SIGINT metric was captured..."
 
         local int_metrics_response
-        int_metrics_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart_total" | grep "reason=\"int\"" || echo "")
+        int_metrics_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart" | grep "reason=\"int\"" || echo "")
 
         if [ ! -z "$int_metrics_response" ]; then
             print_success "✓ SIGINT metric captured: ${int_metrics_response}"
         else
             # Try one more time with a slightly longer delay
             sleep 0.5
-            int_metrics_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart_total" | grep "reason=\"int\"" || echo "")
+            int_metrics_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart" | grep "reason=\"int\"" || echo "")
 
             if [ ! -z "$int_metrics_response" ]; then
                 print_success "✓ SIGINT metric captured (delayed check): ${int_metrics_response}"

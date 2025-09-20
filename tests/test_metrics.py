@@ -7,7 +7,9 @@ import os
 from prometheus_client import CollectorRegistry
 
 from gunicorn_prometheus_exporter.metrics import (
+    MASTER_SIGNALS,
     MASTER_WORKER_RESTARTS,
+    MASTER_WORKERS_CURRENT,
     WORKER_CPU,
     WORKER_ERROR_HANDLING,
     WORKER_FAILED_REQUESTS,
@@ -34,6 +36,26 @@ def test_master_worker_restarts_metric():
         == "Total number of Gunicorn worker restarts"
     )
     assert MASTER_WORKER_RESTARTS._metric._labelnames == ("reason",)
+
+
+def test_master_signals_metric():
+    """Test MASTER_SIGNALS metric configuration."""
+    assert MASTER_SIGNALS._metric._name == "gunicorn_master_signals"
+    assert (
+        MASTER_SIGNALS._metric._documentation
+        == "Total number of signals received by the master process"
+    )
+    assert MASTER_SIGNALS._metric._labelnames == ("signal_type",)
+
+
+def test_master_workers_current_metric():
+    """Test MASTER_WORKERS_CURRENT metric configuration."""
+    assert MASTER_WORKERS_CURRENT._metric._name == "gunicorn_master_workers_current"
+    assert (
+        MASTER_WORKERS_CURRENT._metric._documentation
+        == "Current number of active workers"
+    )
+    assert MASTER_WORKERS_CURRENT._metric._labelnames == ()
 
 
 def test_worker_state_metric():
@@ -130,5 +152,7 @@ def test_metric_registration():
         WORKER_ERROR_HANDLING,
         WORKER_STATE,
         MASTER_WORKER_RESTARTS,
+        MASTER_SIGNALS,
+        MASTER_WORKERS_CURRENT,
     ]
     assert all(metric._metric in collectors for metric in metric_classes)

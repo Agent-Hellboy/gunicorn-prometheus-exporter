@@ -7,7 +7,7 @@ import time
 
 from gunicorn.arbiter import Arbiter
 
-from .metrics import MasterWorkerRestarts
+from .metrics import MasterSignals, MasterWorkerRestarts, MasterWorkersCurrent
 
 
 # Use configuration for logging level
@@ -42,6 +42,9 @@ class PrometheusMaster(Arbiter):
                     "PROMETHEUS_MULTIPROC_DIR not set, "
                     "master metrics may not be exposed"
                 )
+
+            # Initialize worker count metric
+            self.update_worker_count()
         except Exception as e:
             logger.error("Failed to set up master metrics: %s", e)
 
@@ -136,11 +139,41 @@ class PrometheusMaster(Arbiter):
                 "Failed to inc MasterWorkerRestarts(reason=%s)", reason, exc_info=True
             )
 
+    def _safe_inc_signal(self, signal_type: str) -> None:
+        """Safely increment MasterSignals without blocking signal handling."""
+        try:
+            MasterSignals.inc(signal_type=signal_type)
+        except Exception:  # nosec
+            logger.debug(
+                "Failed to inc MasterSignals(signal_type=%s)",
+                signal_type,
+                exc_info=True,
+            )
+
+    def _safe_set_worker_count(self, count: int) -> None:
+        """Safely set MasterWorkersCurrent without blocking signal handling."""
+        try:
+            MasterWorkersCurrent.set(count)
+        except Exception:  # nosec
+            logger.debug(
+                "Failed to set MasterWorkersCurrent(count=%s)", count, exc_info=True
+            )
+
+    def update_worker_count(self):
+        """Update current worker count metric."""
+        try:
+            current_workers = len(self.WORKERS)
+            self._safe_set_worker_count(current_workers)
+            logger.debug("Updated worker count: %s", current_workers)
+        except Exception as e:
+            logger.error("Failed to update worker count: %s", e)
+
     def handle_int(self):
         """Handle INT signal (Ctrl+C)."""
         try:
             logger.debug("SIGINT received - capturing metric")
             self._safe_inc_restart("int")
+            self._safe_inc_signal("int")
             logger.debug("SIGINT metric incremented")
 
             # Force flush to storage for SIGINT to ensure metric is written before
@@ -188,6 +221,8 @@ class PrometheusMaster(Arbiter):
         """Handle HUP signal."""
         try:
             logger.debug("Gunicorn master HUP signal received")
+            # Track signal count
+            self._safe_inc_signal("hup")
         except Exception:  # nosec
             # Avoid logging errors in signal handlers
             pass
@@ -199,31 +234,48 @@ class PrometheusMaster(Arbiter):
         """Handle TTIN signal."""
         try:
             logger.debug("Gunicorn master TTIN signal received")
+            # Track signal count
+            self._safe_inc_signal("ttin")
         except Exception:  # nosec
             pass
         super().handle_ttin()
+        # Update worker count after adding worker
+        self.update_worker_count()
         self._queue_signal_metric("ttin")
 
     def handle_ttou(self):
         """Handle TTOU signal."""
         try:
             logger.debug("Gunicorn master TTOU signal received")
+            # Track signal count
+            self._safe_inc_signal("ttou")
         except Exception:  # nosec
             pass
         super().handle_ttou()
+        # Update worker count after removing worker
+        self.update_worker_count()
         self._queue_signal_metric("ttou")
 
     def handle_chld(self, sig, frame):
         """Handle CHLD signal."""
         # Note: No logging here to avoid reentrant call issues
         # CHLD signals are very frequent and logging can cause recursion
+        # Track signal count (minimal operation)
+        try:
+            self._safe_inc_signal("chld")
+        except Exception:  # nosec
+            pass
         super().handle_chld(sig, frame)
+        # Update worker count after worker lifecycle change
+        self.update_worker_count()
         self._queue_signal_metric("chld")
 
     def handle_usr1(self):
         """Handle USR1 signal."""
         try:
             logger.debug("Gunicorn master USR1 signal received")
+            # Track signal count
+            self._safe_inc_signal("usr1")
         except Exception:  # nosec
             pass
         super().handle_usr1()
@@ -233,6 +285,8 @@ class PrometheusMaster(Arbiter):
         """Handle USR2 signal."""
         try:
             logger.debug("Gunicorn master USR2 signal received")
+            # Track signal count
+            self._safe_inc_signal("usr2")
         except Exception:  # nosec
             pass
         super().handle_usr2()

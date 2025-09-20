@@ -169,7 +169,7 @@ class WorkerCPU(BaseMetric, metric_type=Gauge):
     name = "gunicorn_worker_cpu_percent"
     documentation = "CPU usage of the worker process"
     labelnames = ["worker_id"]
-    multiprocess_mode = "all"  # Keep all worker instances with worker_id labels
+    multiprocess_mode = "all"
 
 
 class WorkerUptime(BaseMetric, metric_type=Gauge):
@@ -178,7 +178,7 @@ class WorkerUptime(BaseMetric, metric_type=Gauge):
     name = "gunicorn_worker_uptime_seconds"
     documentation = "Uptime of the worker process"
     labelnames = ["worker_id"]
-    multiprocess_mode = "all"  # Keep all worker instances with worker_id labels
+    multiprocess_mode = "all"
 
 
 class WorkerFailedRequests(BaseMetric, metric_type=Counter):
@@ -219,6 +219,22 @@ class MasterWorkerRestarts(BaseMetric, metric_type=Counter):
     labelnames = ["reason"]
 
 
+class MasterSignals(BaseMetric, metric_type=Counter):
+    """Total number of signals received by the master process."""
+
+    name = "gunicorn_master_signals_total"
+    documentation = "Total number of signals received by the master process"
+    labelnames = ["signal_type"]
+
+
+class MasterWorkersCurrent(BaseMetric, metric_type=Gauge):
+    """Current number of active workers."""
+
+    name = "gunicorn_master_workers_current"
+    documentation = "Current number of active workers"
+    labelnames = []
+
+
 # ---------------------------------------------------------------------------------
 
 WORKER_REQUESTS = WorkerRequests
@@ -230,6 +246,8 @@ WORKER_FAILED_REQUESTS = WorkerFailedRequests
 WORKER_ERROR_HANDLING = WorkerErrorHandling
 WORKER_STATE = WorkerState
 MASTER_WORKER_RESTARTS = MasterWorkerRestarts
+MASTER_SIGNALS = MasterSignals
+MASTER_WORKERS_CURRENT = MasterWorkersCurrent
 
 
 def get_shared_registry():
@@ -238,4 +256,8 @@ def get_shared_registry():
 
 
 # Dictionary for easy access to master metrics
-MASTER_METRICS = {"worker_restart_total": MASTER_WORKER_RESTARTS}
+MASTER_METRICS = {
+    "worker_restart_total": MASTER_WORKER_RESTARTS,
+    "signals_total": MASTER_SIGNALS,
+    "workers_current": MASTER_WORKERS_CURRENT,
+}

@@ -181,11 +181,14 @@ The documentation includes:
 - `gunicorn_worker_memory_bytes`: Memory usage per worker
 - `gunicorn_worker_cpu_percent`: CPU usage per worker
 - `gunicorn_worker_uptime_seconds`: Worker uptime
+- `gunicorn_worker_failed_requests`: Failed requests with error details
+- `gunicorn_worker_error_handling`: Error handling events
+- `gunicorn_worker_state`: Worker state (running/stopped)
 
 ### Master Metrics
 
-- `gunicorn_master_signals_total`: Signal counts by type
-- `gunicorn_master_worker_restarts_total`: Worker restart counts
+- `gunicorn_master_worker_restart_total`: Worker restart counts by reason
+- `gunicorn_master_signals`: Signal counts by type
 - `gunicorn_master_workers_current`: Current worker count
 
 
