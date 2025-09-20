@@ -176,6 +176,31 @@ class RedisStorageDict:
             logger.debug("Failed to get Redis time, falling back to local time: %s", e)
             return time.time()
 
+    def _get_multiprocess_mode_from_metadata(self, key: str, metric_type: str) -> str:
+        """Get multiprocess_mode from metadata if available."""
+        try:
+            # Try to get metadata key with current metric_type first
+            metadata_key = self._get_metadata_key(key, metric_type)
+            metadata = self._redis.hgetall(metadata_key)
+            if metadata:
+                mode = metadata.get(b"multiprocess_mode") or metadata.get(
+                    "multiprocess_mode"
+                )
+                if mode:
+                    return _safe_decode_bytes(mode)
+
+            # If not found, try common gauge modes
+            if metric_type == "gauge":
+                for mode in ["all", "liveall", "live", "max", "min", "sum"]:
+                    metadata_key = self._get_metadata_key(key, metric_type, mode)
+                    metadata = self._redis.hgetall(metadata_key)
+                    if metadata:
+                        return mode
+        except Exception:  # nosec B110 - Silently handle Redis lookup failures
+            pass
+
+        return ""  # Return empty string if not found
+
     def read_value(self, key: str, metric_type: str = "counter") -> Tuple[float, float]:
         """Read value and timestamp for a metric key.
 
@@ -186,7 +211,9 @@ class RedisStorageDict:
         Returns:
             Tuple of (value, timestamp)
         """
-        metric_key = self._get_metric_key(key, metric_type)
+        # Get multiprocess_mode from metadata if available
+        multiprocess_mode = self._get_multiprocess_mode_from_metadata(key, metric_type)
+        metric_key = self._get_metric_key(key, metric_type, multiprocess_mode)
 
         with self._lock:
             # Get value and timestamp
@@ -211,7 +238,9 @@ class RedisStorageDict:
             timestamp: Metric timestamp
             metric_type: Type of metric (counter, gauge, histogram, summary)
         """
-        metric_key = self._get_metric_key(key, metric_type)
+        # Get multiprocess_mode from metadata if available
+        multiprocess_mode = self._get_multiprocess_mode_from_metadata(key, metric_type)
+        metric_key = self._get_metric_key(key, metric_type, multiprocess_mode)
 
         with self._lock:
             # Store value and timestamp in Redis hash
@@ -238,21 +267,39 @@ class RedisStorageDict:
             if _should_set_ttl():
                 self._redis.expire(metadata_key, config.redis_ttl_seconds)
 
-    def _get_metric_key(self, key: str, metric_type: str = "counter") -> str:
+    def _get_metric_key(
+        self, key: str, metric_type: str = "counter", multiprocess_mode: str = ""
+    ) -> str:
         """Get Redis key for metric data (hashed for stability)."""
         import os
 
         pid = os.getpid()
         key_hash = hashlib.md5(key.encode("utf-8"), usedforsecurity=False).hexdigest()
-        return f"{self._key_prefix}:{metric_type}:{pid}:metric:{key_hash}"
 
-    def _get_metadata_key(self, key: str, metric_type: str = "counter") -> str:
+        # Include multiprocess mode in key structure for gauge metrics
+        if metric_type == "gauge" and multiprocess_mode:
+            type_with_mode = f"{metric_type}_{multiprocess_mode}"
+        else:
+            type_with_mode = metric_type
+
+        return f"{self._key_prefix}:{type_with_mode}:{pid}:metric:{key_hash}"
+
+    def _get_metadata_key(
+        self, key: str, metric_type: str = "counter", multiprocess_mode: str = ""
+    ) -> str:
         """Get Redis key for metadata (hashed for stability)."""
         import os
 
         pid = os.getpid()
         key_hash = hashlib.md5(key.encode("utf-8"), usedforsecurity=False).hexdigest()
-        return f"{self._key_prefix}:{metric_type}:{pid}:meta:{key_hash}"
+
+        # Include multiprocess mode in key structure for gauge metrics
+        if metric_type == "gauge" and multiprocess_mode:
+            type_with_mode = f"{metric_type}_{multiprocess_mode}"
+        else:
+            type_with_mode = metric_type
+
+        return f"{self._key_prefix}:{type_with_mode}:{pid}:meta:{key_hash}"
 
     def _init_value(self, key: str, metric_type: str = "counter") -> None:
         """Initialize a value with defaults."""
@@ -261,7 +308,9 @@ class RedisStorageDict:
 
     def _init_value_unlocked(self, key: str, metric_type: str = "counter") -> None:
         """Initialize a value with defaults (assumes lock is already held)."""
-        metric_key = self._get_metric_key(key, metric_type)
+        # Get multiprocess_mode from metadata if available
+        multiprocess_mode = self._get_multiprocess_mode_from_metadata(key, metric_type)
+        metric_key = self._get_metric_key(key, metric_type, multiprocess_mode)
 
         # Store value and timestamp in Redis hash
         self._redis.hset(
@@ -340,7 +389,7 @@ class RedisStorageDict:
             typ: Metric type (counter, gauge, histogram, summary)
             multiprocess_mode: Multiprocess mode (all, liveall, live, max, min, sum)
         """
-        metadata_key = self._get_metadata_key(key, typ)
+        metadata_key = self._get_metadata_key(key, typ, multiprocess_mode)
 
         with self._lock:
             try:
@@ -416,7 +465,6 @@ class RedisStorageClient:
         """
         self._redis_client = redis_client
         self._key_prefix = key_prefix or config.redis_key_prefix
-        self._redis_dict = RedisStorageDict(redis_client, self._key_prefix)
         self._value_class = RedisValueClass(redis_client, self._key_prefix)
         logger.debug("Initialized Redis storage client with prefix: %s", key_prefix)
 

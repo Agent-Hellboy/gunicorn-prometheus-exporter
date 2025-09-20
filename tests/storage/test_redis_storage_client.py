@@ -126,6 +126,18 @@ class TestRedisStorageDict:
         )
         assert ":metric:" in key
 
+    def test_get_metric_key_with_multiprocess_mode(self):
+        """Test metric key generation with multiprocess mode."""
+        mock_redis = Mock()
+        storage_dict = RedisStorageDict(mock_redis, "test_prefix")
+
+        key = storage_dict._get_metric_key("test_key", "gauge", "all")
+        assert key.startswith("test_prefix:")
+        assert ":gauge_all:" in key
+        assert key.endswith(
+            f":metric:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
+        )
+
     def test_get_metadata_key(self):
         """Test metadata key generation."""
         mock_redis = Mock()
@@ -137,6 +149,18 @@ class TestRedisStorageDict:
             f":meta:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
         )
         assert ":meta:" in key
+
+    def test_get_metadata_key_with_multiprocess_mode(self):
+        """Test metadata key generation with multiprocess mode."""
+        mock_redis = Mock()
+        storage_dict = RedisStorageDict(mock_redis, "test_prefix")
+
+        key = storage_dict._get_metadata_key("test_key", "gauge", "all")
+        assert key.startswith("test_prefix:")
+        assert ":gauge_all:" in key
+        assert key.endswith(
+            f":meta:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
+        )
 
     def test_read_value_existing(self):
         """Test reading existing value."""

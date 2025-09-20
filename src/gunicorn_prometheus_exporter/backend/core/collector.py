@@ -179,6 +179,7 @@ class RedisMultiProcessCollector:
                 _safe_parse_float(timestamp_data),
                 pid,
                 metadata,  # Pass metadata for multiprocess mode extraction
+                metric_key,  # Pass metric_key for multiprocess mode extraction
             )
 
         except Exception as e:
@@ -232,23 +233,38 @@ class RedisMultiProcessCollector:
 
     @staticmethod
     def _add_sample_to_metric(
-        metric, typ, name, labels_key, value, timestamp, pid, metadata=None
+        metric,
+        typ,
+        name,
+        labels_key,
+        value,
+        timestamp,
+        pid,
+        metadata=None,
+        metric_key=None,
     ):
         """Add a sample to the metric."""
         if typ == "gauge":
-            # Extract multiprocess mode from metadata if available
-            if metadata:
-                # Try to get multiprocess_mode from metadata
+            # Extract multiprocess mode from metric key structure first
+            mode = "all"  # Default fallback
+
+            if metric_key:
+                key_parts = _safe_decode_bytes(metric_key).split(":")
+                if len(key_parts) >= 2:
+                    # Key format: gunicorn:gauge_all:36680:metric:hash
+                    raw_type = key_parts[1]
+                    if "_" in raw_type:
+                        mode = raw_type.split("_", 1)[1]  # Extract mode from gauge_all
+
+            # Fallback to metadata if not found in key
+            if mode == "all" and metadata:
                 mode_raw = metadata.get(b"multiprocess_mode") or metadata.get(
                     "multiprocess_mode"
                 )
                 if mode_raw:
                     mode = _safe_decode_bytes(mode_raw)
-                    metric._multiprocess_mode = mode
-                else:
-                    metric._multiprocess_mode = "all"  # Default fallback
-            else:
-                metric._multiprocess_mode = "all"  # Default fallback
+
+            metric._multiprocess_mode = mode
             metric.add_sample(name, labels_key + (("pid", pid),), value, timestamp)
         else:
             metric.add_sample(name, labels_key, value)
