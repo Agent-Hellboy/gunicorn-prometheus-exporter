@@ -1244,14 +1244,14 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
                 # Test completed successfully within timeout
                 exit 0
             else
-                local exit_code=$?
-                if [ $exit_code -eq 124 ]; then
+                ec=$?
+                if [ $ec -eq 124 ]; then
                     # Timeout occurred (exit code 124)
                     print_error "System test timed out after $TIMEOUT seconds"
                     exit 1
                 else
                     # Test failed with some other error
-                    exit $exit_code
+                    exit $ec
                 fi
             fi
         else
