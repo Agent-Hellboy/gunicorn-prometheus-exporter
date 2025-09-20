@@ -1240,7 +1240,7 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     if [ "$CI_MODE" = true ]; then
         if command -v timeout >/dev/null 2>&1; then
             # Use timeout but handle exit codes properly
-            if timeout "$TIMEOUT" bash -c 'source "$1"; shift; main "$@"' _ "$0" "$@"; then
+            if timeout "$TIMEOUT" bash -c 'source "$1"; main "$@"' _ "$0" "$@"; then
                 # Test completed successfully within timeout
                 exit 0
             else
