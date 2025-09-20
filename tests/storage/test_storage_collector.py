@@ -169,7 +169,7 @@ class TestRedisMultiProcessCollector:
             )
 
             mock_redis.scan_iter.assert_called_once_with(
-                match="test_prefix:*:*:metric:*"
+                match="test_prefix:*:*:metric:*", count=100
             )
             mock_process.assert_called_once()
             assert isinstance(result, dict)

@@ -298,7 +298,7 @@ class RedisStorageDict:
         """Yield (key, value, timestamp) for all metrics."""
         pattern = f"{self._key_prefix}:*:*:metric:*"
 
-        for metric_key in self._redis.scan_iter(match=pattern):
+        for metric_key in self._redis.scan_iter(match=pattern, count=100):
             with self._lock:
                 # Get the original key from metadata
                 metadata_key = (
