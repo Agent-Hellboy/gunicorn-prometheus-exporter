@@ -2,31 +2,74 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.5] - 2025-09-16
+## [0.1.5] - 2025-09-20
 
 ### Added
 
-- **Redis Storage Architecture**: Extended Prometheus Python client to support Redis-based storage
-  - **Storage-Compute Separation**: Complete separation of metrics storage from compute resources
-  - **Redis Storage**: Store metrics directly in Redis (`gunicorn:*:metric:*` keys) instead of local files
-  - **No File I/O**: Eliminates file I/O overhead for better performance
-  - **Multi-Instance Support**: Shared metrics across multiple Gunicorn instances
-  - **Scalable Architecture**: Perfect for microservices and container orchestration
-- **Enhanced Documentation**: Comprehensive documentation explaining Redis storage vs Redis forwarding
-- **Configuration Examples**: Added `gunicorn_redis_integration.conf.py` for pure Redis storage
+- **Complete Redis Storage Backend**: Implemented full Redis-based storage architecture
+  - **RedisStorageManager**: Service layer for Redis storage lifecycle management
+  - **RedisStorageClient**: Main client for Redis operations with connection pooling
+  - **RedisStorageDict**: Storage abstraction implementing Prometheus multiprocess protocols
+  - **RedisMultiProcessCollector**: Collector that aggregates metrics from Redis across processes
+  - **RedisValue**: Redis-backed value implementation for individual metrics
+- **Prometheus Specification Compliance**: Full support for all multiprocess modes
+  - **Multiprocess Modes**: `all`, `liveall`, `live`, `max`, `min`, `sum`, `mostrecent`
+  - **Per-Worker Metrics**: Worker metrics use `multiprocess_mode="all"` for individual worker visibility
+  - **PID Labels**: All worker metrics include `pid` labels for process identification
+- **Redis Key Architecture**: Structured key format with embedded process information
+  - **Key Format**: `gunicorn:{metric_type}_{mode}:{pid}:{data_type}:{hash}`
+  - **Hashed Keys**: Uses `hashlib.md5` for stable, deterministic key generation
+  - **Metadata Storage**: Separate metadata storage for efficient querying
+- **Performance Optimizations**:
+  - **Batch Operations**: Groups Redis operations for efficiency
+  - **Streaming Collection**: Processes metrics in batches to avoid memory overload
+  - **Lock-Free Reads**: Uses Redis `scan_iter` for non-blocking key iteration
+  - **Metadata Caching**: Reduces Redis lookups for frequently accessed metadata
+- **System Testing Enhancements**:
+  - **Prometheus Metrics Verification**: Detailed metrics output after 15-second scraping wait
+  - **Comprehensive Redis Integration**: Full Redis storage validation
+  - **Signal Handling Testing**: Complete signal handling and metric capture validation
+  - **TTL Configuration**: Redis key expiration verification
+- **Code Quality Features**:
+  - **Lock-Free Operations**: Non-blocking Redis operations with per-key locking
+  - **Robust Data Parsing**: Centralized bytes→str + float parsing utilities
+  - **Unified TTL Management**: Single configuration gate for Redis key expiration
+  - **Redis Server Time**: Coherent server-side timestamps using Redis time
+  - **Memory-Efficient Cleanup**: Streaming cleanup operations to avoid memory overload
+  - **Structured Key Architecture**: Embedded multiprocess modes in Redis key structure
+  - **Enhanced Method Signatures**: Extended `read_value` and `write_value` with `multiprocess_mode` parameter
+  - **RedisValue Integration**: Complete integration with Redis storage methods
+  - **System Test Robustness**: Improved timeout handling and shell script reliability
+  - **Code Formatting**: Comprehensive linting and formatting compliance
+- **Comprehensive Documentation**:
+  - **Backend Architecture Guide**: Complete architecture documentation (`docs/backend-architecture.md`)
+  - **API Reference Updates**: Detailed Redis backend API documentation
+  - **Integration Examples**: Code examples for all Redis backend components
+  - **Configuration Guide**: Complete Redis configuration options
 
 ### Changed
 
-- **Architecture Innovation**: Redis storage as alternative to traditional multiprocess files
-- **Documentation Updates**: Clear distinction between Redis storage and Redis forwarding
-- **Port Configuration**: Redis storage uses port 9092, Redis forwarding uses port 9091
+- **Architecture**: Replaced Redis forwarding with direct Redis storage backend
+- **Worker Metrics**: Changed gauge metrics to use `multiprocess_mode="all"` for per-worker visibility
+- **Key Structure**: Implemented structured Redis keys with embedded multiprocess modes
+- **Documentation**: Updated all documentation to reflect current Redis storage implementation
+- **System Tests**: Enhanced system tests with detailed Prometheus metrics verification
+
 
 ### Technical Details
 
-- **Extended Prometheus Client**: Custom Redis-based multiprocess collector
-- **Storage Manager**: `RedisStorageManager` for Redis-based metrics lifecycle
-- **Backward Compatibility**: All existing configurations continue to work
-- **Performance Optimization**: Direct Redis access instead of file-based storage
+- **Redis Storage Format**: Metrics stored as Redis hashes with value, timestamp, and updated_at fields
+- **Metadata Format**: Separate metadata storage with multiprocess_mode, metric_name, labelnames, help_text
+- **Error Handling**: Graceful fallback to file-based storage if Redis unavailable
+- **Connection Management**: Efficient Redis connection pooling and retry logic
+- **Atomic Operations**: Thread-safe metric updates using Redis transactions
+- **Process Isolation**: Each worker process maintains separate metric instances
+- **Label Preservation**: All metric labels and metadata preserved in Redis storage
+
+### Removed
+
+- **Redis Forwarding References**: Removed all outdated Redis forwarding documentation and configuration
+- **Outdated Architecture**: Removed references to old forwarding-based Redis integration
 
 ## [0.1.3] - 2025-07-28
 
