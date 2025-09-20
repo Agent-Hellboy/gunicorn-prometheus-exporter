@@ -4,6 +4,7 @@ This module provides a clean, testable interface for Redis-based storage
 with proper separation of concerns and dependency injection.
 """
 
+import hashlib
 import logging
 import threading
 import time
@@ -238,18 +239,20 @@ class RedisStorageDict:
                 self._redis.expire(metadata_key, config.redis_ttl_seconds)
 
     def _get_metric_key(self, key: str, metric_type: str = "counter") -> str:
-        """Get Redis key for metric data."""
+        """Get Redis key for metric data (hashed for stability)."""
         import os
 
         pid = os.getpid()
-        return f"{self._key_prefix}:{metric_type}:{pid}:metric:{key}"
+        key_hash = hashlib.md5(key.encode("utf-8"), usedforsecurity=False).hexdigest()
+        return f"{self._key_prefix}:{metric_type}:{pid}:metric:{key_hash}"
 
     def _get_metadata_key(self, key: str, metric_type: str = "counter") -> str:
-        """Get Redis key for metadata."""
+        """Get Redis key for metadata (hashed for stability)."""
         import os
 
         pid = os.getpid()
-        return f"{self._key_prefix}:{metric_type}:{pid}:meta:{key}"
+        key_hash = hashlib.md5(key.encode("utf-8"), usedforsecurity=False).hexdigest()
+        return f"{self._key_prefix}:{metric_type}:{pid}:meta:{key_hash}"
 
     def _init_value(self, key: str, metric_type: str = "counter") -> None:
         """Initialize a value with defaults."""

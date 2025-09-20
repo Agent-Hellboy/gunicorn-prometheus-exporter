@@ -65,15 +65,13 @@ class TestRedisMultiProcessCollector:
         """Test initialization raises error when no Redis client available."""
         mock_registry = Mock()
 
-        with patch(
-            "gunicorn_prometheus_exporter.backend.core.collector.redis.Redis",
-            side_effect=Exception("Connection failed"),
+        with patch.object(
+            RedisMultiProcessCollector, "_get_default_redis_client", return_value=None
+        ), pytest.raises(
+            ValueError,
+            match="Redis client must be provided or PROMETHEUS_REDIS_URL must be set",
         ):
-            # The constructor doesn't raise the exception immediately, it creates the client
-            # The exception would be raised when trying to use the client
-            collector = RedisMultiProcessCollector(mock_registry, None, "test_prefix")
-            # Verify the collector was created despite the exception
-            assert collector is not None
+            RedisMultiProcessCollector(mock_registry, None, "test_prefix")
 
     def test_get_default_redis_client_from_env(self):
         """Test getting Redis client from environment variable."""

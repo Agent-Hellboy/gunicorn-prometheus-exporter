@@ -1,5 +1,7 @@
 """Tests for Redis storage client module."""
 
+import hashlib
+
 from typing import Dict, Optional, Tuple
 from unittest.mock import Mock, patch
 
@@ -119,7 +121,9 @@ class TestRedisStorageDict:
 
         key = storage_dict._get_metric_key("test_key")
         assert key.startswith("test_prefix:counter:")
-        assert key.endswith(":metric:test_key")
+        assert key.endswith(
+            f":metric:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
+        )
         assert ":metric:" in key
 
     def test_get_metadata_key(self):
@@ -129,7 +133,9 @@ class TestRedisStorageDict:
 
         key = storage_dict._get_metadata_key("test_key")
         assert key.startswith("test_prefix:counter:")
-        assert key.endswith(":meta:test_key")
+        assert key.endswith(
+            f":meta:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
+        )
         assert ":meta:" in key
 
     def test_read_value_existing(self):
@@ -149,7 +155,9 @@ class TestRedisStorageDict:
         calls = mock_redis.hget.call_args_list
         metric_key = calls[0][0][0]  # First argument of first call
         assert metric_key.startswith("test_prefix:counter:")
-        assert metric_key.endswith(":metric:test_key")
+        assert metric_key.endswith(
+            f":metric:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
+        )
         assert calls[0][0][1] == "value"  # Second argument should be "value"
         assert calls[1][0][1] == "timestamp"  # Second argument should be "timestamp"
 
@@ -198,7 +206,9 @@ class TestRedisStorageDict:
         metric_key = calls[0][0][0]  # First argument of first call
 
         assert metric_key.startswith("test_prefix:counter:")
-        assert metric_key.endswith(":metric:test_key")
+        assert metric_key.endswith(
+            f":metric:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
+        )
 
         # Check the mapping content
         metric_mapping = calls[0][1]["mapping"]
@@ -213,14 +223,18 @@ class TestRedisStorageDict:
         # First hsetnx call for original_key
         metadata_key_1 = hsetnx_calls[0][0][0]
         assert metadata_key_1.startswith("test_prefix:counter:")
-        assert metadata_key_1.endswith(":meta:test_key")
+        assert metadata_key_1.endswith(
+            f":meta:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
+        )
         assert hsetnx_calls[0][0][1] == "original_key"
         assert hsetnx_calls[0][0][2] == "test_key"
 
         # Second hsetnx call for created_at
         metadata_key_2 = hsetnx_calls[1][0][0]
         assert metadata_key_2.startswith("test_prefix:counter:")
-        assert metadata_key_2.endswith(":meta:test_key")
+        assert metadata_key_2.endswith(
+            f":meta:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
+        )
         assert hsetnx_calls[1][0][1] == "created_at"
         assert hsetnx_calls[1][0][2] == "1234567890.0"
 
@@ -250,7 +264,9 @@ class TestRedisStorageDict:
         metric_key = calls[0][0][0]  # First argument of first call
 
         assert metric_key.startswith("test_prefix:counter:")
-        assert metric_key.endswith(":metric:test_key")
+        assert metric_key.endswith(
+            f":metric:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
+        )
 
         # Check the mapping content
         metric_mapping = calls[0][1]["mapping"]
@@ -265,14 +281,18 @@ class TestRedisStorageDict:
         # First hsetnx call for original_key
         metadata_key_1 = hsetnx_calls[0][0][0]
         assert metadata_key_1.startswith("test_prefix:counter:")
-        assert metadata_key_1.endswith(":meta:test_key")
+        assert metadata_key_1.endswith(
+            f":meta:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
+        )
         assert hsetnx_calls[0][0][1] == "original_key"
         assert hsetnx_calls[0][0][2] == "test_key"
 
         # Second hsetnx call for created_at
         metadata_key_2 = hsetnx_calls[1][0][0]
         assert metadata_key_2.startswith("test_prefix:counter:")
-        assert metadata_key_2.endswith(":meta:test_key")
+        assert metadata_key_2.endswith(
+            f":meta:{hashlib.md5('test_key'.encode('utf-8'), usedforsecurity=False).hexdigest()}"
+        )
         assert hsetnx_calls[1][0][1] == "created_at"
         assert hsetnx_calls[1][0][2] == "1234567890.0"
 
