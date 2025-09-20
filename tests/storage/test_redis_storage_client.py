@@ -754,3 +754,115 @@ class TestRedisStorageEdgeCases:
         result2 = storage_dict.read_value("test_key")
         assert result1 == (1.0, 987654321.0)
         assert result2 == (2.0, 987654322.0)
+
+
+class TestValuesModuleFunctions:
+    """Test functions in the values module for better coverage."""
+
+    def test_redis_storage_value_set_exemplar(self):
+        """Test RedisValue set_exemplar method."""
+        from gunicorn_prometheus_exporter.backend.core.values import RedisValue
+
+        mock_redis = Mock()
+        mock_redis.hget.return_value = b"1.5"
+        mock_redis.hgetall.return_value = {
+            b"value": b"1.5",
+            b"timestamp": b"1234567890.0",
+        }
+
+        value = RedisValue(
+            "counter",
+            "test_metric",
+            "test_name",
+            ["label1"],
+            ["value1"],
+            "Test metric",
+            "all",
+            mock_redis,
+            "test_prefix",
+        )
+
+        # Test that set_exemplar returns None (not implemented)
+        result = value.set_exemplar({"trace_id": "123", "span_id": "456"})
+        assert result is None
+
+    def test_cleanup_process_keys_for_pid(self):
+        """Test cleanup_process_keys_for_pid function."""
+        from gunicorn_prometheus_exporter.backend.core.values import (
+            cleanup_process_keys_for_pid,
+        )
+
+        mock_redis = Mock()
+
+        # Test with default redis_key_prefix
+        with patch(
+            "gunicorn_prometheus_exporter.backend.core.values.config"
+        ) as mock_config:
+            mock_config.redis_key_prefix = "default_prefix"
+
+            with patch(
+                "gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient"
+            ) as mock_client_class:
+                mock_client = Mock()
+                mock_client_class.return_value = mock_client
+
+                cleanup_process_keys_for_pid(12345, mock_redis)
+
+                mock_client_class.assert_called_once_with(mock_redis, "default_prefix")
+                mock_client.cleanup_process_keys.assert_called_once_with(12345)
+
+    def test_cleanup_process_keys_for_pid_with_prefix(self):
+        """Test cleanup_process_keys_for_pid function with custom prefix."""
+        from gunicorn_prometheus_exporter.backend.core.values import (
+            cleanup_process_keys_for_pid,
+        )
+
+        mock_redis = Mock()
+
+        with patch(
+            "gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient"
+        ) as mock_client_class:
+            mock_client = Mock()
+            mock_client_class.return_value = mock_client
+
+            cleanup_process_keys_for_pid(12345, mock_redis, "custom_prefix")
+
+            mock_client_class.assert_called_once_with(mock_redis, "custom_prefix")
+            mock_client.cleanup_process_keys.assert_called_once_with(12345)
+
+    def test_mark_process_dead_redis(self):
+        """Test mark_process_dead_redis function."""
+        from gunicorn_prometheus_exporter.backend.core.values import (
+            mark_process_dead_redis,
+        )
+
+        mock_redis = Mock()
+
+        with patch(
+            "gunicorn_prometheus_exporter.backend.core.values.cleanup_process_keys_for_pid"
+        ) as mock_cleanup:
+            mark_process_dead_redis(12345, mock_redis, "test_prefix")
+
+            mock_cleanup.assert_called_once_with(12345, mock_redis, "test_prefix")
+
+    def test_mark_process_dead_redis_default_prefix(self):
+        """Test mark_process_dead_redis function with default prefix."""
+        from gunicorn_prometheus_exporter.backend.core.values import (
+            mark_process_dead_redis,
+        )
+
+        mock_redis = Mock()
+
+        with patch(
+            "gunicorn_prometheus_exporter.backend.core.values.cleanup_process_keys_for_pid"
+        ) as mock_cleanup:
+            with patch(
+                "gunicorn_prometheus_exporter.backend.core.values.config"
+            ) as mock_config:
+                mock_config.redis_key_prefix = "default_prefix"
+
+                mark_process_dead_redis(12345, mock_redis)
+
+                mock_cleanup.assert_called_once_with(
+                    12345, mock_redis, "default_prefix"
+                )

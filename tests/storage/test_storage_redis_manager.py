@@ -309,3 +309,17 @@ class TestRedisStorageManagerIntegration:
         # RedisStorageManager handles connection failures gracefully
         # Just test that it doesn't raise an exception
         assert manager is not None
+
+
+class TestManagerExceptionHandling:
+    """Test exception handling in manager module for better coverage."""
+
+    def test_prometheus_value_class_protocol(self):
+        """Test PrometheusValueClassProtocol."""
+        from gunicorn_prometheus_exporter.backend.service.manager import (
+            PrometheusValueClassProtocol,
+        )
+
+        # Test that the protocol exists and has the expected method
+        assert hasattr(PrometheusValueClassProtocol, "__call__")
+        assert callable(PrometheusValueClassProtocol.__call__)

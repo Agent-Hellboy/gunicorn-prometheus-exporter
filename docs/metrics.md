@@ -2,30 +2,6 @@
 
 Complete reference for all metrics exposed by the Gunicorn Prometheus Exporter.
 
-## Compatibility Issues
-
-### TornadoWorker Compatibility Issues
-
-**Important**: The `PrometheusTornadoWorker` has known compatibility issues and is **not recommended for production use**.
-
-#### Known Issues
-
-1. **Metrics Endpoint Hanging**: The Prometheus metrics endpoint (`/metrics`) may hang or become unresponsive when using TornadoWorker
-2. **IOLoop Conflicts**: Tornado's event loop architecture conflicts with the metrics collection mechanism
-3. **Thread Safety Problems**: Metrics collection from TornadoWorker processes can cause deadlocks
-4. **Request Object Access**: TornadoWorker doesn't expose request objects in the same way as other workers, limiting method and endpoint tracking
-
-#### Recommended Alternatives
-
-- Use `PrometheusWorker` (sync worker) for most applications
-- Use `PrometheusEventletWorker` for async applications requiring eventlet
-- Use `PrometheusGeventWorker` for async applications requiring gevent
-- Use `PrometheusThreadWorker` for threaded applications
-
-#### Technical Details
-
-The TornadoWorker uses Tornado's single-threaded IOLoop which can block the main thread when the metrics endpoint is accessed. This creates a fundamental incompatibility with the current metrics collection approach.
-
 ## Available Metrics
 
 The exporter provides comprehensive metrics for monitoring Gunicorn workers, requests, and application performance.

@@ -7,7 +7,12 @@ import time
 
 from gunicorn.arbiter import Arbiter
 
-from .metrics import MasterWorkerRestarts
+from .metrics import (
+    MasterWorkerRestartCount,
+    MasterWorkerRestarts,
+    WorkerRestartCount,
+    WorkerRestartReason,
+)
 
 
 # Use configuration for logging level
@@ -127,13 +132,30 @@ class PrometheusMaster(Arbiter):
                 fallback_e,
             )
 
-    def _safe_inc_restart(self, reason: str) -> None:
-        """Safely increment MasterWorkerRestarts without blocking signal handling."""
+    def _safe_inc_restart(
+        self, reason: str, worker_id: str = None, restart_type: str = "signal"
+    ) -> None:
+        """Safely increment restart metrics without blocking signal handling."""
         try:
+            # Increment master-level restart metric
             MasterWorkerRestarts.inc(reason=reason)
+
+            # Increment worker-level restart metrics if worker_id is provided
+            if worker_id:
+                WorkerRestartReason.inc(worker_id=worker_id, reason=reason)
+                WorkerRestartCount.inc(
+                    worker_id=worker_id, restart_type=restart_type, reason=reason
+                )
+                # Also increment master-level detailed restart count metric
+                MasterWorkerRestartCount.inc(
+                    worker_id=worker_id, reason=reason, restart_type=restart_type
+                )
         except Exception:  # nosec
             logger.debug(
-                "Failed to inc MasterWorkerRestarts(reason=%s)", reason, exc_info=True
+                "Failed to inc restart metrics(worker_id=%s, reason=%s)",
+                worker_id,
+                reason,
+                exc_info=True,
             )
 
     def handle_int(self):

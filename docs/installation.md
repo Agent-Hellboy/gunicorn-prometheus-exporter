@@ -299,7 +299,6 @@ os.environ.setdefault("REDIS_ENABLED", "true")
 | ---------- | ---------- | ----------------------------------------------------------- |
 | `eventlet` | `>=0.30.0` | Eventlet worker                                             |
 | `gevent`   | `>=21.8.0` | Gevent worker                                               |
-| `tornado`  | `>=6.1.0`  | Tornado worker (Not recommended - see compatibility issues) |
 
 #### Redis Dependencies
 
@@ -424,9 +423,6 @@ python -c "import eventlet; print('Eventlet available')" 2>/dev/null && echo "Ev
 
 # Test gevent worker
 python -c "import gevent; print('Gevent available')" 2>/dev/null && echo "Gevent worker ready" || echo "Install gevent: pip install gunicorn-prometheus-exporter[gevent]"
-
-# Test tornado worker (Not recommended - see compatibility issues)
-python -c "import tornado; print('Tornado available')" 2>/dev/null && echo "Tornado worker available (Not recommended)" || echo "Install tornado: pip install gunicorn-prometheus-exporter[tornado] (Not recommended)"
 ```
 
 ### Test Redis Integration

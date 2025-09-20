@@ -1148,3 +1148,18 @@ class TestMarkProcessDeadRedis:
             match="test_prefix:*:12345:*", count=100
         )
         mock_redis.delete.assert_not_called()
+
+
+class TestCollectorExceptionHandling:
+    """Test exception handling in collector module for better coverage."""
+
+    def test_collect_with_exception(self):
+        """Test collect method with exception."""
+        mock_redis = Mock()
+        mock_redis.scan_iter.side_effect = Exception("Redis error")
+
+        collector = RedisMultiProcessCollector(Mock(), mock_redis, "test_prefix")
+
+        # Should return empty list on exception
+        result = list(collector.collect())
+        assert result == []

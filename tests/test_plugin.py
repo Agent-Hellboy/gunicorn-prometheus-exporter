@@ -10,16 +10,13 @@ import pytest
 from gunicorn_prometheus_exporter.plugin import (
     EVENTLET_AVAILABLE,
     GEVENT_AVAILABLE,
-    TORNADO_AVAILABLE,
     PrometheusThreadWorker,
     PrometheusWorker,
     _create_eventlet_worker,
     _create_gevent_worker,
-    _create_tornado_worker,
     _setup_logging,
     get_prometheus_eventlet_worker,
     get_prometheus_gevent_worker,
-    get_prometheus_tornado_worker,
 )
 
 
@@ -632,6 +629,7 @@ class TestPrometheusThreadWorker:
                 worker.process = mock_process.return_value
                 worker.update_worker_metrics = MagicMock()
                 worker._request_count = 0
+                worker._handle_request_metrics = MagicMock()
 
                 req = MagicMock()
                 conn = MagicMock()
@@ -657,10 +655,6 @@ class TestAsyncWorkerAvailability:
     def test_gevent_availability(self):
         """Test GEVENT_AVAILABLE flag."""
         assert isinstance(GEVENT_AVAILABLE, bool)
-
-    def test_tornado_availability(self):
-        """Test TORNADO_AVAILABLE flag."""
-        assert isinstance(TORNADO_AVAILABLE, bool)
 
 
 class TestAsyncWorkerCreation:
@@ -724,35 +718,6 @@ class TestAsyncWorkerCreation:
                 _create_gevent_worker()
                 # Function should handle import error gracefully
 
-    def test_create_tornado_worker(self):
-        """Test _create_tornado_worker function."""
-        with patch("gunicorn_prometheus_exporter.plugin.TORNADO_AVAILABLE", True):
-            with patch(
-                "gunicorn_prometheus_exporter.plugin.importlib.util.find_spec",
-                return_value=True,
-            ):
-                with patch(
-                    "gunicorn_prometheus_exporter.plugin.TornadoWorker", MagicMock()
-                ):
-                    _create_tornado_worker()
-                    # Function should execute without error
-
-    def test_create_tornado_worker_unavailable(self):
-        """Test _create_tornado_worker when tornado is unavailable."""
-        with patch("gunicorn_prometheus_exporter.plugin.TORNADO_AVAILABLE", False):
-            _create_tornado_worker()
-            # Function should execute without error
-
-    def test_create_tornado_worker_import_error(self):
-        """Test _create_tornado_worker with import error."""
-        with patch("gunicorn_prometheus_exporter.plugin.TORNADO_AVAILABLE", True):
-            with patch(
-                "gunicorn_prometheus_exporter.plugin.importlib.util.find_spec",
-                side_effect=ImportError("Not found"),
-            ):
-                _create_tornado_worker()
-                # Function should handle import error gracefully
-
 
 class TestAsyncWorkerGetters:
     """Test async worker getter functions."""
@@ -766,12 +731,6 @@ class TestAsyncWorkerGetters:
     def test_get_prometheus_gevent_worker(self):
         """Test get_prometheus_gevent_worker function."""
         result = get_prometheus_gevent_worker()
-        # Should return None or a class
-        assert result is None or callable(result)
-
-    def test_get_prometheus_tornado_worker(self):
-        """Test get_prometheus_tornado_worker function."""
-        result = get_prometheus_tornado_worker()
         # Should return None or a class
         assert result is None or callable(result)
 
@@ -792,13 +751,11 @@ class TestPluginModuleInitialization:
         from gunicorn_prometheus_exporter.plugin import (
             PrometheusEventletWorker,
             PrometheusGeventWorker,
-            PrometheusTornadoWorker,
         )
 
         # These should be None or classes
         assert PrometheusEventletWorker is None or callable(PrometheusEventletWorker)
         assert PrometheusGeventWorker is None or callable(PrometheusGeventWorker)
-        assert PrometheusTornadoWorker is None or callable(PrometheusTornadoWorker)
 
 
 class TestPrometheusMixinEdgeCases:

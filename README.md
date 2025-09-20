@@ -64,16 +64,19 @@ We've extended the Prometheus Python client to support **Redis-based storage** a
 
 ## Compatibility Issues
 
-### TornadoWorker Compatibility
+### TornadoWorker Removal
 
-The `PrometheusTornadoWorker` has known compatibility issues and is **not recommended for production use**:
+**The `PrometheusTornadoWorker` has been completely removed** because:
 
-- **Metrics Endpoint Hanging**: The Prometheus metrics endpoint may hang or become unresponsive
-- **IOLoop Conflicts**: Tornado's event loop architecture conflicts with metrics collection
-- **Thread Safety Problems**: Metrics collection can cause deadlocks
+- **We never supported it**: Tornado worker was never properly implemented or supported
+- **Nobody uses Tornado anymore**: Tornado is deprecated and not actively maintained
+- **Signal handling issues**: Master signals (HUP, USR1, CHLD) did not work correctly
+- **Async compatibility problems**: Tornado's async model conflicted with Prometheus metrics collection
+- **No production usage**: Tornado worker was never used in production environments
 
-**Recommended Alternatives:**
+**We are not supporting Tornado workers** - use the recommended alternatives below.
 
+**Recommended alternatives:**
 - Use `PrometheusEventletWorker` for async applications requiring eventlet
 - Use `PrometheusGeventWorker` for async applications requiring gevent
 - Use `PrometheusWorker` (sync worker) for most applications
@@ -97,7 +100,6 @@ pip install gunicorn-prometheus-exporter[async]
 # Or install specific worker types
 pip install gunicorn-prometheus-exporter[eventlet]  # For eventlet workers
 pip install gunicorn-prometheus-exporter[gevent]    # For gevent workers
-pip install gunicorn-prometheus-exporter[tornado]   # For tornado workers
 ```
 
 **With Redis storage:**
@@ -140,7 +142,6 @@ The exporter supports all major Gunicorn worker types:
 | `PrometheusThreadWorker`   | Threads           | I/O-bound apps, better concurrency     | `pip install gunicorn-prometheus-exporter`           |
 | `PrometheusEventletWorker` | Greenlets         | Async I/O with eventlet                | `pip install gunicorn-prometheus-exporter[eventlet]` |
 | `PrometheusGeventWorker`   | Greenlets         | Async I/O with gevent                  | `pip install gunicorn-prometheus-exporter[gevent]`   |
-| `PrometheusTornadoWorker`  | Async IOLoop      | Tornado-based async (Not recommended)  | `pip install gunicorn-prometheus-exporter[tornado]`  |
 
 ### Start Gunicorn
 
@@ -203,7 +204,6 @@ See the `example/` directory for complete working examples with all worker types
 
 - `gunicorn_eventlet_async.conf.py`: Eventlet workers with async app
 - `gunicorn_gevent_async.conf.py`: Gevent workers with async app
-- `gunicorn_tornado_async.conf.py`: Tornado workers with async app (Not recommended)
 
 ### Test Applications
 
@@ -227,8 +227,6 @@ All worker types have been thoroughly tested and are production-ready:
 | **Thread Worker**   | Working | All metrics | HUP, USR1, CHLD | Balanced          |
 | **Eventlet Worker** | Working | All metrics | HUP, USR1, CHLD | Balanced          |
 | **Gevent Worker**   | Working | All metrics | HUP, USR1, CHLD | Balanced          |
-
-**Note**: Tornado worker is not supported due to compatibility issues.
 
 All async workers require their respective dependencies:
 

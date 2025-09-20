@@ -608,6 +608,9 @@ verify_metrics() {
     # Optional metrics (may not have values)
     local optional_metrics=(
         "gunicorn_master_worker_restart_total"
+        "gunicorn_master_worker_restart_count_total"
+        "gunicorn_worker_restart_total"
+        "gunicorn_worker_restart_count_total"
     )
 
     local failed_checks=0

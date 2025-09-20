@@ -31,6 +31,8 @@ from .metrics import (
     WORKER_MEMORY,
     WORKER_REQUEST_DURATION,
     WORKER_REQUESTS,
+    WORKER_RESTART_COUNT,
+    WORKER_RESTART_REASON,
     WORKER_STATE,
     WORKER_UPTIME,
 )
@@ -39,12 +41,10 @@ from .metrics import (
 # Initialize variables for async workers
 EventletWorker = None
 GeventWorker = None
-TornadoWorker = None
 
 
 EVENTLET_AVAILABLE = importlib.util.find_spec("eventlet") is not None
 GEVENT_AVAILABLE = importlib.util.find_spec("gevent") is not None
-TORNADO_AVAILABLE = importlib.util.find_spec("tornado") is not None
 
 
 # Use configuration for logging level - with fallback for testing
@@ -101,6 +101,8 @@ class PrometheusMixin:
             WORKER_FAILED_REQUESTS,
             WORKER_ERROR_HANDLING,
             WORKER_STATE,
+            WORKER_RESTART_REASON,
+            WORKER_RESTART_COUNT,
         ]:
             metric = MetricClass._metric  # pylint: disable=protected-access
             labelnames = list(metric._labelnames)  # pylint: disable=protected-access
@@ -195,8 +197,7 @@ class PrometheusMixin:
             duration = time.time() - start_time
 
             # Update failed request metrics
-            method = req.method if hasattr(req, "method") else "UNKNOWN"
-            endpoint = req.path if hasattr(req, "path") else "UNKNOWN"
+            method, endpoint = self._extract_request_info(req)
             error_type = type(e).__name__
 
             WORKER_FAILED_REQUESTS.labels(
@@ -214,6 +215,34 @@ class PrometheusMixin:
             )
         except Exception as metric_error:
             logger.error("Failed to update error metrics: %s", metric_error)
+
+    def _extract_request_from_args(self, args):
+        """Extract request object from method arguments using attribute-based detection.
+
+        Args:
+            args: Method arguments tuple
+
+        Returns:
+            Request object or None if not found
+        """
+        for arg in args:
+            # Check if this looks like a request object
+            if hasattr(arg, "method") and hasattr(arg, "path"):
+                return arg
+        return None
+
+    def _extract_request_info(self, req):
+        """Extract method and endpoint information from request object.
+
+        Args:
+            req: Request object or None
+
+        Returns:
+            tuple: (method, endpoint) both as strings
+        """
+        method = req.method if req and hasattr(req, "method") else "UNKNOWN"
+        endpoint = req.path if req and hasattr(req, "path") else "UNKNOWN"
+        return method, endpoint
 
     def _generic_handle_request(self, parent_method, *args, **kwargs):
         """Generic handle_request wrapper for all worker types.
@@ -238,8 +267,8 @@ class PrometheusMixin:
             return result
         except Exception as e:
             # Handle request error metrics
-            # Try to extract req from args (first argument after self)
-            req = args[0] if args else None
+            # Extract req from args using robust attribute-based detection
+            req = self._extract_request_from_args(args)
             self._handle_request_error_metrics(req, e, start_time)
             raise
 
@@ -253,8 +282,7 @@ class PrometheusMixin:
             e: The exception that occurred
         """
         # Extract method and endpoint from request if available
-        method = req.method if hasattr(req, "method") else "UNKNOWN"
-        endpoint = req.path if hasattr(req, "path") else "UNKNOWN"
+        method, endpoint = self._extract_request_info(req)
 
         # Update error metrics
         error_type = type(e).__name__
@@ -281,6 +309,13 @@ class PrometheusMixin:
             worker_id=self.worker_id, state="quitting", timestamp=timestamp
         ).set(1)
 
+        # Track worker restart
+        WORKER_RESTART_REASON.labels(worker_id=self.worker_id, reason="quit").inc()
+
+        WORKER_RESTART_COUNT.labels(
+            worker_id=self.worker_id, restart_type="graceful", reason="quit"
+        ).inc()
+
         # Call parent handle_quit
         super().handle_quit(sig, frame)
 
@@ -296,6 +331,13 @@ class PrometheusMixin:
         WORKER_STATE.labels(
             worker_id=self.worker_id, state="aborting", timestamp=timestamp
         ).set(1)
+
+        # Track worker restart
+        WORKER_RESTART_REASON.labels(worker_id=self.worker_id, reason="abort").inc()
+
+        WORKER_RESTART_COUNT.labels(
+            worker_id=self.worker_id, restart_type="forced", reason="abort"
+        ).inc()
 
         # Call parent handle_abort
         super().handle_abort(sig, frame)
@@ -317,11 +359,11 @@ class PrometheusWorker(PrometheusMixin, SyncWorker):
 
     def handle_quit(self, sig, frame):
         """Handle quit signal and update worker state."""
-        return self._generic_handle_quit(sig, frame)
+        self._generic_handle_quit(sig, frame)
 
     def handle_abort(self, sig, frame):
         """Handle abort signal and update worker state."""
-        return self._generic_handle_abort(sig, frame)
+        self._generic_handle_abort(sig, frame)
 
 
 class PrometheusThreadWorker(PrometheusMixin, ThreadWorker):
@@ -337,17 +379,16 @@ class PrometheusThreadWorker(PrometheusMixin, ThreadWorker):
 
     def handle_quit(self, sig, frame):
         """Handle quit signal and update worker state."""
-        return self._generic_handle_quit(sig, frame)
+        self._generic_handle_quit(sig, frame)
 
     def handle_abort(self, sig, frame):
         """Handle abort signal and update worker state."""
-        return self._generic_handle_abort(sig, frame)
+        self._generic_handle_abort(sig, frame)
 
 
 # Initialize async worker classes as None
 PrometheusEventletWorker = None
 PrometheusGeventWorker = None
-PrometheusTornadoWorker = None
 
 
 def _create_eventlet_worker():
@@ -372,11 +413,11 @@ def _create_eventlet_worker():
 
                 def handle_quit(self, sig, frame):
                     """Handle quit signal and update worker state."""
-                    return self._generic_handle_quit(sig, frame)
+                    self._generic_handle_quit(sig, frame)
 
                 def handle_abort(self, sig, frame):
                     """Handle abort signal and update worker state."""
-                    return self._generic_handle_abort(sig, frame)
+                    self._generic_handle_abort(sig, frame)
         except (ImportError, RuntimeError):
             PrometheusEventletWorker = None
 
@@ -403,63 +444,18 @@ def _create_gevent_worker():
 
                 def handle_quit(self, sig, frame):
                     """Handle quit signal and update worker state."""
-                    return self._generic_handle_quit(sig, frame)
+                    self._generic_handle_quit(sig, frame)
 
                 def handle_abort(self, sig, frame):
                     """Handle abort signal and update worker state."""
-                    return self._generic_handle_abort(sig, frame)
+                    self._generic_handle_abort(sig, frame)
         except (ImportError, RuntimeError):
             PrometheusGeventWorker = None
-
-
-def _create_tornado_worker():
-    """Create PrometheusTornadoWorker class if available."""
-    global PrometheusTornadoWorker
-    if TORNADO_AVAILABLE:
-        try:
-            from gunicorn.workers.gtornado import TornadoWorker
-
-            class PrometheusTornadoWorker(PrometheusMixin, TornadoWorker):  # pylint: disable=unused-variable
-                """Tornado worker with Prometheus metrics."""
-
-                def handle_request(self):
-                    """Handle a request and update metrics."""
-                    start_time = time.time()
-
-                    try:
-                        # Update worker metrics on each request
-                        self.update_worker_metrics()
-
-                        # Call parent handle_request
-                        super().handle_request()
-
-                        # Update request metrics after successful request
-                        self._handle_request_metrics(start_time)
-
-                    except Exception as e:
-                        # Handle request error metrics (Tornado doesn't pass req object)
-                        self._handle_request_error_metrics(None, e, start_time)
-                        raise
-
-                def handle_error(self, req, client, addr, e):  # pylint: disable=arguments-renamed
-                    """Handle request errors and update error metrics."""
-                    return self._generic_handle_error(req, client, addr, e)
-
-                def handle_quit(self, sig, frame):
-                    """Handle quit signal and update worker state."""
-                    return self._generic_handle_quit(sig, frame)
-
-                def handle_abort(self, sig, frame):
-                    """Handle abort signal and update worker state."""
-                    return self._generic_handle_abort(sig, frame)
-        except (ImportError, RuntimeError):
-            PrometheusTornadoWorker = None
 
 
 # Create async worker classes
 _create_eventlet_worker()
 _create_gevent_worker()
-_create_tornado_worker()
 
 
 def get_prometheus_eventlet_worker():
@@ -470,8 +466,3 @@ def get_prometheus_eventlet_worker():
 def get_prometheus_gevent_worker():
     """Get PrometheusGeventWorker class if available."""
     return PrometheusGeventWorker
-
-
-def get_prometheus_tornado_worker():
-    """Get PrometheusTornadoWorker class if available."""
-    return PrometheusTornadoWorker
