@@ -135,12 +135,19 @@ class RedisClientProtocol(Protocol):
 class StorageDictProtocol(Protocol):
     """Protocol for storage dictionary interface."""
 
-    def read_value(self, key: str, metric_type: str = "counter") -> Tuple[float, float]:
+    def read_value(
+        self, key: str, metric_type: str = "counter", multiprocess_mode: str = ""
+    ) -> Tuple[float, float]:
         """Read value and timestamp."""
         raise NotImplementedError
 
     def write_value(
-        self, key: str, value: float, timestamp: float, metric_type: str = "counter"
+        self,
+        key: str,
+        value: float,
+        timestamp: float,
+        metric_type: str = "counter",
+        multiprocess_mode: str = "",
     ) -> None:
         """Write value and timestamp."""
         raise NotImplementedError
@@ -201,18 +208,25 @@ class RedisStorageDict:
 
         return ""  # Return empty string if not found
 
-    def read_value(self, key: str, metric_type: str = "counter") -> Tuple[float, float]:
+    def read_value(
+        self, key: str, metric_type: str = "counter", multiprocess_mode: str = ""
+    ) -> Tuple[float, float]:
         """Read value and timestamp for a metric key.
 
         Args:
             key: Metric key
             metric_type: Type of metric (counter, gauge, histogram, summary)
+            multiprocess_mode: Multiprocess mode for gauge metrics
 
         Returns:
             Tuple of (value, timestamp)
         """
-        # Get multiprocess_mode from metadata if available
-        multiprocess_mode = self._get_multiprocess_mode_from_metadata(key, metric_type)
+        # Use multiprocess_mode parameter if provided, otherwise try to get
+        # from metadata
+        if not multiprocess_mode:
+            multiprocess_mode = self._get_multiprocess_mode_from_metadata(
+                key, metric_type
+            )
         metric_key = self._get_metric_key(key, metric_type, multiprocess_mode)
 
         with self._lock:
@@ -228,7 +242,12 @@ class RedisStorageDict:
             return _safe_parse_float(value_data), _safe_parse_float(timestamp_data)
 
     def write_value(
-        self, key: str, value: float, timestamp: float, metric_type: str = "counter"
+        self,
+        key: str,
+        value: float,
+        timestamp: float,
+        metric_type: str = "counter",
+        multiprocess_mode: str = "",
     ) -> None:
         """Write value and timestamp for a metric key.
 
@@ -237,9 +256,14 @@ class RedisStorageDict:
             value: Metric value
             timestamp: Metric timestamp
             metric_type: Type of metric (counter, gauge, histogram, summary)
+            multiprocess_mode: Multiprocess mode for gauge metrics
         """
-        # Get multiprocess_mode from metadata if available
-        multiprocess_mode = self._get_multiprocess_mode_from_metadata(key, metric_type)
+        # Use multiprocess_mode parameter if provided, otherwise try to get
+        # from metadata
+        if not multiprocess_mode:
+            multiprocess_mode = self._get_multiprocess_mode_from_metadata(
+                key, metric_type
+            )
         metric_key = self._get_metric_key(key, metric_type, multiprocess_mode)
 
         with self._lock:
@@ -308,7 +332,7 @@ class RedisStorageDict:
 
     def _init_value_unlocked(self, key: str, metric_type: str = "counter") -> None:
         """Initialize a value with defaults (assumes lock is already held)."""
-        # Get multiprocess_mode from metadata if available
+        # Try to get multiprocess_mode from metadata
         multiprocess_mode = self._get_multiprocess_mode_from_metadata(key, metric_type)
         metric_key = self._get_metric_key(key, metric_type, multiprocess_mode)
 

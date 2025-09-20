@@ -63,7 +63,9 @@ class RedisValue:
                 multiprocess_mode=multiprocess_mode or "all",
             )
         self._value, self._timestamp = self._redis_dict.read_value(
-            self._key, self._params[0]
+            self._key,
+            self._params[0],
+            self._params[6],  # Pass multiprocess_mode
         )
 
     def inc(self, amount=1):
@@ -71,7 +73,11 @@ class RedisValue:
         self._value += amount
         self._timestamp = 0.0
         self._redis_dict.write_value(
-            self._key, self._value, self._timestamp, self._params[0]
+            self._key,
+            self._value,
+            self._timestamp,
+            self._params[0],
+            self._params[6],  # Pass multiprocess_mode
         )
 
     def set(self, value, timestamp=None):
@@ -81,7 +87,11 @@ class RedisValue:
         self._value = value
         self._timestamp = time.time() if timestamp is None else float(timestamp)
         self._redis_dict.write_value(
-            self._key, self._value, self._timestamp, self._params[0]
+            self._key,
+            self._value,
+            self._timestamp,
+            self._params[0],
+            self._params[6],  # Pass multiprocess_mode
         )
 
     def set_exemplar(self, _exemplar):
