@@ -156,19 +156,144 @@ The documentation includes:
 
 ## Available Metrics
 
+The Gunicorn Prometheus Exporter provides comprehensive metrics for monitoring both worker processes and the master process. All metrics include appropriate labels for detailed analysis.
+
 ### Worker Metrics
 
-- `gunicorn_worker_requests_total`: Total requests processed
-- `gunicorn_worker_request_duration_seconds`: Request duration histogram
-- `gunicorn_worker_memory_bytes`: Memory usage per worker
-- `gunicorn_worker_cpu_percent`: CPU usage per worker
-- `gunicorn_worker_uptime_seconds`: Worker uptime
+#### Request Metrics
+- **`gunicorn_worker_requests_total`** - Total number of requests handled by each worker
+  - Labels: `worker_id`
+  - Type: Counter
+
+- **`gunicorn_worker_request_duration_seconds`** - Request duration histogram
+  - Labels: `worker_id`
+  - Type: Histogram
+  - Buckets: 0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, +Inf
+
+- **`gunicorn_worker_request_size_bytes`** - Request size histogram
+  - Labels: `worker_id`
+  - Type: Histogram
+  - Buckets: 1KB, 4KB, 16KB, 64KB, 256KB, 1MB, 4MB, +Inf
+
+- **`gunicorn_worker_response_size_bytes`** - Response size histogram
+  - Labels: `worker_id`
+  - Type: Histogram
+  - Buckets: 1KB, 4KB, 16KB, 64KB, 256KB, 1MB, 4MB, +Inf
+
+#### Error Metrics
+- **`gunicorn_worker_failed_requests`** - Total number of failed requests
+  - Labels: `worker_id`, `method`, `endpoint`, `error_type`
+  - Type: Counter
+
+- **`gunicorn_worker_error_handling`** - Total number of errors handled
+  - Labels: `worker_id`, `method`, `endpoint`, `error_type`
+  - Type: Counter
+
+#### System Metrics
+- **`gunicorn_worker_memory_bytes`** - Memory usage per worker
+  - Labels: `worker_id`
+  - Type: Gauge
+
+- **`gunicorn_worker_cpu_percent`** - CPU usage per worker
+  - Labels: `worker_id`
+  - Type: Gauge
+
+- **`gunicorn_worker_uptime_seconds`** - Worker uptime
+  - Labels: `worker_id`
+  - Type: Gauge
+
+#### State Metrics
+- **`gunicorn_worker_state`** - Current state of the worker
+  - Labels: `worker_id`, `state`, `timestamp`
+  - Type: Gauge
+  - Values: 1=running, 0=stopped
+
+#### Restart Metrics
+- **`gunicorn_worker_restart_total`** - Total worker restarts by reason
+  - Labels: `worker_id`, `reason`
+  - Type: Counter
+
+- **`gunicorn_worker_restart_count_total`** - Worker restarts by type and reason
+  - Labels: `worker_id`, `restart_type`, `reason`
+  - Type: Counter
 
 ### Master Metrics
 
-- `gunicorn_master_signals_total`: Signal counts by type
-- `gunicorn_master_worker_restarts_total`: Worker restart counts
-- `gunicorn_master_workers_current`: Current worker count
+#### Restart Metrics
+- **`gunicorn_master_worker_restart_total`** - Total worker restarts by reason
+  - Labels: `reason`
+  - Type: Counter
+  - Common reasons: `hup`, `usr1`, `usr2`, `ttin`, `ttou`, `chld`, `int`
+
+- **`gunicorn_master_worker_restart_count_total`** - Worker restarts by worker and reason
+  - Labels: `worker_id`, `reason`, `restart_type`
+  - Type: Counter
+
+### Metric Labels Explained
+
+#### Worker Labels
+- **`worker_id`**: Unique identifier for each worker process
+- **`method`**: HTTP method (GET, POST, PUT, DELETE, etc.)
+- **`endpoint`**: Request endpoint/path
+- **`error_type`**: Type of error (exception class name)
+- **`state`**: Worker state (running, stopped, etc.)
+- **`timestamp`**: Unix timestamp of state change
+- **`reason`**: Reason for restart (signal name or error type)
+- **`restart_type`**: Type of restart (signal, error, manual, etc.)
+
+#### Master Labels
+- **`reason`**: Signal or reason that triggered the restart
+  - `hup`: HUP signal (reload configuration)
+  - `usr1`: USR1 signal (reopen log files)
+  - `usr2`: USR2 signal (upgrade on the fly)
+  - `ttin`: TTIN signal (increase worker count)
+  - `ttou`: TTOU signal (decrease worker count)
+  - `chld`: CHLD signal (child process status change)
+  - `int`: INT signal (interrupt/Ctrl+C)
+
+### Example Queries
+
+#### Basic Monitoring
+```promql
+# Total requests across all workers
+sum(gunicorn_worker_requests_total)
+
+# Average request duration
+rate(gunicorn_worker_request_duration_seconds_sum[5m]) / rate(gunicorn_worker_request_duration_seconds_count[5m])
+
+# Memory usage per worker
+gunicorn_worker_memory_bytes
+
+# CPU usage per worker
+gunicorn_worker_cpu_percent
+```
+
+#### Error Analysis
+```promql
+# Failed requests by endpoint
+sum by (endpoint) (rate(gunicorn_worker_failed_requests[5m]))
+
+# Error rate by worker
+sum by (worker_id) (rate(gunicorn_worker_error_handling[5m]))
+```
+
+#### Restart Monitoring
+```promql
+# Worker restarts by reason
+sum by (reason) (rate(gunicorn_master_worker_restart_total[5m]))
+
+# Restart frequency per worker
+sum by (worker_id) (rate(gunicorn_worker_restart_total[5m]))
+```
+
+#### Performance Analysis
+```promql
+# Request size distribution
+histogram_quantile(0.95, rate(gunicorn_worker_request_size_bytes_bucket[5m]))
+
+# Response time percentiles
+histogram_quantile(0.99, rate(gunicorn_worker_request_duration_seconds_bucket[5m]))
+```
 
 
 ## Examples
