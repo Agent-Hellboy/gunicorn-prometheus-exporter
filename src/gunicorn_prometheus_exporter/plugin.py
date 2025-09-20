@@ -88,7 +88,7 @@ class PrometheusMixin:
         # Initialize request counter
         self._request_count = 0
 
-        logger.info("PrometheusMixin initialized with ID: %s", self.worker_id)
+        logger.debug("PrometheusMixin initialized with ID: %s", self.worker_id)
 
     def _clear_old_metrics(self):
         """Clear only the old PID‐based worker samples."""
@@ -140,7 +140,7 @@ class PrometheusMixin:
                 worker_id=self.worker_id, state="running", timestamp=timestamp
             ).set(1)
 
-            logger.info(
+            logger.debug(
                 "Updated metrics for worker %s: memory=%s, cpu=%s, uptime=%s",
                 self.worker_id,
                 memory_info.rss,

@@ -2,7 +2,7 @@
 
 Complete installation guide for the Gunicorn Prometheus Exporter with all options and environment variables.
 
-## 🚀 Installation Options
+## Installation Options
 
 ### Basic Installation
 
@@ -13,6 +13,7 @@ pip install gunicorn-prometheus-exporter
 ```
 
 **Includes:**
+
 - Sync worker (`PrometheusWorker`)
 - Thread worker (`PrometheusThreadWorker`)
 - Basic Prometheus metrics collection
@@ -22,7 +23,7 @@ pip install gunicorn-prometheus-exporter
 
 Install with support for async worker types:
 
-```bash
+````bash
 # Install all async workers
 pip install gunicorn-prometheus-exporter[async]
 
@@ -32,15 +33,16 @@ pip install gunicorn-prometheus-exporter[gevent]    # Gevent workers
 
 ### Redis Integration
 
-Install with Redis forwarding capabilities:
+Install with Redis storage capabilities:
 
 ```bash
 pip install gunicorn-prometheus-exporter[redis]
-```
+````
 
 **Includes:**
+
 - All basic features
-- Redis metrics forwarding
+- Redis storage (no files created)
 - Redis connection management
 - Metrics aggregation
 
@@ -53,6 +55,7 @@ pip install gunicorn-prometheus-exporter[dev]
 ```
 
 **Includes:**
+
 - All basic features
 - Testing dependencies (pytest, coverage)
 - Linting tools (ruff, mypy)
@@ -67,6 +70,7 @@ pip install gunicorn-prometheus-exporter[all]
 ```
 
 **Includes:**
+
 - All async worker types
 - Redis integration
 - Development tools
@@ -99,17 +103,20 @@ pip install -e ".[async,redis]"
 **Default:** `/tmp/prometheus_multiproc`
 
 **Example:**
+
 ```bash
 export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
 ```
 
 **Requirements:**
+
 - Directory must be writable by the Gunicorn process
 - Directory should be cleaned up periodically
 - Must be unique per Gunicorn instance
@@ -125,17 +132,20 @@ os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
 **Range:** 1-65535
 
 **Example:**
+
 ```bash
 export PROMETHEUS_METRICS_PORT="9090"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
 ```
 
 **Requirements:**
+
 - Port must be available (not in use by another process)
 - Port must be accessible for metrics collection
 - Consider firewall rules for production environments
@@ -149,17 +159,20 @@ os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
 **Default:** `0.0.0.0`
 
 **Example:**
+
 ```bash
 export PROMETHEUS_BIND_ADDRESS="0.0.0.0"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 ```
 
 **Common values:**
+
 - `0.0.0.0` - Bind to all interfaces (default)
 - `127.0.0.1` - Bind to localhost only
 - `192.168.1.100` - Bind to specific IP address
@@ -175,17 +188,20 @@ os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 **Range:** 1-1000
 
 **Example:**
+
 ```bash
 export GUNICORN_WORKERS="4"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("GUNICORN_WORKERS", "4")
 ```
 
 **Recommendations:**
+
 - Set to match your actual worker count
 - Used for metrics aggregation and calculation
 - Should match the `workers` setting in Gunicorn config
@@ -203,11 +219,13 @@ os.environ.setdefault("GUNICORN_WORKERS", "4")
 **Range:** 0-300
 
 **Example:**
+
 ```bash
 export GUNICORN_KEEPALIVE="5"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
@@ -224,11 +242,13 @@ os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
 **Values:** `true`, `false`
 
 **Example:**
+
 ```bash
 export CLEANUP_DB_FILES="true"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("CLEANUP_DB_FILES", "true")
@@ -236,9 +256,11 @@ os.environ.setdefault("CLEANUP_DB_FILES", "true")
 
 ### Redis Environment Variables
 
+#### Redis Storage Variables (No Files Created)
+
 #### `REDIS_ENABLED`
 
-**Description:** Enable Redis metrics forwarding.
+**Description:** Enable Redis storage (replaces file storage).
 
 **Type:** Boolean
 
@@ -247,172 +269,54 @@ os.environ.setdefault("CLEANUP_DB_FILES", "true")
 **Values:** `true`, `false`
 
 **Example:**
+
 ```bash
 export REDIS_ENABLED="true"
 ```
 
 **Usage in configuration:**
+
 ```python
 import os
 os.environ.setdefault("REDIS_ENABLED", "true")
-```
-
-#### `REDIS_HOST`
-
-**Description:** Redis server hostname.
-
-**Type:** String
-
-**Default:** `localhost`
-
-**Example:**
-```bash
-export REDIS_HOST="redis.example.com"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_HOST", "redis.example.com")
-```
-
-#### `REDIS_PORT`
-
-**Description:** Redis server port.
-
-**Type:** Integer
-
-**Default:** `6379`
-
-**Range:** 1-65535
-
-**Example:**
-```bash
-export REDIS_PORT="6379"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_PORT", "6379")
-```
-
-#### `REDIS_DB`
-
-**Description:** Redis database number.
-
-**Type:** Integer
-
-**Default:** `0`
-
-**Range:** 0-15
-
-**Example:**
-```bash
-export REDIS_DB="1"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_DB", "1")
-```
-
-#### `REDIS_PASSWORD`
-
-**Description:** Redis authentication password.
-
-**Type:** String
-
-**Default:** `None` (no authentication)
-
-**Example:**
-```bash
-export REDIS_PASSWORD="your_redis_password"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_PASSWORD", "your_redis_password")
-```
-
-#### `REDIS_KEY_PREFIX`
-
-**Description:** Prefix for Redis keys.
-
-**Type:** String
-
-**Default:** `gunicorn_metrics`
-
-**Example:**
-```bash
-export REDIS_KEY_PREFIX="myapp_metrics"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_KEY_PREFIX", "myapp_metrics")
-```
-
-#### `REDIS_FORWARD_INTERVAL`
-
-**Description:** Metrics forwarding interval in seconds.
-
-**Type:** Integer
-
-**Default:** `30`
-
-**Range:** 1-3600
-
-**Example:**
-```bash
-export REDIS_FORWARD_INTERVAL="60"
-```
-
-**Usage in configuration:**
-```python
-import os
-os.environ.setdefault("REDIS_FORWARD_INTERVAL", "60")
 ```
 
 ## 📦 Package Dependencies
 
 ### Core Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
+| Package             | Version    | Purpose                       |
+| ------------------- | ---------- | ----------------------------- |
 | `prometheus-client` | `>=0.16.0` | Prometheus metrics collection |
-| `psutil` | `>=5.8.0` | System metrics (CPU, memory) |
-| `gunicorn` | `>=20.1.0` | WSGI server integration |
+| `psutil`            | `>=5.8.0`  | System metrics (CPU, memory)  |
+| `gunicorn`          | `>=20.1.0` | WSGI server integration       |
 
 ### Optional Dependencies
 
 #### Async Worker Dependencies
 
-| Package | Version | Worker Type |
-|---------|---------|-------------|
-| `eventlet` | `>=0.30.0` | Eventlet worker |
-| `gevent` | `>=21.8.0` | Gevent worker |
-| `tornado` | `>=6.1.0` | Tornado worker (⚠️ Not recommended - see compatibility issues) |
+| Package    | Version    | Worker Type                                                 |
+| ---------- | ---------- | ----------------------------------------------------------- |
+| `eventlet` | `>=0.30.0` | Eventlet worker                                             |
+| `gevent`   | `>=21.8.0` | Gevent worker                                               |
+| `tornado`  | `>=6.1.0`  | Tornado worker (Not recommended - see compatibility issues) |
 
 #### Redis Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
+| Package | Version   | Purpose      |
+| ------- | --------- | ------------ |
 | `redis` | `>=4.0.0` | Redis client |
 
 #### Development Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `pytest` | `>=7.0.0` | Testing framework |
-| `pytest-cov` | `>=4.0.0` | Coverage reporting |
-| `ruff` | `>=0.1.0` | Linting and formatting |
-| `mypy` | `>=1.0.0` | Type checking |
-| `mkdocs` | `>=1.4.0` | Documentation |
-| `mkdocs-material` | `>=9.0.0` | Documentation theme |
+| Package           | Version   | Purpose                |
+| ----------------- | --------- | ---------------------- |
+| `pytest`          | `>=7.0.0` | Testing framework      |
+| `pytest-cov`      | `>=4.0.0` | Coverage reporting     |
+| `ruff`            | `>=0.1.0` | Linting and formatting |
+| `mypy`            | `>=1.0.0` | Type checking          |
+| `mkdocs`          | `>=1.4.0` | Documentation          |
+| `mkdocs-material` | `>=9.0.0` | Documentation theme    |
 
 ## 🔧 Configuration Examples
 
@@ -448,28 +352,25 @@ os.environ.setdefault("GUNICORN_WORKERS", "2")
 os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
 ```
 
-### Redis Integration Configuration
+### Redis Storage Configuration
 
 ```python
-# gunicorn_redis.conf.py
+# gunicorn_redis_storage.conf.py
 bind = "0.0.0.0:8000"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
 import os
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9092")  # Different port for Redis storage
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "2")
 
-# Redis configuration
+# Redis storage configuration (no files created)
 os.environ.setdefault("REDIS_ENABLED", "true")
 os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("REDIS_PORT", "6379")
 os.environ.setdefault("REDIS_DB", "0")
 os.environ.setdefault("REDIS_PASSWORD", "")
-os.environ.setdefault("REDIS_KEY_PREFIX", "gunicorn_metrics")
-os.environ.setdefault("REDIS_FORWARD_INTERVAL", "30")
 ```
 
 ### Production Configuration
@@ -500,7 +401,6 @@ os.environ.setdefault("REDIS_PORT", "6379")
 os.environ.setdefault("REDIS_DB", "0")
 os.environ.setdefault("REDIS_PASSWORD", "production_password")
 os.environ.setdefault("REDIS_KEY_PREFIX", "prod_gunicorn_metrics")
-os.environ.setdefault("REDIS_FORWARD_INTERVAL", "60")
 ```
 
 ## 🧪 Installation Verification
@@ -525,8 +425,8 @@ python -c "import eventlet; print('Eventlet available')" 2>/dev/null && echo "Ev
 # Test gevent worker
 python -c "import gevent; print('Gevent available')" 2>/dev/null && echo "Gevent worker ready" || echo "Install gevent: pip install gunicorn-prometheus-exporter[gevent]"
 
-# Test tornado worker (⚠️ Not recommended - see compatibility issues)
-python -c "import tornado; print('Tornado available')" 2>/dev/null && echo "Tornado worker available (⚠️ Not recommended)" || echo "Install tornado: pip install gunicorn-prometheus-exporter[tornado] (⚠️ Not recommended)"
+# Test tornado worker (Not recommended - see compatibility issues)
+python -c "import tornado; print('Tornado available')" 2>/dev/null && echo "Tornado worker available (Not recommended)" || echo "Install tornado: pip install gunicorn-prometheus-exporter[tornado] (Not recommended)"
 ```
 
 ### Test Redis Integration
@@ -545,6 +445,7 @@ python -c "import redis; print('Redis available')" 2>/dev/null && echo "Redis in
 **Error:** `ModuleNotFoundError: No module named 'eventlet'`
 
 **Solution:**
+
 ```bash
 # Install missing dependency
 pip install gunicorn-prometheus-exporter[eventlet]
@@ -555,6 +456,7 @@ pip install gunicorn-prometheus-exporter[eventlet]
 **Error:** `ImportError: cannot import name 'X' from 'Y'`
 
 **Solution:**
+
 ```bash
 # Upgrade to latest version
 pip install --upgrade gunicorn-prometheus-exporter
@@ -570,6 +472,7 @@ pip install gunicorn-prometheus-exporter==0.1.3
 **Error:** `ValueError: Environment variable X must be set`
 
 **Solution:**
+
 ```bash
 # Set required variables
 export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
@@ -583,6 +486,7 @@ export GUNICORN_WORKERS="2"
 **Error:** `ValueError: Invalid port number`
 
 **Solution:**
+
 ```bash
 # Use valid port range (1-65535)
 export PROMETHEUS_METRICS_PORT="9090"  # Valid

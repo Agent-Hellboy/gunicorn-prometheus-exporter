@@ -2,7 +2,7 @@
 
 This guide shows how to integrate the Gunicorn Prometheus Exporter with FastAPI applications.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -194,14 +194,14 @@ CMD ["gunicorn", "-c", "gunicorn.conf.py", "main:app"]
 fastapi>=0.68.0
 uvicorn>=0.15.0
 gunicorn>=21.2.0
-gunicorn-prometheus-exporter>=0.1.0
+gunicorn-prometheus-exporter>=0.1.5
 ```
 
 ### Docker Compose
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 services:
   web:
     build: .
@@ -226,7 +226,7 @@ volumes:
   prometheus_data:
 ```
 
-## 📊 Prometheus Configuration
+## Prometheus Configuration
 
 ### prometheus.yml
 
@@ -235,9 +235,9 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'fastapi-gunicorn'
+  - job_name: "fastapi-gunicorn"
     static_configs:
-      - targets: ['localhost:9091']
+      - targets: ["localhost:9091"]
     metrics_path: /metrics
     scrape_interval: 5s
 ```
@@ -307,12 +307,14 @@ async def add_metrics(request: Request, call_next):
 ### Common FastAPI Issues
 
 1. **ASGI Application Error**
+
    ```bash
    # Ensure you're using the correct worker class
    worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
    ```
 
 2. **Import Errors**
+
    ```bash
    # Make sure your app module is in the Python path
    export PYTHONPATH="${PYTHONPATH}:$(pwd)"
@@ -336,6 +338,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ## 📈 Performance Tips
 
 1. **Use Async Operations**
+
    ```python
    # main.py
    import asyncio
@@ -350,6 +353,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
    ```
 
 2. **Database Connection Pooling**
+
    ```python
    # database.py
    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -362,6 +366,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
    ```
 
 3. **Caching with Redis**
+
    ```python
    # cache.py
    import redis.asyncio as redis

@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  basic-system-test:
+    build:
+      context: ../
+      dockerfile: system-test/Dockerfile.basic
+    ports:
+      - "8088:8088"
+      - "9093:9093"
+    environment:
+      # File-based multiprocess configuration
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
+      GUNICORN_WORKERS: 2
+    volumes:
+      # Mount multiprocess directory for inspection
+      - multiproc-data:/tmp/prometheus_multiproc
+    # Command to run the basic system test inside the container
+    command: /start_basic_test.sh
+
+volumes:
+  multiproc-data:

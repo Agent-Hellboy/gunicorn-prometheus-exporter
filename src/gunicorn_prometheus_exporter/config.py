@@ -39,7 +39,8 @@ class ExporterConfig:
     ENV_REDIS_DB = "REDIS_DB"
     ENV_REDIS_PASSWORD = "REDIS_PASSWORD"  # nosec - environment variable name
     ENV_REDIS_KEY_PREFIX = "REDIS_KEY_PREFIX"
-    ENV_REDIS_FORWARD_INTERVAL = "REDIS_FORWARD_INTERVAL"
+    ENV_REDIS_TTL_SECONDS = "REDIS_TTL_SECONDS"
+    ENV_REDIS_TTL_DISABLED = "REDIS_TTL_DISABLED"
 
     # Cleanup environment variables
     ENV_CLEANUP_DB_FILES = "CLEANUP_DB_FILES"
@@ -64,9 +65,9 @@ class ExporterConfig:
     def _setup_multiproc_dir(self):
         """Set up the Prometheus multiprocess directory."""
         if not os.environ.get(self.ENV_PROMETHEUS_MULTIPROC_DIR):
-            os.environ[self.ENV_PROMETHEUS_MULTIPROC_DIR] = (
-                self.PROMETHEUS_MULTIPROC_DIR
-            )
+            os.environ[
+                self.ENV_PROMETHEUS_MULTIPROC_DIR
+            ] = self.PROMETHEUS_MULTIPROC_DIR
 
     @property
     def prometheus_multiproc_dir(self) -> str:
@@ -132,13 +133,24 @@ class ExporterConfig:
     # Redis properties
     @property
     def redis_enabled(self) -> bool:
-        """Check if Redis forwarding is enabled."""
+        """Check if Redis storage is enabled."""
         return os.environ.get(self.ENV_REDIS_ENABLED, "").lower() in (
             "true",
             "1",
             "yes",
             "on",
         )
+
+    @redis_enabled.setter
+    def redis_enabled(self, value: bool):
+        """Set Redis enabled status (for testing purposes)."""
+        os.environ[self.ENV_REDIS_ENABLED] = "true" if value else "false"
+
+    @redis_enabled.deleter
+    def redis_enabled(self):
+        """Delete Redis enabled status (for testing purposes)."""
+        if self.ENV_REDIS_ENABLED in os.environ:
+            del os.environ[self.ENV_REDIS_ENABLED]
 
     @property
     def redis_host(self) -> str:
@@ -165,12 +177,24 @@ class ExporterConfig:
     @property
     def redis_key_prefix(self) -> str:
         """Get Redis key prefix."""
-        return os.environ.get(self.ENV_REDIS_KEY_PREFIX, "gunicorn:metrics:")
+        return os.environ.get(self.ENV_REDIS_KEY_PREFIX, "gunicorn")
 
     @property
-    def redis_forward_interval(self) -> int:
-        """Get Redis forward interval in seconds."""
-        return int(os.environ.get(self.ENV_REDIS_FORWARD_INTERVAL, "30"))
+    def redis_ttl_seconds(self) -> int:
+        """Get Redis TTL in seconds for metric keys."""
+        return int(
+            os.environ.get(self.ENV_REDIS_TTL_SECONDS, "300")
+        )  # 5 minutes default
+
+    @property
+    def redis_ttl_disabled(self) -> bool:
+        """Check if Redis TTL is disabled (keys persist indefinitely)."""
+        return os.environ.get(self.ENV_REDIS_TTL_DISABLED, "false").lower() in (
+            "true",
+            "1",
+            "yes",
+            "on",
+        )
 
     @property
     def cleanup_db_files(self) -> bool:

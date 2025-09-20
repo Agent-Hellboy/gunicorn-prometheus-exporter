@@ -3,6 +3,8 @@
 import os
 import tempfile
 
+from unittest.mock import Mock, patch
+
 import pytest
 
 from prometheus_client import CollectorRegistry
@@ -39,3 +41,29 @@ def prometheus_registry():
 def worker_id():
     """Return a test worker ID."""
     return "test_worker"
+
+
+@pytest.fixture(autouse=True)
+def mock_redis():
+    """Mock Redis to prevent actual Redis connections and return proper values."""
+    # Create a mock Redis client that returns appropriate values
+    mock_redis_client = Mock()
+
+    # Mock hget to return string values that can be converted to float
+    def mock_hget(key, field):
+        if field == "value":
+            return "0.0"  # Return string representation of number
+        elif field == "timestamp":
+            return "0.0"
+        return None
+
+    mock_redis_client.hget.side_effect = mock_hget
+    mock_redis_client.hset.return_value = True
+    mock_redis_client.delete.return_value = 1
+    mock_redis_client.keys.return_value = []
+
+    with (
+        patch("redis.Redis", return_value=mock_redis_client),
+        patch("redis.StrictRedis", return_value=mock_redis_client),
+    ):
+        yield mock_redis_client

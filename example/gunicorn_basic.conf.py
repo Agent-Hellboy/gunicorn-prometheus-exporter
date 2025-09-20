@@ -1,16 +1,24 @@
-"""Simple Gunicorn configuration with Prometheus metrics only.
+"""Basic Gunicorn configuration with Prometheus metrics.
 
-This example shows the simplest setup for gunicorn-prometheus-exporter
-with only Prometheus metrics (no Redis forwarding).
+This configuration uses standard file-based multiprocess storage for Prometheus metrics.
+Perfect for simple deployments without Redis requirements.
+
+Features:
+- File-based metrics storage (/tmp/prometheus_multiproc)
+- Standard Prometheus multiprocess collector
+- Basic Gunicorn worker with metrics
+- Metrics endpoint on port 9091
+
+Usage:
+    gunicorn --config gunicorn_basic.conf.py app:app
 """
-print("Starting gunicorn_simple.conf.py")  # noqa: T201
 import os  # noqa: E402
 
 
 # Prometheus-only configuration we need to place these over import because
 # the config is loaded before the environment variables are set.
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")  # nosec B108  # noqa: E501
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")  # noqa: E501
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9093")  # noqa: E501
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")  # nosec B104  # noqa: E501
 os.environ.setdefault("GUNICORN_WORKERS", "2")  # noqa: E501
 
@@ -24,7 +32,7 @@ from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
 
 
 # Gunicorn settings
-bind = "0.0.0.0:8200"  # nosec B104  # noqa: E501
+bind = "0.0.0.0:8088"  # nosec B104  # noqa: E501
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 timeout = 300  # Set timeout directly in config file

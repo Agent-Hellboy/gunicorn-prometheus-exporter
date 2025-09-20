@@ -2,7 +2,7 @@
 
 This guide shows how to integrate the Gunicorn Prometheus Exporter with Django applications.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -186,7 +186,7 @@ CMD ["gunicorn", "-c", "gunicorn.conf.py", "myproject.wsgi:application"]
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 services:
   web:
     build: .
@@ -214,7 +214,7 @@ volumes:
   static_files:
 ```
 
-## 📊 Prometheus Configuration
+## Prometheus Configuration
 
 ### prometheus.yml
 
@@ -223,9 +223,9 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'django-gunicorn'
+  - job_name: "django-gunicorn"
     static_configs:
-      - targets: ['your-app-host:9091']  # Replace with your application hostname
+      - targets: ["your-app-host:9091"] # Replace with your application hostname
     metrics_path: /metrics
     scrape_interval: 5s
 ```
@@ -290,6 +290,7 @@ MIDDLEWARE = [
 ### Common Django Issues
 
 1. **Static Files Not Found**
+
    ```bash
    # Collect static files
    python manage.py collectstatic
@@ -298,6 +299,7 @@ MIDDLEWARE = [
    ```
 
 2. **Database Connection Issues**
+
    ```python
    # Ensure database is migrated
    python manage.py migrate
@@ -322,6 +324,7 @@ ALLOWED_HOSTS = ['*']
 ## 📈 Performance Tips
 
 1. **Use Database Connection Pooling**
+
    ```python
    # settings.py
    DATABASES = {
@@ -334,6 +337,7 @@ ALLOWED_HOSTS = ['*']
    ```
 
 2. **Enable Caching**
+
    ```python
    # settings.py
    CACHES = {

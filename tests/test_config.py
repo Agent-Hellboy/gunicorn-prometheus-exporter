@@ -4,6 +4,8 @@ import os
 import shutil
 import tempfile
 
+from unittest.mock import patch
+
 import pytest
 
 from gunicorn_prometheus_exporter.config import ExporterConfig, get_config
@@ -382,6 +384,332 @@ class TestExporterConfigAdditional:
             elif "PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED" in os.environ:
                 del os.environ["PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED"]
 
+
+class TestConfigEdgeCases:
+    """Test edge cases and error conditions in configuration."""
+
+    def test_invalid_redis_ttl_values(self):
+        """Test handling of invalid Redis TTL values."""
+        test_cases = [
+            ("-1", "Negative TTL should be handled"),
+            ("0", "Zero TTL should be handled"),
+            ("invalid", "Non-numeric TTL should be handled"),
+            ("", "Empty TTL should be handled"),
+            ("999999999", "Very large TTL should be handled"),
+        ]
+
+        for ttl_value, description in test_cases:
+            with patch.dict(os.environ, {"REDIS_TTL_SECONDS": ttl_value}):
+                try:
+                    config = ExporterConfig()
+                    # Should handle invalid TTL gracefully
+                    assert isinstance(
+                        config.redis_ttl_seconds, int
+                    ), f"{description}: {ttl_value}"
+                except ValueError:
+                    # If ValueError is raised, that's also acceptable behavior
+                    pass
+
+    def test_invalid_port_values(self):
+        """Test handling of invalid port values."""
+        # Test negative port - should fail validation
+        with patch.dict(
+            os.environ,
+            {
+                "PROMETHEUS_METRICS_PORT": "-1",
+                "PROMETHEUS_BIND_ADDRESS": "127.0.0.1",
+                "GUNICORN_WORKERS": "2",
+            },
+        ):
+            config = ExporterConfig()
+            assert config.validate() is False
+
+        # Test port 0 - should fail validation
+        with patch.dict(
+            os.environ,
+            {
+                "PROMETHEUS_METRICS_PORT": "0",
+                "PROMETHEUS_BIND_ADDRESS": "127.0.0.1",
+                "GUNICORN_WORKERS": "2",
+            },
+        ):
+            config = ExporterConfig()
+            assert config.validate() is False
+
+        # Test port too large - should fail validation
+        with patch.dict(
+            os.environ,
+            {
+                "PROMETHEUS_METRICS_PORT": "65536",
+                "PROMETHEUS_BIND_ADDRESS": "127.0.0.1",
+                "GUNICORN_WORKERS": "2",
+            },
+        ):
+            config = ExporterConfig()
+            assert config.validate() is False
+
+        # Test non-numeric port - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"PROMETHEUS_METRICS_PORT": "invalid"}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.prometheus_metrics_port
+
+        # Test empty port - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"PROMETHEUS_METRICS_PORT": ""}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.prometheus_metrics_port
+
+    def test_invalid_worker_count_values(self):
+        """Test handling of invalid worker count values."""
+        test_cases = [
+            ("-1", "Negative worker count should be handled"),
+            ("0", "Zero worker count should be handled"),
+            ("invalid", "Non-numeric worker count should be handled"),
+            ("", "Empty worker count should be handled"),
+            ("999999", "Very large worker count should be handled"),
+        ]
+
+        for worker_value, description in test_cases:
+            with patch.dict(os.environ, {"GUNICORN_WORKERS": worker_value}):
+                try:
+                    config = ExporterConfig()
+                    # Should handle invalid worker count gracefully
+                    assert isinstance(
+                        config.gunicorn_workers, int
+                    ), f"{description}: {worker_value}"
+                except ValueError:
+                    # If ValueError is raised, that's also acceptable behavior
+                    pass
+
+    def test_invalid_timeout_values(self):
+        """Test handling of invalid timeout values."""
+        # Test negative timeout - should fail validation
+        with patch.dict(
+            os.environ,
+            {
+                "GUNICORN_TIMEOUT": "-1",
+                "PROMETHEUS_BIND_ADDRESS": "127.0.0.1",
+                "PROMETHEUS_METRICS_PORT": "9091",
+                "GUNICORN_WORKERS": "2",
+            },
+        ):
+            config = ExporterConfig()
+            assert config.validate() is False
+
+        # Test zero timeout - should fail validation
+        with patch.dict(
+            os.environ,
+            {
+                "GUNICORN_TIMEOUT": "0",
+                "PROMETHEUS_BIND_ADDRESS": "127.0.0.1",
+                "PROMETHEUS_METRICS_PORT": "9091",
+                "GUNICORN_WORKERS": "2",
+            },
+        ):
+            config = ExporterConfig()
+            assert config.validate() is False
+
+        # Test non-numeric timeout - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"GUNICORN_TIMEOUT": "invalid"}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.gunicorn_timeout
+
+        # Test empty timeout - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"GUNICORN_TIMEOUT": ""}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.gunicorn_timeout
+
+        # Test very large timeout - should pass validation (no upper limit)
+        with patch.dict(os.environ, {"GUNICORN_TIMEOUT": "999999"}):
+            config = ExporterConfig()
+            # Should not raise ValueError - large timeouts are allowed
+            assert config.gunicorn_timeout == 999999
+
+    def test_invalid_keepalive_values(self):
+        """Test handling of invalid keepalive values."""
+        # Test negative keepalive - should pass (no validation)
+        with patch.dict(os.environ, {"GUNICORN_KEEPALIVE": "-1"}):
+            config = ExporterConfig()
+            assert config.gunicorn_keepalive == -1
+
+        # Test zero keepalive - should pass (no validation)
+        with patch.dict(os.environ, {"GUNICORN_KEEPALIVE": "0"}):
+            config = ExporterConfig()
+            assert config.gunicorn_keepalive == 0
+
+        # Test non-numeric keepalive - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"GUNICORN_KEEPALIVE": "invalid"}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.gunicorn_keepalive
+
+        # Test empty keepalive - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"GUNICORN_KEEPALIVE": ""}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.gunicorn_keepalive
+
+        # Test very large keepalive - should pass (no upper limit)
+        with patch.dict(os.environ, {"GUNICORN_KEEPALIVE": "999999"}):
+            config = ExporterConfig()
+            assert config.gunicorn_keepalive == 999999
+
+    def test_invalid_redis_db_values(self):
+        """Test handling of invalid Redis DB values."""
+        # Test negative DB - should pass (no validation)
+        with patch.dict(os.environ, {"REDIS_DB": "-1"}):
+            config = ExporterConfig()
+            assert config.redis_db == -1
+
+        # Test non-numeric DB - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"REDIS_DB": "invalid"}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.redis_db
+
+        # Test empty DB - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"REDIS_DB": ""}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.redis_db
+
+        # Test very large DB - should pass (no upper limit)
+        with patch.dict(os.environ, {"REDIS_DB": "999999"}):
+            config = ExporterConfig()
+            assert config.redis_db == 999999
+
+    def test_invalid_redis_port_values(self):
+        """Test handling of invalid Redis port values."""
+        # Test negative Redis port - should pass (no validation)
+        with patch.dict(os.environ, {"REDIS_PORT": "-1"}):
+            config = ExporterConfig()
+            assert config.redis_port == -1
+
+        # Test zero Redis port - should pass (no validation)
+        with patch.dict(os.environ, {"REDIS_PORT": "0"}):
+            config = ExporterConfig()
+            assert config.redis_port == 0
+
+        # Test Redis port too large - should pass (no validation)
+        with patch.dict(os.environ, {"REDIS_PORT": "65536"}):
+            config = ExporterConfig()
+            assert config.redis_port == 65536
+
+        # Test non-numeric Redis port - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"REDIS_PORT": "invalid"}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.redis_port
+
+        # Test empty Redis port - should raise ValueError when accessing property
+        with patch.dict(os.environ, {"REDIS_PORT": ""}):
+            config = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = config.redis_port
+
+    def test_malformed_bind_address(self):
+        """Test handling of malformed bind addresses."""
+        test_cases = [
+            ("invalid_address", "Invalid address format should be handled"),
+            ("", "Empty address should be handled"),
+            ("999.999.999.999", "Invalid IP should be handled"),
+            ("localhost:invalid_port", "Invalid port in address should be handled"),
+            ("[::1]:invalid_port", "Invalid port in IPv6 address should be handled"),
+        ]
+
+        for address_value, description in test_cases:
+            with patch.dict(os.environ, {"PROMETHEUS_BIND_ADDRESS": address_value}):
+                config = ExporterConfig()
+                # Should handle malformed address gracefully
+                assert isinstance(
+                    config.prometheus_bind_address, str
+                ), f"{description}: {address_value}"
+
+    def test_malformed_redis_host(self):
+        """Test handling of malformed Redis host."""
+        test_cases = [
+            ("", "Empty Redis host should be handled"),
+            (
+                "invalid_host:invalid_port",
+                "Invalid Redis host format should be handled",
+            ),
+            ("999.999.999.999", "Invalid Redis IP should be handled"),
+        ]
+
+        for host_value, description in test_cases:
+            with patch.dict(os.environ, {"REDIS_HOST": host_value}):
+                config = ExporterConfig()
+                # Should handle malformed Redis host gracefully
+                assert isinstance(
+                    config.redis_host, str
+                ), f"{description}: {host_value}"
+
+    def test_boolean_parsing_edge_cases(self):
+        """Test handling of edge cases in boolean parsing."""
+        test_cases = [
+            ("true", True),
+            ("false", False),
+            ("True", True),
+            ("False", False),
+            ("TRUE", True),
+            ("FALSE", False),
+            ("1", True),
+            ("0", False),
+            ("yes", True),
+            ("no", False),
+            ("on", True),
+            ("off", False),
+            ("invalid", False),  # Default to False for invalid values
+            ("", False),  # Default to False for empty values
+        ]
+
+        for value, expected in test_cases:
+            with patch.dict(os.environ, {"REDIS_ENABLED": value}):
+                config = ExporterConfig()
+                assert (
+                    config.redis_enabled == expected
+                ), f"Boolean parsing failed for: {value}"
+
+    def test_config_validation_with_invalid_values(self):
+        """Explicit expectations when multiple envs are invalid/malformed."""
+        with patch.dict(
+            os.environ,
+            {
+                "PROMETHEUS_METRICS_PORT": "invalid",  # raises on access
+                "GUNICORN_WORKERS": "-1",  # parses; invalid only in validate()
+                "REDIS_TTL_SECONDS": "invalid",  # raises on access
+                "PROMETHEUS_BIND_ADDRESS": "invalid_address",  # no validation
+            },
+        ):
+            cfg = ExporterConfig()
+            with pytest.raises(ValueError):
+                _ = cfg.prometheus_metrics_port
+            assert cfg.gunicorn_workers == -1
+            with pytest.raises(ValueError):
+                _ = cfg.redis_ttl_seconds
+            assert cfg.prometheus_bind_address == "invalid_address"
+
+    def test_config_with_mixed_valid_invalid_values(self):
+        """Mixed valid/invalid envs with explicit expectations."""
+        with patch.dict(
+            os.environ,
+            {
+                "PROMETHEUS_METRICS_PORT": "9090",
+                "GUNICORN_WORKERS": "invalid",
+                "REDIS_TTL_SECONDS": "30",
+                "PROMETHEUS_BIND_ADDRESS": "0.0.0.0",
+            },
+        ):
+            cfg = ExporterConfig()
+            assert cfg.prometheus_metrics_port == 9090
+            with pytest.raises(ValueError):
+                _ = cfg.gunicorn_workers
+            assert cfg.redis_ttl_seconds == 30
+            assert cfg.prometheus_bind_address == "0.0.0.0"
+
     def test_redis_enabled_property(self):
         """Test Redis enabled property."""
         # Save original environment
@@ -412,6 +740,76 @@ class TestExporterConfigAdditional:
                 os.environ["REDIS_ENABLED"] = original_redis_enabled
             elif "REDIS_ENABLED" in os.environ:
                 del os.environ["REDIS_ENABLED"]
+
+    def test_redis_configuration_properties(self):
+        """Test Redis configuration properties."""
+        # Save original environment
+        original_env = {
+            "REDIS_HOST": os.environ.get("REDIS_HOST"),
+            "REDIS_PORT": os.environ.get("REDIS_PORT"),
+            "REDIS_DB": os.environ.get("REDIS_DB"),
+            "REDIS_PASSWORD": os.environ.get("REDIS_PASSWORD"),
+            "REDIS_KEY_PREFIX": os.environ.get("REDIS_KEY_PREFIX"),
+        }
+
+        try:
+            # Test REDIS_HOST
+            os.environ["REDIS_HOST"] = "test-host"
+            config = ExporterConfig()
+            assert config.redis_host == "test-host"
+
+            # Test REDIS_HOST default
+            del os.environ["REDIS_HOST"]
+            config = ExporterConfig()
+            assert config.redis_host == "127.0.0.1"
+
+            # Test REDIS_PORT
+            os.environ["REDIS_PORT"] = "6380"
+            config = ExporterConfig()
+            assert config.redis_port == 6380
+
+            # Test REDIS_PORT default
+            del os.environ["REDIS_PORT"]
+            config = ExporterConfig()
+            assert config.redis_port == 6379
+
+            # Test REDIS_DB
+            os.environ["REDIS_DB"] = "1"
+            config = ExporterConfig()
+            assert config.redis_db == 1
+
+            # Test REDIS_DB default
+            del os.environ["REDIS_DB"]
+            config = ExporterConfig()
+            assert config.redis_db == 0
+
+            # Test REDIS_PASSWORD
+            os.environ["REDIS_PASSWORD"] = "test-password"
+            config = ExporterConfig()
+            assert config.redis_password == "test-password"
+
+            # Test REDIS_PASSWORD default (None)
+            del os.environ["REDIS_PASSWORD"]
+            config = ExporterConfig()
+            assert config.redis_password is None
+
+            # Test REDIS_KEY_PREFIX
+            os.environ["REDIS_KEY_PREFIX"] = "custom:prefix:"
+            config = ExporterConfig()
+            assert config.redis_key_prefix == "custom:prefix:"
+
+            # Test REDIS_KEY_PREFIX default
+            del os.environ["REDIS_KEY_PREFIX"]
+            config = ExporterConfig()
+            assert config.redis_key_prefix == "gunicorn"
+
+        finally:
+            # Restore original environment
+            for key, value in original_env.items():
+                if value is not None:
+                    os.environ[key] = value
+                elif key in os.environ:
+                    del os.environ[key]
 
     def test_validation_creates_multiproc_dir(self):
         """Test that validation creates multiprocess directory if it doesn't exist."""

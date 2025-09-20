@@ -6,33 +6,109 @@ Complete configuration guide for the Gunicorn Prometheus Exporter with all optio
 
 ### Required Variables
 
-| Variable | Type | Default | Description | Example |
-|----------|------|---------|-------------|---------|
-| `PROMETHEUS_MULTIPROC_DIR` | String | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics | `/var/tmp/prometheus_multiproc` |
-| `PROMETHEUS_METRICS_PORT` | Integer | `9090` | Port for metrics endpoint | `9091` |
-| `PROMETHEUS_BIND_ADDRESS` | String | `0.0.0.0` | Bind address for metrics server | `127.0.0.1` |
-| `GUNICORN_WORKERS` | Integer | `1` | Number of workers for metrics | `4` |
+| Variable                   | Type    | Default                     | Description                        | Example                         |
+| -------------------------- | ------- | --------------------------- | ---------------------------------- | ------------------------------- |
+| `PROMETHEUS_MULTIPROC_DIR` | String  | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics | `/var/tmp/prometheus_multiproc` |
+| `PROMETHEUS_METRICS_PORT`  | Integer | `9090`                      | Port for metrics endpoint          | `9091`                          |
+| `PROMETHEUS_BIND_ADDRESS`  | String  | `0.0.0.0`                   | Bind address for metrics server    | `127.0.0.1`                     |
+| `GUNICORN_WORKERS`         | Integer | `1`                         | Number of workers for metrics      | `4`                             |
 
 ### Optional Variables
 
-| Variable | Type | Default | Description | Example |
-|----------|------|---------|-------------|---------|
-| `GUNICORN_KEEPALIVE` | Integer | `2` | Keep-alive timeout | `5` |
-| `CLEANUP_DB_FILES` | Boolean | `false` | Clean up old metric files | `true` |
+| Variable             | Type    | Default | Description               | Example |
+| -------------------- | ------- | ------- | ------------------------- | ------- |
+| `GUNICORN_KEEPALIVE` | Integer | `2`     | Keep-alive timeout        | `5`     |
+| `CLEANUP_DB_FILES`   | Boolean | `false` | Clean up old metric files | `true`  |
 
 ### Redis Variables
 
-| Variable | Type | Default | Description | Example |
-|----------|------|---------|-------------|---------|
-| `REDIS_ENABLED` | Boolean | `false` | Enable Redis forwarding | `true` |
-| `REDIS_HOST` | String | `localhost` | Redis server host | `redis.example.com` |
-| `REDIS_PORT` | Integer | `6379` | Redis server port | `6380` |
-| `REDIS_DB` | Integer | `0` | Redis database number | `1` |
-| `REDIS_PASSWORD` | String | `None` | Redis password | `secret123` |
-| `REDIS_KEY_PREFIX` | String | `gunicorn_metrics` | Redis key prefix | `myapp_metrics` |
-| `REDIS_FORWARD_INTERVAL` | Integer | `30` | Forwarding interval | `60` |
+#### Redis Storage (No Files Created)
 
-## 🚀 Configuration Scenarios
+| Variable         | Type    | Default     | Description                                  | Example             |
+| ---------------- | ------- | ----------- | -------------------------------------------- | ------------------- |
+| `REDIS_ENABLED`  | Boolean | `false`     | Enable Redis storage (replaces file storage) | `true`              |
+| `REDIS_HOST`     | String  | `localhost` | Redis server host                            | `redis.example.com` |
+| `REDIS_PORT`     | Integer | `6379`      | Redis server port                            | `6380`              |
+| `REDIS_DB`       | Integer | `0`         | Redis database number                        | `1`                 |
+| `REDIS_PASSWORD` | String  | `None`      | Redis password                               | `secret123`         |
+
+## Redis Backend Configuration
+
+The Redis backend provides a sophisticated architecture for metrics storage with two main components:
+
+### Architecture Components
+
+#### `backend.service` - High-Level Management
+
+- **`RedisStorageManager`**: Centralized lifecycle management
+- **`setup_redis_metrics()`**: Initialize Redis storage
+- **`teardown_redis_metrics()`**: Clean shutdown
+- **`get_redis_storage_manager()`**: Global manager access
+
+#### `backend.core` - Low-Level Operations
+
+- **`RedisStorageClient`**: Main Redis operations client
+- **`RedisStorageDict`**: Dictionary-like Redis interface
+- **`RedisValue`**: Redis-backed metric values
+- **`RedisMultiProcessCollector`**: Metrics collection from Redis
+- **`RedisDict`**: Low-level Redis operations
+
+### Redis Backend Setup
+
+**Use Case:** Production deployment with Redis storage backend.
+
+```python
+# gunicorn_redis_backend.conf.py
+import os
+
+# Environment variables must be set before imports
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
+os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
+os.environ.setdefault("GUNICORN_WORKERS", "4")
+
+# Redis backend configuration
+os.environ.setdefault("REDIS_ENABLED", "true")
+os.environ.setdefault("REDIS_HOST", "localhost")
+os.environ.setdefault("REDIS_PORT", "6379")
+os.environ.setdefault("REDIS_DB", "0")
+os.environ.setdefault("REDIS_PASSWORD", "")
+os.environ.setdefault("REDIS_KEY_PREFIX", "gunicorn")
+
+# Import Redis hooks
+from gunicorn_prometheus_exporter.hooks import (
+    redis_when_ready,
+    default_on_starting,
+    default_worker_int,
+    default_on_exit,
+)
+
+# Gunicorn settings
+bind = "0.0.0.0:8000"
+workers = 4
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+worker_connections = 1000
+max_requests = 1000
+max_requests_jitter = 50
+timeout = 60
+keepalive = 5
+
+# Use Redis hooks
+when_ready = redis_when_ready
+on_starting = default_on_starting
+worker_int = default_worker_int
+on_exit = default_on_exit
+```
+
+### Benefits of Redis Backend
+
+1. **No File System Dependencies**: Eliminates multiproc directory requirements
+2. **Better Scalability**: Redis handles concurrent access efficiently
+3. **Storage-Compute Separation**: Metrics storage independent of application servers
+4. **Centralized Aggregation**: All metrics accessible from a single Redis instance
+5. **Automatic Cleanup**: Dead process keys are automatically cleaned up
+6. **High Performance**: Redis provides sub-millisecond latency for metric operations
+
+## Configuration Scenarios
 
 ### Basic Setup
 
@@ -55,6 +131,7 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 ```
 
 **Environment Variables:**
+
 ```bash
 export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
 export PROMETHEUS_METRICS_PORT="9090"
@@ -145,28 +222,25 @@ errorlog = "/var/log/gunicorn/error.log"
 loglevel = "info"
 ```
 
-### Redis Integration Setup
+### Redis Storage Setup
 
-**Use Case:** Distributed setup with Redis metrics forwarding.
+**Use Case:** Distributed setup with Redis storage (no files created).
 
 ```python
-# gunicorn_redis.conf.py
+# gunicorn_redis_storage.conf.py
 import os
 
 # Environment variables must be set before imports
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
+os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9092")  # Different port for Redis storage
 os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 os.environ.setdefault("GUNICORN_WORKERS", "4")
 
-# Redis configuration
+# Redis storage configuration (no files created)
 os.environ.setdefault("REDIS_ENABLED", "true")
 os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("REDIS_PORT", "6379")
 os.environ.setdefault("REDIS_DB", "0")
 os.environ.setdefault("REDIS_PASSWORD", "")
-os.environ.setdefault("REDIS_KEY_PREFIX", "gunicorn_metrics")
-os.environ.setdefault("REDIS_FORWARD_INTERVAL", "30")
 
 # Gunicorn settings
 bind = "0.0.0.0:8000"
@@ -289,7 +363,7 @@ worker_connections = 1000
 
 **Best for:** Async applications, high concurrency.
 
-### Tornado Worker (⚠️ Not Recommended)
+### Tornado Worker (Not Recommended)
 
 ```python
 # gunicorn_tornado.conf.py
@@ -307,13 +381,13 @@ workers = 4
 worker_class = "gunicorn_prometheus_exporter.PrometheusTornadoWorker"
 ```
 
-**⚠️ Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
+**Warning:** TornadoWorker has known compatibility issues with metrics collection. The Prometheus metrics endpoint may hang or become unresponsive. Use `PrometheusEventletWorker` or `PrometheusGeventWorker` instead for async applications.
 
-**Best for:** Tornado-based applications (⚠️ Not recommended for production).
+**Best for:** Tornado-based applications (Not recommended for production).
 
 ## 🔧 Advanced Configuration
 
-### 🏗️ Hooks Architecture
+### Hooks Architecture
 
 The exporter uses a modular, class-based hooks architecture for managing Gunicorn lifecycle events:
 
@@ -562,7 +636,7 @@ The hooks system provides detailed logging for debugging:
 2024-01-15 10:30:03 - gunicorn_prometheus_exporter.hooks - INFO - Server shutting down - cleaning up Prometheus metrics server
 ```
 
-### 🛠️ Error Handling
+### Error Handling
 
 #### **Graceful Degradation**
 

@@ -2,7 +2,7 @@
 
 This guide shows how to integrate the Gunicorn Prometheus Exporter with Pyramid applications.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -225,14 +225,14 @@ CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:main"]
 pyramid>=2.0.0
 sqlalchemy>=1.4.0
 gunicorn>=21.2.0
-gunicorn-prometheus-exporter>=0.1.0
+gunicorn-prometheus-exporter>=0.1.5
 ```
 
 ### Docker Compose
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 services:
   web:
     build: .
@@ -259,7 +259,7 @@ volumes:
   app_data:
 ```
 
-## 📊 Prometheus Configuration
+## Prometheus Configuration
 
 ### prometheus.yml
 
@@ -268,9 +268,9 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'pyramid-gunicorn'
+  - job_name: "pyramid-gunicorn"
     static_configs:
-      - targets: ['localhost:9091']
+      - targets: ["localhost:9091"]
     metrics_path: /metrics
     scrape_interval: 5s
 ```
@@ -386,12 +386,14 @@ def receive_after_cursor_execute(conn, cursor, statement, parameters, context, e
 ### Common Pyramid Issues
 
 1. **Import Errors**
+
    ```bash
    # Ensure your app module is in the Python path
    export PYTHONPATH="${PYTHONPATH}:$(pwd)"
    ```
 
 2. **Database Connection Issues**
+
    ```python
    # Initialize database tables
    Base.metadata.create_all(engine)
@@ -415,6 +417,7 @@ pserve development.ini --reload
 ## 📈 Performance Tips
 
 1. **Use Pyramid Caching**
+
    ```python
    from pyramid_beaker import session_factory_from_settings
 
@@ -423,6 +426,7 @@ pserve development.ini --reload
    ```
 
 2. **Database Connection Pooling**
+
    ```python
    engine = create_engine(
        'postgresql://user:pass@localhost/db',
@@ -433,6 +437,7 @@ pserve development.ini --reload
    ```
 
 3. **Use Pyramid Resources**
+
    ```python
    from pyramid.resource import Resource
 
@@ -447,6 +452,7 @@ pserve development.ini --reload
    ```
 
 4. **Optimize JSON Rendering**
+
    ```python
    from pyramid.renderers import JSON
 

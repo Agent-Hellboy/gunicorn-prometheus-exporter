@@ -11,7 +11,7 @@ Thank you for your interest in contributing to the Gunicorn Prometheus Exporter!
 - **`src/gunicorn_prometheus_exporter/config.py`**: Configuration management
 - **`src/gunicorn_prometheus_exporter/hooks.py`**: Modular hooks system with manager classes
 - **`src/gunicorn_prometheus_exporter/master.py`**: Master process handling
-- **`src/gunicorn_prometheus_exporter/forwarder/`**: Redis integration
+- **`src/gunicorn_prometheus_exporter/storage/`**: Redis storage integration
 
 ### **Testing Structure**
 
@@ -44,18 +44,21 @@ We welcome various types of contributions:
 ### Development Setup
 
 1. **Fork the Repository**
+
    ```bash
    git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter.git
    cd gunicorn-prometheus-exporter
    ```
 
 2. **Create a Virtual Environment**
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. **Install Development Dependencies**
+
    ```bash
    pip install -e ".[dev]"
    pip install tox
@@ -159,8 +162,9 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) forma
 - `chore`: Maintenance tasks
 
 **Examples**:
+
 ```
-feat: add Redis metrics forwarding support
+feat: add Redis storage backend support
 
 fix(worker/hooks/metric): handle worker restart gracefully
 
@@ -260,11 +264,12 @@ mkdocs serve
 
 ### Bug Report Template
 
-```markdown
+````markdown
 **Bug Description**
 A clear description of what the bug is.
 
 **Steps to Reproduce**
+
 1. Install package with `pip install gunicorn-prometheus-exporter`
 2. Create configuration file `gunicorn.conf.py`
 3. Start server with `gunicorn -c gunicorn.conf.py app:app`
@@ -277,12 +282,14 @@ What you expected to happen.
 What actually happened.
 
 **Environment**
+
 - Python version: 3.9.0
 - Gunicorn version: 21.2.0
 - Operating system: Ubuntu 20.04
-- Package version: 0.1.0
+- Package version: 0.1.5
 
 **Configuration**
+
 ```python
 # gunicorn.conf.py
 bind = "0.0.0.0:8000"
@@ -290,15 +297,18 @@ workers = 4
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 # ... rest of configuration
 ```
+````
 
 **Logs**
+
 ```
 [2024-01-01 12:00:00] ERROR: Failed to start metrics server
 ```
 
 **Additional Context**
 Any other context about the problem.
-```
+
+````
 
 ## Feature Requests
 
@@ -319,9 +329,9 @@ Other approaches you've considered (optional).
 
 **Additional Context**
 Any other context about the feature request.
-```
+````
 
-## 🔄 Pull Request Process
+## Pull Request Process
 
 ### Before Submitting a PR
 
@@ -338,6 +348,7 @@ Any other context about the feature request.
 Brief description of changes.
 
 **Type of Change**
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Documentation update
@@ -345,11 +356,13 @@ Brief description of changes.
 - [ ] Other (please describe)
 
 **Testing**
+
 - [ ] All tests pass
 - [ ] New tests added for new functionality
 - [ ] Documentation updated
 
 **Checklist**
+
 - [ ] Code follows style guidelines
 - [ ] Self-review completed
 - [ ] Documentation updated
@@ -367,7 +380,7 @@ Closes #123
 3. **Discussion**: Address any feedback or questions
 4. **Merge**: Once approved, the PR is merged
 
-## 🏷️ Release Process
+## Release Process
 
 ### Versioning
 

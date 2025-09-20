@@ -20,7 +20,7 @@ repos:
     hooks:
       - id: prospector
         name: prospector
-        entry: prospector
+        entry: .tox/lint/bin/prospector
         language: system
         args: [src, --without-tool, dodgy]
         pass_filenames: false
@@ -31,7 +31,7 @@ repos:
     hooks:
       - id: radon-cc
         name: radon-cc
-        entry: radon
+        entry: .tox/lint/bin/radon
         language: system
         args: [cc, src, -a]
         pass_filenames: false
@@ -42,17 +42,19 @@ repos:
     hooks:
       - id: radon-mi
         name: radon-mi
-        entry: radon
+        entry: .tox/lint/bin/radon
         language: system
         args: [mi, src]
         pass_filenames: false
         always_run: true
 
   # Security analysis
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.5
+  - repo: local
     hooks:
       - id: bandit
+        name: bandit
+        entry: .tox/lint/bin/bandit
+        language: system
         args: [-r, src]
         exclude: ^tests/
 

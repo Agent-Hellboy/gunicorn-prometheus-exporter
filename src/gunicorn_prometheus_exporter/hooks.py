@@ -9,7 +9,7 @@ Available hooks:
 - default_worker_int: Handle worker interrupts
 - default_on_exit: Cleanup on server exit
 - default_post_fork: Configure CLI options after worker fork
-- redis_when_ready: Start Prometheus metrics server with Redis forwarding
+- redis_when_ready: Start Prometheus metrics server with Redis storage
 """
 
 import logging
@@ -103,13 +103,13 @@ class EnvironmentManager:
             and cfg.workers != self._defaults["workers"]
         ):
             os.environ["GUNICORN_WORKERS"] = str(cfg.workers)
-            self.logger.info("Updated GUNICORN_WORKERS from CLI: %s", cfg.workers)
+            self.logger.debug("Updated GUNICORN_WORKERS from CLI: %s", cfg.workers)
 
     def _update_bind_env(self, cfg: Any) -> None:
         """Update GUNICORN_BIND environment variable from CLI."""
         if hasattr(cfg, "bind") and cfg.bind and cfg.bind != self._defaults["bind"]:
             os.environ["GUNICORN_BIND"] = str(cfg.bind)
-            self.logger.info("Updated GUNICORN_BIND from CLI: %s", cfg.bind)
+            self.logger.debug("Updated GUNICORN_BIND from CLI: %s", cfg.bind)
 
     def _update_worker_class_env(self, cfg: Any) -> None:
         """Update GUNICORN_WORKER_CLASS environment variable from CLI."""
@@ -129,8 +129,8 @@ class MetricsServerManager:
 
     def __init__(self, logger: logging.Logger):
         self.logger = logger
-        self.max_retries = 3
-        self.retry_delay = 1
+        self.max_retries = 5  # Increased retries for restart scenarios
+        self.retry_delay = 2  # Increased delay for port release
         self._server_thread = None  # Store the server thread
 
     def setup_server(self) -> Optional[tuple[int, Any]]:
@@ -138,6 +138,22 @@ class MetricsServerManager:
         from .metrics import registry
         from .utils import get_multiprocess_dir
 
+        port = config.prometheus_metrics_port
+
+        # Try Redis collector first if Redis is enabled
+        if config.redis_enabled:
+            try:
+                from .backend import get_redis_storage_manager
+
+                manager = get_redis_storage_manager()
+                redis_collector = manager.get_collector()
+                if redis_collector:
+                    self.logger.debug("Successfully initialized Redis-based collector")
+                    return port, registry
+            except Exception as e:
+                self.logger.warning("Failed to initialize Redis collector: %s", e)
+
+        # Fallback to file-based multiprocess collector
         mp_dir = get_multiprocess_dir()
         if not mp_dir:
             self.logger.warning(
@@ -145,11 +161,9 @@ class MetricsServerManager:
             )
             return None
 
-        port = config.prometheus_metrics_port
-
         try:
             MultiProcessCollector(registry)
-            self.logger.info("Successfully initialized MultiProcessCollector")
+            self.logger.debug("Successfully initialized MultiProcessCollector")
             return port, registry
         except Exception as e:
             self.logger.error("Failed to initialize MultiProcessCollector: %s", e)
@@ -169,7 +183,9 @@ class MetricsServerManager:
                     self.max_retries,
                     self.retry_delay,
                 )
-                time.sleep(self.retry_delay)
+                # Wait longer for port to be released during restart scenarios
+                wait_time = self.retry_delay * (attempt + 1)  # Progressive backoff
+                time.sleep(wait_time)
 
         self.logger.error(
             "Failed to start metrics server after %s attempts", self.max_retries
@@ -182,7 +198,7 @@ class MetricsServerManager:
             try:
                 # The prometheus_client start_http_server runs in a daemon thread
                 # which should automatically terminate when the main process exits
-                self.logger.info("Metrics server will be stopped when process exits")
+                self.logger.debug("Metrics server will be stopped when process exits")
             except Exception as e:
                 self.logger.error("Failed to stop metrics server: %s", e)
             finally:
@@ -222,7 +238,7 @@ class MetricsServerManager:
                 # Store references to prevent garbage collection
                 self._server_thread = thread
                 self._httpd = httpd
-                self.logger.info(
+                self.logger.debug(
                     "HTTPS metrics server started successfully on %s:%s",
                     bind_address,
                     port,
@@ -232,14 +248,18 @@ class MetricsServerManager:
 
                 # Start HTTP server (default) without addr to preserve test expectations
                 start_http_server(port, registry=registry)
-                self.logger.info(
+                self.logger.debug(
                     "HTTP metrics server started successfully on :%s", port
                 )
 
             return True
         except OSError as e:
             if e.errno == 98:  # Address already in use
-                raise
+                self.logger.warning(
+                    "Port %s already in use, metrics server may already be running",
+                    port,
+                )
+                return False
             self.logger.error("Failed to start metrics server: %s", e)
             return False
         except Exception as e:
@@ -377,7 +397,7 @@ def default_worker_int(worker: Any) -> None:
         worker: Gunicorn worker instance
     """
     logger = logging.getLogger(__name__)
-    logger.info("Worker received interrupt signal")
+    logger.debug("Worker received interrupt signal")
 
     # Update worker metrics if the worker has the method
     if hasattr(worker, "update_worker_metrics"):
@@ -389,31 +409,42 @@ def default_worker_int(worker: Any) -> None:
 
 
 def default_on_exit(_server: Any) -> None:
-    """Default on_exit hook for cleanup."""
+    """Default on_exit hook - minimal cleanup only."""
     context = HookContext(server=_server, logger=_get_hook_manager().get_logger())
 
-    context.logger.info("Server shutting down - cleaning up Prometheus metrics server")
+    context.logger.info("Server shutting down")
 
-    try:
-        # Stop the metrics server
-        _get_metrics_manager().stop_server()
+    # No metrics cleanup needed:
+    # - Redis TTL handles automatic cleanup
+    # - Metrics should persist for Prometheus scraping
+    # - File-based metrics are cleaned up by OS on process exit
 
-        # Force cleanup of any remaining processes
-        _get_process_manager().cleanup_processes()
+    # No process cleanup needed:
+    # - OS will clean up child processes when parent exits
+    # - Avoids blocking signal handling
 
-        context.logger.info("Server shutdown complete")
-    except Exception as e:
-        context.logger.error("Error during server shutdown: %s", e)
-        # Still try to cleanup processes even if metrics server cleanup failed
-        try:
-            _get_process_manager().cleanup_processes()
-        except Exception as cleanup_error:
-            context.logger.error("Error during process cleanup: %s", cleanup_error)
+    context.logger.info(
+        "Server shutdown complete - Redis TTL handles automatic cleanup"
+    )
 
 
 def redis_when_ready(_server: Any) -> None:
-    """Redis-enabled when_ready hook with Prometheus metrics and Redis forwarding."""
+    """Redis-enabled when_ready hook with Prometheus metrics and Redis storage."""
     context = HookContext(server=_server, logger=_get_hook_manager().get_logger())
+
+    # Setup Redis metrics storage if enabled
+    if config.redis_enabled:
+        from .backend import get_redis_storage_manager
+
+        manager = get_redis_storage_manager()
+        if manager.setup():
+            context.logger.info(
+                "Redis metrics storage enabled - using Redis instead of files"
+            )
+        else:
+            context.logger.warning(
+                "Failed to setup Redis metrics, falling back to file-based storage"
+            )
 
     # Setup metrics server
     result = _get_metrics_manager().setup_server()
@@ -428,21 +459,24 @@ def redis_when_ready(_server: Any) -> None:
         context.logger.error("Failed to start metrics server")
         return
 
-    # Start Redis forwarder if enabled
-    _start_redis_forwarder_if_enabled(context.logger)
+    # Setup Redis storage if enabled
+    _setup_redis_storage_if_enabled(context.logger)
 
 
-def _start_redis_forwarder_if_enabled(logger: logging.Logger) -> None:
-    """Start Redis forwarder if enabled in configuration."""
+def _setup_redis_storage_if_enabled(logger: logging.Logger) -> None:
+    """Setup Redis storage if enabled in configuration."""
     if not config.redis_enabled:
-        logger.info("Redis forwarding disabled")
+        logger.debug("Redis storage disabled")
         return
 
     try:
-        from .forwarder import get_forwarder_manager
+        from .backend import setup_redis_metrics
 
-        manager = get_forwarder_manager()
-        manager.start()
-        logger.info("Redis forwarder started")
+        if setup_redis_metrics():
+            logger.debug("Redis storage enabled - using Redis instead of files")
+        else:
+            logger.warning(
+                "Failed to setup Redis storage, falling back to file storage"
+            )
     except Exception as e:
-        logger.error("Failed to start Redis forwarder: %s", e)
+        logger.error("Failed to setup Redis storage: %s", e)

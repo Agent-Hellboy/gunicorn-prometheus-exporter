@@ -6,11 +6,11 @@ This comprehensive guide covers deploying Gunicorn Prometheus Exporter in variou
 
 When deploying with Gunicorn Prometheus Exporter, you'll work with three distinct URLs:
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| **Prometheus UI** | `http://localhost:9090` | Prometheus web interface for querying and visualizing metrics |
-| **Your Application** | `http://localhost:8200` | Your actual web application (Gunicorn server) |
-| **Metrics Endpoint** | `http://127.0.0.1:9091/metrics` | Raw metrics data for Prometheus to scrape |
+| Service              | URL                             | Purpose                                                       |
+| -------------------- | ------------------------------- | ------------------------------------------------------------- |
+| **Prometheus UI**    | `http://localhost:9090`         | Prometheus web interface for querying and visualizing metrics |
+| **Your Application** | `http://localhost:8200`         | Your actual web application (Gunicorn server)                 |
+| **Metrics Endpoint** | `http://127.0.0.1:9091/metrics` | Raw metrics data for Prometheus to scrape                     |
 
 ### URL Configuration
 
@@ -32,25 +32,27 @@ export PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED="false"           # Require client ce
 
 > **Security Note**: For production deployments, consider enabling SSL/TLS to secure the metrics endpoint, especially if it's accessible over the network.
 
-## 🚀 Integration Guide
+## Integration Guide
 
 This section walks you through integrating Gunicorn Prometheus Exporter with Prometheus monitoring.
 
 ### Step-by-Step Integration
 
 1. **Start your Gunicorn application with the Prometheus exporter on port 9091**
+
    ```bash
    # Set up environment variables
    export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
    export PROMETHEUS_METRICS_PORT="9091"
    export PROMETHEUS_BIND_ADDRESS="127.0.0.1"
    export GUNICORN_WORKERS="2"
-   
+
    # Start your application
    gunicorn --config gunicorn.conf.py app:app
    ```
-   
+
    You should see logs like:
+
    ```
    INFO:gunicorn_prometheus_exporter.hooks:Starting Prometheus multiprocess metrics server on 127.0.0.1:9091
    INFO:gunicorn_prometheus_exporter.hooks:HTTP metrics server started successfully on 127.0.0.1:9091
@@ -113,16 +115,19 @@ post_fork = default_post_fork
 ### Start Services
 
 1. **Start Prometheus:**
+
 ```bash
 prometheus --config.file=prometheus.yml --storage.tsdb.path=./prometheus-data
 ```
 
 2. **Start Your Application:**
+
 ```bash
 gunicorn --config gunicorn.conf.py app:app
 ```
 
 3. **Access Services:**
+
 - **Application**: http://localhost:8200
 - **Metrics Endpoint**: http://127.0.0.1:9091/metrics
 - **Prometheus UI**: http://localhost:9090
@@ -136,9 +141,9 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'gunicorn-app'
+  - job_name: "gunicorn-app"
     static_configs:
-      - targets: ['127.0.0.1:9091']  # Your metrics endpoint
+      - targets: ["127.0.0.1:9091"] # Your metrics endpoint
     metrics_path: /metrics
     scrape_interval: 5s
 ```
@@ -148,6 +153,7 @@ scrape_configs:
 **If your target shows as "DOWN" in Prometheus:**
 
 1. **Check if metrics endpoint is accessible:**
+
    ```bash
    curl http://127.0.0.1:9091/metrics
    ```
@@ -167,6 +173,7 @@ scrape_configs:
 **If metrics are not appearing:**
 
 1. **Generate some traffic:**
+
    ```bash
    # Make requests to your application to generate metrics
    curl http://localhost:8200/
@@ -181,6 +188,7 @@ scrape_configs:
 ### Single Container Setup
 
 **Dockerfile:**
+
 ```dockerfile
 FROM python:3.11-slim
 
@@ -216,15 +224,16 @@ CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]
 ```
 
 **docker-compose.yml:**
+
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   app:
     build: .
     ports:
-      - "8200:8200"  # Application port
-      - "9091:9091"  # Metrics port
+      - "8200:8200" # Application port
+      - "9091:9091" # Metrics port
     environment:
       - PROMETHEUS_METRICS_PORT=9091
       - PROMETHEUS_BIND_ADDRESS=0.0.0.0
@@ -243,16 +252,16 @@ services:
   prometheus:
     image: prom/prometheus:latest
     ports:
-      - "9090:9090"  # Prometheus UI
+      - "9090:9090" # Prometheus UI
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_storage:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus' #local testing
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus" #local testing
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
 
 volumes:
   prometheus_data:
@@ -260,14 +269,15 @@ volumes:
 ```
 
 **prometheus.yml:**
+
 ```yaml
 global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'gunicorn-app'
+  - job_name: "gunicorn-app"
     static_configs:
-      - targets: ['app:9091']  # Docker service name
+      - targets: ["app:9091"] # Docker service name
     metrics_path: /metrics
     scrape_interval: 5s
 ```
@@ -275,8 +285,9 @@ scrape_configs:
 ### Multi-Container Setup
 
 **docker-compose.yml (Multi-Service):**
+
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   app1:
@@ -313,8 +324,8 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_storage:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
 
 volumes:
   prometheus_data_1:
@@ -322,11 +333,12 @@ volumes:
   prometheus_storage:
 ```
 
-## ☸️ Kubernetes Deployment
+## Kubernetes Deployment
 
 ### Namespace and ConfigMap
 
 **namespace.yaml:**
+
 ```yaml
 apiVersion: v1
 kind: Namespace
@@ -335,6 +347,7 @@ metadata:
 ```
 
 **configmap.yaml:**
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -344,12 +357,12 @@ metadata:
 data:
   gunicorn.conf.py: |
     import os
-    
+
     os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
     os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
     os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
     os.environ.setdefault("GUNICORN_WORKERS", "4")
-    
+
     from gunicorn_prometheus_exporter.hooks import (
         default_on_exit,
         default_on_starting,
@@ -357,12 +370,12 @@ data:
         default_when_ready,
         default_worker_int,
     )
-    
+
     bind = "0.0.0.0:8200"
     workers = 4
     worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
     timeout = 300
-    
+
     when_ready = default_when_ready
     on_starting = default_on_starting
     worker_int = default_worker_int
@@ -373,6 +386,7 @@ data:
 ### Application Deployment
 
 **deployment.yaml:**
+
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -394,46 +408,47 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       containers:
-      - name: app
-        image: your-registry/gunicorn-app:latest
-        ports:
-        - containerPort: 8200
-          name: http
-        - containerPort: 9091
-          name: metrics
-        env:
-        - name: PROMETHEUS_METRICS_PORT
-          value: "9091"
-        - name: PROMETHEUS_BIND_ADDRESS
-          value: "0.0.0.0"
-        - name: PROMETHEUS_MULTIPROC_DIR
-          value: "/tmp/prometheus_multiproc"
-        - name: GUNICORN_WORKERS
-          value: "4"
-        volumeMounts:
-        - name: config
-          mountPath: /app/gunicorn.conf.py
-          subPath: gunicorn.conf.py
-        - name: prometheus-data
-          mountPath: /tmp/prometheus_multiproc
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
+        - name: app
+          image: your-registry/gunicorn-app:latest
+          ports:
+            - containerPort: 8200
+              name: http
+            - containerPort: 9091
+              name: metrics
+          env:
+            - name: PROMETHEUS_METRICS_PORT
+              value: "9091"
+            - name: PROMETHEUS_BIND_ADDRESS
+              value: "0.0.0.0"
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: "/tmp/prometheus_multiproc"
+            - name: GUNICORN_WORKERS
+              value: "4"
+          volumeMounts:
+            - name: config
+              mountPath: /app/gunicorn.conf.py
+              subPath: gunicorn.conf.py
+            - name: prometheus-data
+              mountPath: /tmp/prometheus_multiproc
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
       volumes:
-      - name: config
-        configMap:
-          name: gunicorn-config
-      - name: prometheus-data
-        emptyDir: {}
+        - name: config
+          configMap:
+            name: gunicorn-config
+        - name: prometheus-data
+          emptyDir: {}
 ```
 
 ### Service and Ingress
 
 **service.yaml:**
+
 ```yaml
 apiVersion: v1
 kind: Service
@@ -444,16 +459,17 @@ spec:
   selector:
     app: gunicorn-app
   ports:
-  - name: http
-    port: 8200
-    targetPort: 8200
-  - name: metrics
-    port: 9091
-    targetPort: 9091
+    - name: http
+      port: 8200
+      targetPort: 8200
+    - name: metrics
+      port: 9091
+      targetPort: 9091
   type: ClusterIP
 ```
 
 **ingress.yaml:**
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -464,21 +480,22 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-  - host: your-app.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: gunicorn-app-service
-            port:
-              number: 8200
+    - host: your-app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gunicorn-app-service
+                port:
+                  number: 8200
 ```
 
 ### Prometheus Operator Setup
 
 **prometheus.yaml:**
+
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: Prometheus
@@ -497,6 +514,7 @@ spec:
 ```
 
 **servicemonitor.yaml:**
+
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -510,9 +528,9 @@ spec:
     matchLabels:
       app: gunicorn-app
   endpoints:
-  - port: metrics
-    path: /metrics
-    interval: 15s
+    - port: metrics
+      path: /metrics
+      interval: 15s
 ```
 
 ## 🌐 Network Configuration
@@ -520,8 +538,9 @@ spec:
 ### Docker Networks
 
 **Custom Network:**
+
 ```yaml
-version: '3.8'
+version: "3.8"
 
 networks:
   gunicorn-network:
@@ -552,6 +571,7 @@ services:
 ### Kubernetes Network Policies
 
 **network-policy.yaml:**
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -563,26 +583,26 @@ spec:
     matchLabels:
       app: gunicorn-app
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: monitoring
-    ports:
-    - protocol: TCP
-      port: 8200
-    - protocol: TCP
-      port: 9091
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8200
+        - protocol: TCP
+          port: 9091
   egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          name: monitoring
-    ports:
-    - protocol: TCP
-      port: 9090
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
 ```
 
 ## 🔧 Production Considerations
@@ -590,6 +610,7 @@ spec:
 ### Security
 
 1. **SSL/TLS Configuration:**
+
 ```bash
 # Enable SSL/TLS for metrics endpoint
 export PROMETHEUS_SSL_CERTFILE="/etc/ssl/certs/metrics.crt"
@@ -599,17 +620,19 @@ export PROMETHEUS_SSL_CLIENT_CAFILE="/etc/ssl/certs/ca.crt"
 ```
 
 2. **Network Segmentation:**
+
 ```yaml
 # Only expose metrics port internally
 ports:
-- containerPort: 8200
-  name: http
-- containerPort: 9091
-  name: metrics
-  # Don't expose metrics port externally
+  - containerPort: 8200
+    name: http
+  - containerPort: 9091
+    name: metrics
+    # Don't expose metrics port externally
 ```
 
 3. **Authentication:**
+
 ```python
 # Add basic auth to metrics endpoint
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
@@ -625,6 +648,7 @@ def metrics_view(request):
 ### Performance
 
 1. **Resource Limits:**
+
 ```yaml
 resources:
   requests:
@@ -636,6 +660,7 @@ resources:
 ```
 
 2. **Scaling:**
+
 ```yaml
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -649,15 +674,15 @@ spec:
   minReplicas: 3
   maxReplicas: 10
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
 ```
 
-## 📊 Monitoring Queries
+## Monitoring Queries
 
 ### Key Prometheus Queries
 
@@ -681,6 +706,7 @@ gunicorn_worker_uptime_seconds
 ### Grafana Dashboard
 
 Create a Grafana dashboard with panels for:
+
 - Request rate and duration
 - Memory and CPU usage
 - Error rates

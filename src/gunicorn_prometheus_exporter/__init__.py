@@ -71,23 +71,27 @@ THE SOLUTION:
 - This ensures our PrometheusMaster is always used regardless of import paths
 """
 
-import logging
+import logging  # noqa: I001
 
 import gunicorn.app.base
 import gunicorn.arbiter
 
 from .config import config, get_config
-from .forwarder import RedisForwarder, get_forwarder_manager
 from .master import PrometheusMaster
 from .metrics import registry
-
-# Import worker classes
 from .plugin import (
     PrometheusThreadWorker,
     PrometheusWorker,
     get_prometheus_eventlet_worker,
     get_prometheus_gevent_worker,
     get_prometheus_tornado_worker,
+)
+from .backend import (
+    RedisStorageManager,
+    get_redis_storage_manager,
+    setup_redis_metrics,
+    teardown_redis_metrics,
+    is_redis_enabled,
 )
 
 
@@ -159,36 +163,6 @@ def patched_run(self):
 gunicorn.app.base.BaseApplication.run = patched_run
 
 
-# Redis forwarder startup moved to gunicorn config when_ready hook
-def start_redis_forwarder():
-    """Start Redis forwarder if enabled. Call this from gunicorn when_ready hook."""
-    if not config.redis_enabled:
-        return False
-
-    try:
-        manager = get_forwarder_manager()
-
-        # Create Redis forwarder with config defaults
-        redis_forwarder = RedisForwarder()
-        manager.add_forwarder("redis", redis_forwarder)
-
-        # Start it
-        if manager.start_forwarder("redis"):
-            logger.info(
-                "Redis forwarder started (interval: %ss)",
-                config.redis_forward_interval,
-            )
-            return True
-
-        logger.error("Failed to start Redis forwarder")
-        return False
-    except Exception as e:
-        logger.error("Failed to start Redis forwarder: %s", e)
-        return False
-
-
-__version__ = "0.1.0"
-
 # Build __all__ list conditionally
 __all__ = [
     "PrometheusWorker",
@@ -197,9 +171,11 @@ __all__ = [
     "registry",
     "config",
     "get_config",
-    "get_forwarder_manager",
-    "RedisForwarder",
-    "start_redis_forwarder",
+    "RedisStorageManager",
+    "get_redis_storage_manager",
+    "setup_redis_metrics",
+    "teardown_redis_metrics",
+    "is_redis_enabled",
     "get_prometheus_eventlet_worker",
     "get_prometheus_gevent_worker",
     "get_prometheus_tornado_worker",
