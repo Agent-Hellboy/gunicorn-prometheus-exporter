@@ -2,6 +2,257 @@
 
 Complete reference for the Gunicorn Prometheus Exporter API, including worker classes, hooks, and configuration options.
 
+## 🏗️ Redis Backend Architecture
+
+### Overview
+
+The Redis backend provides a complete storage implementation that extends the Prometheus Python client to support distributed metrics storage. This implementation follows Prometheus multiprocess specifications while providing enhanced scalability and separation of concerns.
+
+### Core Components
+
+#### RedisStorageManager
+
+The main service layer for Redis storage management.
+
+```python
+from gunicorn_prometheus_exporter.backend.service import RedisStorageManager
+
+# Create Redis storage manager
+manager = RedisStorageManager(
+    redis_host="localhost",
+    redis_port=6379,
+    redis_db=0,
+    key_prefix="gunicorn",
+    ttl_seconds=300
+)
+
+# Setup Redis storage
+manager.setup()
+
+# Get Redis-based collector
+collector = manager.get_collector()
+
+# Teardown when done
+manager.teardown()
+```
+
+**Methods:**
+
+- `setup()` - Initialize Redis storage backend
+- `get_collector()` - Returns RedisMultiProcessCollector instance
+- `get_client()` - Returns RedisStorageClient instance
+- `teardown()` - Clean up Redis resources
+
+#### RedisStorageClient
+
+Main client for Redis operations.
+
+```python
+from gunicorn_prometheus_exporter.backend.core.client import RedisStorageClient
+
+# Create Redis storage client
+client = RedisStorageClient(redis_client, key_prefix="gunicorn")
+
+# Get value class for metrics
+value_class = client.get_value_class()
+```
+
+**Key Features:**
+
+- Connection management with pooling
+- Structured key generation with process information
+- Value operations for metric data
+- Metadata management
+- TTL support for automatic cleanup
+
+#### RedisStorageDict
+
+Storage abstraction implementing Prometheus multiprocess protocols.
+
+```python
+from gunicorn_prometheus_exporter.backend.core.client import RedisStorageDict
+
+# Create storage dict
+storage = RedisStorageDict(redis_client, key_prefix="gunicorn")
+
+# Read metric value
+value, timestamp = storage.read_value("metric_key", "gauge", "all")
+
+# Write metric value
+storage.write_value("metric_key", 42.5, 1640995200.123, "gauge", "all")
+```
+
+**Methods:**
+
+- `read_value(key, metric_type, multiprocess_mode)` - Read metric value and timestamp
+- `write_value(key, value, timestamp, metric_type, multiprocess_mode)` - Write metric value
+- `read_all_values()` - Read all metrics from Redis
+- `cleanup_process_keys()` - Clean up keys for specific process
+
+#### RedisMultiProcessCollector
+
+Collector that aggregates metrics from Redis across multiple processes.
+
+```python
+from gunicorn_prometheus_exporter.backend.core.collector import RedisMultiProcessCollector
+
+# Create collector
+collector = RedisMultiProcessCollector(registry, redis_client, key_prefix="gunicorn")
+
+# Collect metrics
+for metric in collector.collect():
+    print(f"Metric: {metric.name}")
+```
+
+**Key Features:**
+
+- Metric aggregation across processes
+- Process discovery via Redis key scanning
+- Multiprocess mode handling
+- Label preservation
+- Streaming collection for memory efficiency
+
+#### RedisValue
+
+Redis-backed value implementation for individual metrics.
+
+```python
+from gunicorn_prometheus_exporter.backend.core.values import RedisValue
+
+# Create Redis value
+value = RedisValue("counter", "metric_name", {}, {}, "help_text",
+                  redis_client=redis_client, redis_key_prefix="gunicorn")
+
+# Increment counter
+value.inc(1.0)
+
+# Set gauge value
+value.set(42.5)
+
+# Get current value
+current_value = value.get()
+```
+
+**Methods:**
+
+- `inc(amount)` - Increment counter value
+- `set(value)` - Set gauge value
+- `get()` - Get current value
+- `get_timestamp()` - Get last update timestamp
+- `set_exemplar(exemplar)` - Set exemplar data
+
+### Redis Key Architecture
+
+#### Key Structure
+
+```
+gunicorn:{metric_type}_{mode}:{pid}:{data_type}:{hash}
+```
+
+**Components:**
+
+- `gunicorn` - Fixed prefix for all keys
+- `{metric_type}_{mode}` - Metric type and multiprocess mode
+- `{pid}` - Process ID for process isolation
+- `{data_type}` - Either `metric` or `meta`
+- `{hash}` - MD5 hash of original metric key
+
+#### Examples
+
+```
+gunicorn:gauge_all:12345:metric:abc123def456
+gunicorn:counter:12345:meta:def456ghi789
+gunicorn:histogram:12345:metric:ghi789jkl012
+```
+
+### Multiprocess Mode Support
+
+All Prometheus multiprocess modes are supported:
+
+| Mode | Description | Implementation |
+|------|-------------|----------------|
+| `all` | All processes (including dead ones) | Stores all metric instances with PID labels |
+| `liveall` | All live processes | Filters out dead processes during collection |
+| `live` | Only live processes (default) | Same as liveall for our use case |
+| `max` | Maximum value across processes | Aggregates using Redis MAX operations |
+| `min` | Minimum value across processes | Aggregates using Redis MIN operations |
+| `sum` | Sum of values across processes | Aggregates using Redis SUM operations |
+| `mostrecent` | Most recent value | Uses timestamp-based selection |
+
+### Configuration
+
+#### Environment Variables
+
+```bash
+# Enable Redis storage
+export REDIS_ENABLED="true"
+export REDIS_HOST="localhost"
+export REDIS_PORT="6379"
+export REDIS_DB="0"
+export REDIS_KEY_PREFIX="gunicorn"
+export REDIS_TTL_SECONDS="300"
+```
+
+#### Programmatic Configuration
+
+```python
+from gunicorn_prometheus_exporter.backend.service import get_redis_storage_manager
+
+# Get configured manager
+manager = get_redis_storage_manager()
+
+# Or create custom manager
+from gunicorn_prometheus_exporter.backend.service import RedisStorageManager
+
+manager = RedisStorageManager(
+    redis_host="redis-cluster.example.com",
+    redis_port=6379,
+    redis_db=0,
+    key_prefix="myapp",
+    ttl_seconds=600
+)
+```
+
+### Integration Examples
+
+#### Basic Integration
+
+```python
+from gunicorn_prometheus_exporter.backend.service import setup_redis_metrics
+
+# Setup Redis storage
+setup_redis_metrics()
+
+# Metrics will now be stored in Redis instead of files
+```
+
+#### Custom Integration
+
+```python
+from gunicorn_prometheus_exporter.backend.service import RedisStorageManager
+from prometheus_client import CollectorRegistry
+
+# Create custom registry
+registry = CollectorRegistry()
+
+# Setup Redis storage
+manager = RedisStorageManager()
+manager.setup()
+
+# Register Redis collector
+collector = manager.get_collector()
+registry.register(collector)
+```
+
+#### Gunicorn Hook Integration
+
+```python
+# In gunicorn.conf.py
+def when_ready(server):
+    from gunicorn_prometheus_exporter.hooks import redis_when_ready
+    redis_when_ready(server)
+```
+
 ## 🔧 Worker Classes
 
 ### PrometheusWorker

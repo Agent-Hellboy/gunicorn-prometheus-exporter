@@ -2,11 +2,21 @@
 
 A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities.
 
-## Redis Storage Innovation
+## Redis Storage Backend Architecture
 
-### Extended Prometheus Python Client
+### Complete Redis-Based Storage Implementation
 
-We've **extended the Prometheus Python client** to support Redis-based storage, creating a new architecture that separates storage from compute:
+We've implemented a **complete Redis storage backend** that extends the Prometheus Python client to support distributed metrics storage. This implementation follows Prometheus multiprocess specifications while providing enhanced scalability and separation of concerns.
+
+#### **Architecture Components**
+
+Our backend consists of several key components:
+
+1. **`RedisStorageClient`** - Main client for Redis operations
+2. **`RedisStorageDict`** - Storage abstraction implementing Prometheus multiprocess protocols
+3. **`RedisMultiProcessCollector`** - Collector that aggregates metrics from Redis across processes
+4. **`RedisValue`** - Redis-backed value implementation for individual metrics
+5. **`RedisStorageManager`** - Service layer managing Redis connections and lifecycle
 
 #### **Traditional Prometheus Multiprocess**
 
@@ -17,16 +27,29 @@ multiprocess.MultiProcessCollector(registry)
 # Creates files in /tmp/prometheus_multiproc/
 ```
 
-#### **Our Redis Storage Extension**
+#### **Our Redis Storage Implementation**
 
 ```python
-# Our innovation - Redis storage
-from gunicorn_prometheus_exporter.storage import get_redis_storage_manager
+# Our innovation - direct Redis storage
+from gunicorn_prometheus_exporter.backend.service import get_redis_storage_manager
 manager = get_redis_storage_manager()
 collector = manager.get_collector()
 registry.register(collector)
-# Stores metrics in Redis: gunicorn:*:metric:*
+# Stores metrics in Redis: gunicorn:{type}_{mode}:{pid}:{data_type}:{hash}
 ```
+
+#### **Redis Key Architecture**
+
+We use a structured key format that embeds process information and multiprocess modes:
+
+```
+gunicorn:{metric_type}_{mode}:{pid}:{data_type}:{hash}
+```
+
+**Examples:**
+- `gunicorn:gauge_all:12345:metric:abc123` - Gauge metric with "all" mode
+- `gunicorn:counter:12345:meta:def456` - Counter metadata
+- `gunicorn:histogram:12345:metric:ghi789` - Histogram metric data
 
 ### **Architecture Benefits**
 
@@ -161,15 +184,30 @@ All worker types have been thoroughly tested and validated:
 
 ### Redis Configuration (Optional)
 
-#### Redis Storage (No Files Created)
+#### Redis Storage Backend (No Files Created)
 
 ```bash
-# Enable Redis storage (replaces file storage)
+# Enable Redis storage (replaces file storage completely)
 export REDIS_ENABLED="true"
 export REDIS_HOST="localhost"
 export REDIS_PORT="6379"
 export REDIS_DB="0"
+export REDIS_KEY_PREFIX="gunicorn"
+export REDIS_TTL_SECONDS="300"  # Optional: key expiration
 ```
+
+#### **Multiprocess Mode Support**
+
+Our Redis backend implements all Prometheus multiprocess modes:
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `all` | All processes (including dead ones) | Per-worker monitoring with PID labels |
+| `liveall` | All live processes | Current process monitoring |
+| `max` | Maximum value across processes | Peak resource usage |
+| `min` | Minimum value across processes | Minimum resource usage |
+| `sum` | Sum of values across processes | Total resource consumption |
+| `mostrecent` | Most recent value | Latest metric values |
 
 > **🏗️ Redis Backend Architecture**: The Redis backend provides a sophisticated storage system with `backend.service` for high-level management and `backend.core` for low-level operations. See the [API Reference](api-reference.md#-redis-backend-architecture) for detailed documentation.
 
