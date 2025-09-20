@@ -282,7 +282,7 @@ sudo systemctl start redis  # Linux
 
 # Run quick test
 cd system-test
-./quick_test.sh
+make quick-test
 ```
 
 ### Full System Test (CI/CD)
@@ -290,7 +290,7 @@ cd system-test
 ```bash
 # Complete automated test (installs everything)
 cd system-test
-./system_test.sh
+make system-test
 ```
 
 ### Using Make Commands
