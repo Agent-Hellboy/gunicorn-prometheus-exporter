@@ -197,8 +197,7 @@ class PrometheusMixin:
             duration = time.time() - start_time
 
             # Update failed request metrics
-            method = req.method if hasattr(req, "method") else "UNKNOWN"
-            endpoint = req.path if hasattr(req, "path") else "UNKNOWN"
+            method, endpoint = self._extract_request_info(req)
             error_type = type(e).__name__
 
             WORKER_FAILED_REQUESTS.labels(
@@ -216,6 +215,34 @@ class PrometheusMixin:
             )
         except Exception as metric_error:
             logger.error("Failed to update error metrics: %s", metric_error)
+
+    def _extract_request_from_args(self, args):
+        """Extract request object from method arguments using attribute-based detection.
+
+        Args:
+            args: Method arguments tuple
+
+        Returns:
+            Request object or None if not found
+        """
+        for arg in args:
+            # Check if this looks like a request object
+            if hasattr(arg, "method") and hasattr(arg, "path"):
+                return arg
+        return None
+
+    def _extract_request_info(self, req):
+        """Extract method and endpoint information from request object.
+
+        Args:
+            req: Request object or None
+
+        Returns:
+            tuple: (method, endpoint) both as strings
+        """
+        method = req.method if req and hasattr(req, "method") else "UNKNOWN"
+        endpoint = req.path if req and hasattr(req, "path") else "UNKNOWN"
+        return method, endpoint
 
     def _generic_handle_request(self, parent_method, *args, **kwargs):
         """Generic handle_request wrapper for all worker types.
@@ -240,8 +267,8 @@ class PrometheusMixin:
             return result
         except Exception as e:
             # Handle request error metrics
-            # Try to extract req from args (first argument after self)
-            req = args[0] if args else None
+            # Extract req from args using robust attribute-based detection
+            req = self._extract_request_from_args(args)
             self._handle_request_error_metrics(req, e, start_time)
             raise
 
@@ -255,8 +282,7 @@ class PrometheusMixin:
             e: The exception that occurred
         """
         # Extract method and endpoint from request if available
-        method = req.method if hasattr(req, "method") else "UNKNOWN"
-        endpoint = req.path if hasattr(req, "path") else "UNKNOWN"
+        method, endpoint = self._extract_request_info(req)
 
         # Update error metrics
         error_type = type(e).__name__
@@ -323,21 +349,9 @@ class PrometheusWorker(PrometheusMixin, SyncWorker):
 
     def handle_request(self, listener, req, client, addr):
         """Handle a request and update metrics."""
-        start_time = time.time()
-
-        try:
-            # Update worker metrics on each request
-            self.update_worker_metrics()
-
-            # Call parent handle_request
-            super().handle_request(listener, req, client, addr)
-
-            # Update request metrics after successful request (without size metrics)
-            self._handle_request_metrics(start_time)
-        except Exception as e:
-            # Handle request error metrics
-            self._handle_request_error_metrics(req, e, start_time)
-            raise
+        return self._generic_handle_request(
+            super().handle_request, listener, req, client, addr
+        )
 
     def handle_error(self, req, client, addr, e):  # pylint: disable=arguments-renamed
         """Handle request errors and update error metrics."""
