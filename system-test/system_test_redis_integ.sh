@@ -61,6 +61,10 @@ fi
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        # Skip script name if it's passed as first argument
+        */system_test_redis_integ.sh|./system_test_redis_integ.sh|system_test_redis_integ.sh)
+            shift
+            ;;
         --quick)
             QUICK_MODE=true
             TEST_DURATION=10
@@ -1112,11 +1116,30 @@ test_signal_handling() {
             print_warning "⚠ SIGINT metric may not have been written to Redis (still $signal_metrics_after signal metrics)"
         fi
 
-        # Check if process is still running
+        # Check if process is still running and wait for graceful shutdown
         if kill -0 "$GUNICORN_PID" 2>/dev/null; then
-            print_warning "Process still running after SIGINT, sending SIGTERM"
-            kill -TERM "$GUNICORN_PID" 2>/dev/null || true
-            sleep 2
+            print_warning "Process still running after SIGINT, waiting for graceful shutdown..."
+            local shutdown_wait=0
+            local max_shutdown_wait=10
+
+            while [ $shutdown_wait -lt $max_shutdown_wait ] && kill -0 "$GUNICORN_PID" 2>/dev/null; do
+                sleep 1
+                shutdown_wait=$((shutdown_wait + 1))
+            done
+
+            # If still running after graceful wait, send SIGTERM
+            if kill -0 "$GUNICORN_PID" 2>/dev/null; then
+                print_warning "Process did not shut down gracefully, sending SIGTERM"
+                kill -TERM "$GUNICORN_PID" 2>/dev/null || true
+                sleep 3
+            fi
+
+            # Final check - if still running, send SIGKILL
+            if kill -0 "$GUNICORN_PID" 2>/dev/null; then
+                print_warning "Process did not respond to SIGTERM, sending SIGKILL"
+                kill -KILL "$GUNICORN_PID" 2>/dev/null || true
+                sleep 1
+            fi
         fi
 
         # Final check
@@ -1216,10 +1239,21 @@ main() {
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     if [ "$CI_MODE" = true ]; then
         if command -v timeout >/dev/null 2>&1; then
-            timeout "$TIMEOUT" bash -c 'source "$1"; shift; main "$@"' _ "$0" "$@" || {
-                print_error "System test timed out after $TIMEOUT seconds"
-                exit 1
-            }
+            # Use timeout but handle exit codes properly
+            if timeout "$TIMEOUT" bash -c 'source "$1"; main; exit $?' _ "$0"; then
+                # Test completed successfully within timeout
+                exit 0
+            else
+                local exit_code=$?
+                if [ $exit_code -eq 124 ]; then
+                    # Timeout occurred (exit code 124)
+                    print_error "System test timed out after $TIMEOUT seconds"
+                    exit 1
+                else
+                    # Test failed with some other error
+                    exit $exit_code
+                fi
+            fi
         else
             print_warning "timeout not found; running without timeout"
             main "$@"

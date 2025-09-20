@@ -46,7 +46,13 @@ class MetricMeta(ABCMeta):
         if metric_type is not None:
             extra_ctor_args = {}
             # Forward well‑known optional attributes
-            for opt in ("buckets", "unit", "namespace", "subsystem"):
+            for opt in (
+                "buckets",
+                "unit",
+                "namespace",
+                "subsystem",
+                "multiprocess_mode",
+            ):
                 if opt in namespace:
                     extra_ctor_args[opt] = namespace[opt]
 
@@ -154,6 +160,7 @@ class WorkerMemory(BaseMetric, metric_type=Gauge):
     name = "gunicorn_worker_memory_bytes"
     documentation = "Memory usage of the worker process"
     labelnames = ["worker_id"]
+    multiprocess_mode = "all"  # Keep all worker instances with worker_id labels
 
 
 class WorkerCPU(BaseMetric, metric_type=Gauge):
@@ -162,6 +169,7 @@ class WorkerCPU(BaseMetric, metric_type=Gauge):
     name = "gunicorn_worker_cpu_percent"
     documentation = "CPU usage of the worker process"
     labelnames = ["worker_id"]
+    multiprocess_mode = "all"  # Keep all worker instances with worker_id labels
 
 
 class WorkerUptime(BaseMetric, metric_type=Gauge):
@@ -170,6 +178,7 @@ class WorkerUptime(BaseMetric, metric_type=Gauge):
     name = "gunicorn_worker_uptime_seconds"
     documentation = "Uptime of the worker process"
     labelnames = ["worker_id"]
+    multiprocess_mode = "all"  # Keep all worker instances with worker_id labels
 
 
 class WorkerFailedRequests(BaseMetric, metric_type=Counter):
@@ -194,6 +203,7 @@ class WorkerState(BaseMetric, metric_type=Gauge):
     name = "gunicorn_worker_state"
     documentation = "Current state of the worker (1=running, 0=stopped)"
     labelnames = ["worker_id", "state", "timestamp"]
+    multiprocess_mode = "all"  # Sum all worker states
 
 
 # ---------------------------------------------------------------------------------

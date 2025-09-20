@@ -67,11 +67,13 @@ gunicorn_worker_request_duration_seconds_count{worker_id="worker_1_1234567890"} 
 **Type**: Gauge
 **Description**: Memory usage of each worker in bytes
 **Labels**: `worker_id`
+**Multiprocess Mode**: `all` (preserves individual worker instances)
 
 ```
 # HELP gunicorn_worker_memory_bytes Memory usage of worker in bytes
 # TYPE gunicorn_worker_memory_bytes gauge
 gunicorn_worker_memory_bytes{worker_id="worker_1_1234567890"} 52428800.0
+gunicorn_worker_memory_bytes{worker_id="worker_2_1234567891"} 61234560.0
 ```
 
 #### `gunicorn_worker_cpu_percent`
@@ -79,11 +81,13 @@ gunicorn_worker_memory_bytes{worker_id="worker_1_1234567890"} 52428800.0
 **Type**: Gauge
 **Description**: CPU usage percentage of each worker
 **Labels**: `worker_id`
+**Multiprocess Mode**: `all` (preserves individual worker instances)
 
 ```
 # HELP gunicorn_worker_cpu_percent CPU usage percentage of worker
 # TYPE gunicorn_worker_cpu_percent gauge
 gunicorn_worker_cpu_percent{worker_id="worker_1_1234567890"} 2.5
+gunicorn_worker_cpu_percent{worker_id="worker_2_1234567891"} 3.2
 ```
 
 #### `gunicorn_worker_uptime_seconds`
@@ -91,11 +95,13 @@ gunicorn_worker_cpu_percent{worker_id="worker_1_1234567890"} 2.5
 **Type**: Gauge
 **Description**: Uptime of each worker in seconds
 **Labels**: `worker_id`
+**Multiprocess Mode**: `all` (preserves individual worker instances)
 
 ```
 # HELP gunicorn_worker_uptime_seconds Worker uptime in seconds
 # TYPE gunicorn_worker_uptime_seconds gauge
 gunicorn_worker_uptime_seconds{worker_id="worker_1_1234567890"} 3600.0
+gunicorn_worker_uptime_seconds{worker_id="worker_2_1234567891"} 3580.5
 ```
 
 ### Error Metrics
@@ -131,11 +137,13 @@ gunicorn_worker_error_handling_total{worker_id="worker_1_1234567890",method="POS
 **Type**: Gauge
 **Description**: Current state of each worker
 **Labels**: `worker_id`, `state`, `timestamp`
+**Multiprocess Mode**: `all` (preserves individual worker instances)
 
 ```
 # HELP gunicorn_worker_state Current state of worker
 # TYPE gunicorn_worker_state gauge
 gunicorn_worker_state{worker_id="worker_1_1234567890",state="running",timestamp="1640995200.123"} 1.0
+gunicorn_worker_state{worker_id="worker_2_1234567891",state="running",timestamp="1640995200.124"} 1.0
 ```
 
 ### Master Metrics
@@ -180,6 +188,52 @@ Common error types include:
 - `ConnectionError`: Network connection issues
 - `TimeoutError`: Request timeout errors
 
+## Multiprocess Mode Behavior
+
+### Gauge Metrics Multiprocess Modes
+
+All gauge metrics in this exporter use `multiprocess_mode="all"` to preserve individual worker instances with their `worker_id` labels. This ensures you can monitor each worker separately rather than getting aggregated values.
+
+#### Available Multiprocess Modes
+
+The Prometheus Python client supports several multiprocess modes for gauge metrics:
+
+- **`all`**: Sum all values across processes (used by this exporter)
+- **`liveall`**: Sum values from live processes only
+- **`max`**: Use maximum value across processes
+- **`min`**: Use minimum value across processes
+- **`sum`**: Sum all values (same as `all`)
+- **`mostrecent`**: Use most recent value
+
+#### Why `all` Mode for Worker Metrics
+
+Worker metrics use `multiprocess_mode="all"` because:
+
+1. **Per-Worker Visibility**: You want to see individual worker performance, not aggregated values
+2. **Worker ID Labels**: Each metric has a `worker_id` label to distinguish between workers
+3. **Monitoring Individual Workers**: Allows you to identify problematic workers or performance patterns
+4. **Debugging**: Easier to debug issues when you can see per-worker metrics
+
+#### Example Output
+
+With `multiprocess_mode="all"`, you get separate metrics for each worker:
+
+```
+gunicorn_worker_memory_bytes{worker_id="worker_1_1234567890"} 52428800.0
+gunicorn_worker_memory_bytes{worker_id="worker_2_1234567891"} 61234560.0
+gunicorn_worker_memory_bytes{worker_id="worker_3_1234567892"} 48912345.0
+```
+
+Instead of a single aggregated value:
+
+```
+gunicorn_worker_memory_bytes 162575705.0  # This would be the sum
+```
+
+#### Redis Storage Integration
+
+When using Redis storage, the multiprocess mode is stored in Redis metadata and correctly applied during metric collection, ensuring consistent behavior across different storage backends.
+
 ## Querying Metrics
 
 ### Prometheus Queries
@@ -222,6 +276,12 @@ gunicorn_worker_memory_bytes
 
 # Average memory usage across workers
 avg(gunicorn_worker_memory_bytes)
+
+# Maximum memory usage across workers
+max(gunicorn_worker_memory_bytes)
+
+# Memory usage for a specific worker
+gunicorn_worker_memory_bytes{worker_id="worker_1_1234567890"}
 ```
 
 #### CPU Usage
@@ -232,6 +292,12 @@ gunicorn_worker_cpu_percent
 
 # Average CPU usage across workers
 avg(gunicorn_worker_cpu_percent)
+
+# Maximum CPU usage across workers
+max(gunicorn_worker_cpu_percent)
+
+# CPU usage for a specific worker
+gunicorn_worker_cpu_percent{worker_id="worker_1_1234567890"}
 ```
 
 #### Worker Health
@@ -240,8 +306,161 @@ avg(gunicorn_worker_cpu_percent)
 # Number of running workers
 sum(gunicorn_worker_state{state="running"})
 
-# Worker uptime
+# Worker uptime per worker
 gunicorn_worker_uptime_seconds
+
+# Average uptime across workers
+avg(gunicorn_worker_uptime_seconds)
+
+# Uptime for a specific worker
+gunicorn_worker_uptime_seconds{worker_id="worker_1_1234567890"}
+
+# Workers that have been running for more than 1 hour
+gunicorn_worker_uptime_seconds > 3600
+```
+
+### Gauge Aggregation Queries
+
+Since gauge metrics use `multiprocess_mode="all"`, you can apply various aggregation functions to get different views of your worker metrics:
+
+#### Memory Usage Aggregations
+
+```promql
+# Individual worker memory usage
+gunicorn_worker_memory_bytes
+
+# Maximum memory usage across all workers
+max(gunicorn_worker_memory_bytes)
+
+# Minimum memory usage across all workers
+min(gunicorn_worker_memory_bytes)
+
+# Average memory usage across all workers
+avg(gunicorn_worker_memory_bytes)
+
+# Sum of memory usage across all workers
+sum(gunicorn_worker_memory_bytes)
+
+# Standard deviation of memory usage
+stddev(gunicorn_worker_memory_bytes)
+
+# Memory usage in MB
+gunicorn_worker_memory_bytes / 1024 / 1024
+
+# Maximum memory usage in MB
+max(gunicorn_worker_memory_bytes) / 1024 / 1024
+
+# Average memory usage in MB
+avg(gunicorn_worker_memory_bytes) / 1024 / 1024
+```
+
+#### CPU Usage Aggregations
+
+```promql
+# Individual worker CPU usage
+gunicorn_worker_cpu_percent
+
+# Maximum CPU usage across all workers
+max(gunicorn_worker_cpu_percent)
+
+# Minimum CPU usage across all workers
+min(gunicorn_worker_cpu_percent)
+
+# Average CPU usage across all workers
+avg(gunicorn_worker_cpu_percent)
+
+# Sum of CPU usage across all workers
+sum(gunicorn_worker_cpu_percent)
+
+# Standard deviation of CPU usage
+stddev(gunicorn_worker_cpu_percent)
+
+# Workers with CPU usage above 50%
+gunicorn_worker_cpu_percent > 50
+
+# Workers with CPU usage below 10%
+gunicorn_worker_cpu_percent < 10
+```
+
+#### Uptime Aggregations
+
+```promql
+# Individual worker uptime
+gunicorn_worker_uptime_seconds
+
+# Maximum uptime across all workers
+max(gunicorn_worker_uptime_seconds)
+
+# Minimum uptime across all workers
+min(gunicorn_worker_uptime_seconds)
+
+# Average uptime across all workers
+avg(gunicorn_worker_uptime_seconds)
+
+# Sum of uptime across all workers
+sum(gunicorn_worker_uptime_seconds)
+
+# Uptime in hours
+gunicorn_worker_uptime_seconds / 3600
+
+# Maximum uptime in hours
+max(gunicorn_worker_uptime_seconds) / 3600
+
+# Workers running for more than 1 hour
+gunicorn_worker_uptime_seconds > 3600
+
+# Workers running for less than 30 minutes
+gunicorn_worker_uptime_seconds < 1800
+```
+
+#### Worker State Aggregations
+
+```promql
+# Individual worker states
+gunicorn_worker_state
+
+# Number of running workers
+sum(gunicorn_worker_state{state="running"})
+
+# Number of workers in any state
+sum(gunicorn_worker_state)
+
+# Workers by state
+sum by (state) (gunicorn_worker_state)
+
+# Percentage of workers running
+sum(gunicorn_worker_state{state="running"}) / sum(gunicorn_worker_state) * 100
+```
+
+#### Advanced Gauge Queries
+
+```promql
+# Top 3 workers by memory usage
+topk(3, gunicorn_worker_memory_bytes)
+
+# Bottom 3 workers by memory usage
+bottomk(3, gunicorn_worker_memory_bytes)
+
+# Top 3 workers by CPU usage
+topk(3, gunicorn_worker_cpu_percent)
+
+# Workers with highest uptime
+topk(5, gunicorn_worker_uptime_seconds)
+
+# Memory usage percentiles
+quantile(0.5, gunicorn_worker_memory_bytes)  # 50th percentile (median)
+quantile(0.95, gunicorn_worker_memory_bytes) # 95th percentile
+quantile(0.99, gunicorn_worker_memory_bytes) # 99th percentile
+
+# CPU usage percentiles
+quantile(0.5, gunicorn_worker_cpu_percent)  # 50th percentile (median)
+quantile(0.95, gunicorn_worker_cpu_percent) # 95th percentile
+quantile(0.99, gunicorn_worker_cpu_percent) # 99th percentile
+
+# Count of workers above certain thresholds
+count(gunicorn_worker_memory_bytes > 100*1024*1024)  # Workers using >100MB
+count(gunicorn_worker_cpu_percent > 50)             # Workers using >50% CPU
+count(gunicorn_worker_uptime_seconds > 3600)       # Workers running >1 hour
 ```
 
 ### Grafana Dashboards
@@ -269,18 +488,54 @@ gunicorn_worker_uptime_seconds
 4. **Memory Usage Panel**
 
    ```promql
+   # Average memory usage
    avg(gunicorn_worker_memory_bytes) / 1024 / 1024
+
+   # Per-worker memory usage
+   gunicorn_worker_memory_bytes / 1024 / 1024
    ```
 
 5. **CPU Usage Panel**
 
    ```promql
+   # Average CPU usage
    avg(gunicorn_worker_cpu_percent)
+
+   # Per-worker CPU usage
+   gunicorn_worker_cpu_percent
    ```
 
 6. **Active Workers Panel**
    ```promql
    sum(gunicorn_worker_state{state="running"})
+   ```
+
+7. **Per-Worker Monitoring Panel**
+   ```promql
+   # Memory usage by worker
+   gunicorn_worker_memory_bytes / 1024 / 1024
+
+   # CPU usage by worker
+   gunicorn_worker_cpu_percent
+
+   # Uptime by worker
+   gunicorn_worker_uptime_seconds
+   ```
+
+8. **Gauge Aggregation Panel**
+   ```promql
+   # Memory aggregations
+   max(gunicorn_worker_memory_bytes) / 1024 / 1024
+   avg(gunicorn_worker_memory_bytes) / 1024 / 1024
+   min(gunicorn_worker_memory_bytes) / 1024 / 1024
+
+   # CPU aggregations
+   max(gunicorn_worker_cpu_percent)
+   avg(gunicorn_worker_cpu_percent)
+   min(gunicorn_worker_cpu_percent)
+
+   # Top workers by memory
+   topk(3, gunicorn_worker_memory_bytes) / 1024 / 1024
    ```
 
 ## Alerting Rules
@@ -338,6 +593,99 @@ groups:
   annotations:
     summary: "High memory usage detected"
     description: "Average memory usage is {{ $value }}MB"
+
+- alert: HighMemoryUsagePerWorker
+  expr: gunicorn_worker_memory_bytes / 1024 / 1024 > 1024
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High memory usage detected on worker {{ $labels.worker_id }}"
+    description: "Worker {{ $labels.worker_id }} memory usage is {{ $value }}MB"
+```
+
+### High CPU Usage
+
+```yaml
+- alert: HighCPUUsagePerWorker
+  expr: gunicorn_worker_cpu_percent > 80
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High CPU usage detected on worker {{ $labels.worker_id }}"
+    description: "Worker {{ $labels.worker_id }} CPU usage is {{ $value }}%"
+
+- alert: HighAverageCPUUsage
+  expr: avg(gunicorn_worker_cpu_percent) > 70
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High average CPU usage across all workers"
+    description: "Average CPU usage is {{ $value }}%"
+
+- alert: HighMaxCPUUsage
+  expr: max(gunicorn_worker_cpu_percent) > 90
+  for: 5m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Critical CPU usage detected"
+    description: "Maximum CPU usage is {{ $value }}%"
+```
+
+### Memory Usage Alerts
+
+```yaml
+- alert: HighMemoryUsagePerWorker
+  expr: gunicorn_worker_memory_bytes / 1024 / 1024 > 1024
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High memory usage detected on worker {{ $labels.worker_id }}"
+    description: "Worker {{ $labels.worker_id }} memory usage is {{ $value }}MB"
+
+- alert: HighAverageMemoryUsage
+  expr: avg(gunicorn_worker_memory_bytes) / 1024 / 1024 > 512
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High average memory usage across all workers"
+    description: "Average memory usage is {{ $value }}MB"
+
+- alert: HighMaxMemoryUsage
+  expr: max(gunicorn_worker_memory_bytes) / 1024 / 1024 > 2048
+  for: 5m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Critical memory usage detected"
+    description: "Maximum memory usage is {{ $value }}MB"
+```
+
+### Worker Distribution Alerts
+
+```yaml
+- alert: UnevenWorkerLoad
+  expr: (max(gunicorn_worker_cpu_percent) - min(gunicorn_worker_cpu_percent)) > 50
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Uneven CPU load distribution across workers"
+    description: "CPU usage difference between max and min workers is {{ $value }}%"
+
+- alert: TooManyHighMemoryWorkers
+  expr: count(gunicorn_worker_memory_bytes / 1024 / 1024 > 1024) > 2
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Multiple workers using high memory"
+    description: "{{ $value }} workers are using more than 1GB of memory"
 ```
 
 ## Custom Metrics

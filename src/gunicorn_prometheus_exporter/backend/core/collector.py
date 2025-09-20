@@ -8,6 +8,7 @@ from prometheus_client.samples import Sample
 from prometheus_client.utils import floatToGoString
 
 from ...config import config
+from .client import _safe_decode_bytes, _safe_extract_original_key, _safe_parse_float
 
 
 # Conditional Redis import - only import when needed
@@ -123,19 +124,15 @@ class RedisMultiProcessCollector:
     @staticmethod
     def _extract_original_key_from_metadata(metadata):
         """Extract original key from metadata, handling both bytes and string."""
-        original_raw = metadata.get(b"original_key") or metadata.get("original_key")
-        if isinstance(original_raw, (bytes, bytearray)):
-            return original_raw.decode("utf-8")
-        return str(original_raw or "")
+        return _safe_extract_original_key(metadata)
 
     @staticmethod
     def _extract_pid_from_metric_key(metric_key, metric_type):
         """Extract PID from metric key for gauge metrics."""
         if metric_type != "gauge":
             return "unknown"
-        if isinstance(metric_key, (bytes, bytearray)):
-            metric_key = metric_key.decode("utf-8")
-        key_parts = metric_key.split(":")
+        metric_key_str = _safe_decode_bytes(metric_key)
+        key_parts = metric_key_str.split(":")
         return key_parts[2] if len(key_parts) > 2 else "unknown"
 
     @staticmethod
@@ -178,9 +175,10 @@ class RedisMultiProcessCollector:
                 typ,
                 name,
                 labels_key,
-                float(value_data),
-                float(timestamp_data),
+                _safe_parse_float(value_data),
+                _safe_parse_float(timestamp_data),
                 pid,
+                metadata,  # Pass metadata for multiprocess mode extraction
             )
 
         except Exception as e:
@@ -220,7 +218,7 @@ class RedisMultiProcessCollector:
     @staticmethod
     def _extract_metric_type(metric_key):
         """Extract metric type from Redis key structure."""
-        key_parts = metric_key.decode("utf-8").split(":")
+        key_parts = _safe_decode_bytes(metric_key).split(":")
         if len(key_parts) >= 3:
             # Key format: gunicorn:gauge_all:36680:metric:hash
             # Extract type from the second part and normalize it
@@ -233,11 +231,24 @@ class RedisMultiProcessCollector:
         return "counter"  # Default type
 
     @staticmethod
-    def _add_sample_to_metric(metric, typ, name, labels_key, value, timestamp, pid):
+    def _add_sample_to_metric(
+        metric, typ, name, labels_key, value, timestamp, pid, metadata=None
+    ):
         """Add a sample to the metric."""
         if typ == "gauge":
-            # Set multiprocess mode based on the metric type
-            metric._multiprocess_mode = "all"  # Default for gauge_all
+            # Extract multiprocess mode from metadata if available
+            if metadata:
+                # Try to get multiprocess_mode from metadata
+                mode_raw = metadata.get(b"multiprocess_mode") or metadata.get(
+                    "multiprocess_mode"
+                )
+                if mode_raw:
+                    mode = _safe_decode_bytes(mode_raw)
+                    metric._multiprocess_mode = mode
+                else:
+                    metric._multiprocess_mode = "all"  # Default fallback
+            else:
+                metric._multiprocess_mode = "all"  # Default fallback
             metric.add_sample(name, labels_key + (("pid", pid),), value, timestamp)
         else:
             metric.add_sample(name, labels_key, value)

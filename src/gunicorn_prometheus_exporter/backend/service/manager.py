@@ -11,7 +11,7 @@ from typing import Optional, Protocol
 
 from ...config import config
 from ..core import get_redis_value_class
-from ..core.client import RedisClientProtocol
+from ..core.client import RedisClientProtocol, _should_set_ttl
 
 
 # Conditional Redis import - only import when needed
@@ -117,9 +117,7 @@ class RedisStorageManager:
                 "Connected to Redis at %s:%s (TTL: %s)",
                 config.redis_host,
                 config.redis_port,
-                "disabled"
-                if config.redis_ttl_disabled
-                else f"{config.redis_ttl_seconds}s",
+                "disabled" if not _should_set_ttl() else f"{config.redis_ttl_seconds}s",
             )
 
             # Create value class

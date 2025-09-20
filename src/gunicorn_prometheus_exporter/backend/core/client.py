@@ -16,6 +16,67 @@ from ...config import config
 logger = logging.getLogger(__name__)
 
 
+def _safe_decode_bytes(data: Union[bytes, bytearray, str, None]) -> str:
+    """Safely decode bytes/bytearray to string, handling None values.
+
+    Args:
+        data: Data that might be bytes, bytearray, string, or None
+
+    Returns:
+        Decoded string or empty string if None
+    """
+    if data is None:
+        return ""
+    if isinstance(data, (bytes, bytearray)):
+        return data.decode("utf-8")
+    return str(data)
+
+
+def _safe_parse_float(
+    data: Union[bytes, bytearray, str, None], default: float = 0.0
+) -> float:
+    """Safely parse bytes/string to float with error handling.
+
+    Args:
+        data: Data that might be bytes, bytearray, string, or None
+        default: Default value to return if parsing fails
+
+    Returns:
+        Parsed float value or default if parsing fails
+    """
+    if data is None:
+        return default
+
+    try:
+        str_data = _safe_decode_bytes(data)
+        return float(str_data)
+    except (ValueError, TypeError) as e:
+        logger.warning("Failed to parse float from %r: %s", data, e)
+        return default
+
+
+def _should_set_ttl() -> bool:
+    """Check if TTL should be set for Redis keys.
+
+    Returns:
+        True if TTL should be set (TTL is not disabled and seconds > 0)
+    """
+    return not config.redis_ttl_disabled and config.redis_ttl_seconds > 0
+
+
+def _safe_extract_original_key(metadata: Dict) -> str:
+    """Safely extract original key from metadata, handling both bytes and string keys.
+
+    Args:
+        metadata: Dictionary that might have bytes or string keys
+
+    Returns:
+        Extracted original key as string
+    """
+    original_raw = metadata.get(b"original_key") or metadata.get("original_key")
+    return _safe_decode_bytes(original_raw)
+
+
 class RedisClientProtocol(Protocol):
     """Protocol for Redis client interface."""
 
@@ -65,6 +126,10 @@ class RedisClientProtocol(Protocol):
         """Delete keys."""
         raise NotImplementedError
 
+    def time(self) -> Tuple[int, int]:
+        """Get Redis server time as (seconds, microseconds)."""
+        raise NotImplementedError
+
 
 class StorageDictProtocol(Protocol):
     """Protocol for storage dictionary interface."""
@@ -95,6 +160,21 @@ class RedisStorageDict:
         self._lock = threading.Lock()
         logger.debug("Initialized Redis storage dict with prefix: %s", key_prefix)
 
+    def _redis_now(self) -> float:
+        """Get current timestamp using Redis server time for coherence.
+
+        Falls back to local time if Redis time is not available.
+
+        Returns:
+            Current timestamp as float (seconds since epoch)
+        """
+        try:
+            sec, usec = self._redis.time()  # returns (seconds, microseconds)
+            return sec + usec / 1_000_000.0
+        except Exception as e:
+            logger.debug("Failed to get Redis time, falling back to local time: %s", e)
+            return time.time()
+
     def read_value(self, key: str, metric_type: str = "counter") -> Tuple[float, float]:
         """Read value and timestamp for a metric key.
 
@@ -117,11 +197,7 @@ class RedisStorageDict:
                 self._init_value_unlocked(key, metric_type)
                 return 0.0, 0.0
 
-            if isinstance(value_data, (bytes, bytearray)):
-                value_data = value_data.decode("utf-8")
-            if isinstance(timestamp_data, (bytes, bytearray)):
-                timestamp_data = timestamp_data.decode("utf-8")
-            return float(value_data), float(timestamp_data)
+            return _safe_parse_float(value_data), _safe_parse_float(timestamp_data)
 
     def write_value(
         self, key: str, value: float, timestamp: float, metric_type: str = "counter"
@@ -143,22 +219,22 @@ class RedisStorageDict:
                 mapping={
                     "value": value,
                     "timestamp": timestamp,
-                    "updated_at": time.time(),
+                    "updated_at": self._redis_now(),
                 },
             )
 
             # Set TTL if not disabled
-            if not config.redis_ttl_disabled:
+            if _should_set_ttl():
                 self._redis.expire(metric_key, config.redis_ttl_seconds)
 
             # Store metadata separately for easier querying
             metadata_key = self._get_metadata_key(key, metric_type)
             # Set metadata only once - don't overwrite created_at on subsequent writes
             self._redis.hsetnx(metadata_key, "original_key", key)
-            self._redis.hsetnx(metadata_key, "created_at", str(time.time()))
+            self._redis.hsetnx(metadata_key, "created_at", str(self._redis_now()))
 
             # Set TTL for metadata key as well
-            if not config.redis_ttl_disabled:
+            if _should_set_ttl():
                 self._redis.expire(metadata_key, config.redis_ttl_seconds)
 
     def _get_metric_key(self, key: str, metric_type: str = "counter") -> str:
@@ -187,29 +263,26 @@ class RedisStorageDict:
         # Store value and timestamp in Redis hash
         self._redis.hset(
             metric_key,
-            mapping={"value": 0.0, "timestamp": 0.0, "updated_at": time.time()},
+            mapping={"value": 0.0, "timestamp": 0.0, "updated_at": self._redis_now()},
         )
 
         # Set TTL for metric key if not disabled
-        if not config.redis_ttl_disabled:
+        if _should_set_ttl():
             self._redis.expire(metric_key, config.redis_ttl_seconds)
 
         # Store metadata separately for easier querying
         metadata_key = self._get_metadata_key(key, metric_type)
         # Set metadata only once - don't overwrite created_at on subsequent writes
         self._redis.hsetnx(metadata_key, "original_key", key)
-        self._redis.hsetnx(metadata_key, "created_at", str(time.time()))
+        self._redis.hsetnx(metadata_key, "created_at", str(self._redis_now()))
 
         # Set TTL for metadata key as well
-        if not config.redis_ttl_disabled:
+        if _should_set_ttl():
             self._redis.expire(metadata_key, config.redis_ttl_seconds)
 
     def _extract_original_key(self, metadata):
         """Extract original key from metadata, handling both bytes and string."""
-        original_raw = metadata.get(b"original_key") or metadata.get("original_key")
-        if isinstance(original_raw, (bytes, bytearray)):
-            return original_raw.decode("utf-8")
-        return str(original_raw or "")
+        return _safe_extract_original_key(metadata)
 
     def _extract_metric_values(self, metric_key):
         """Extract value and timestamp from metric key."""
@@ -219,19 +292,14 @@ class RedisStorageDict:
         if value_data is None or timestamp_data is None:
             return None, None
 
-        if isinstance(value_data, (bytes, bytearray)):
-            value_data = value_data.decode("utf-8")
-        if isinstance(timestamp_data, (bytes, bytearray)):
-            timestamp_data = timestamp_data.decode("utf-8")
-
-        return float(value_data), float(timestamp_data)
+        return _safe_parse_float(value_data), _safe_parse_float(timestamp_data)
 
     def read_all_values(self) -> Iterable[Tuple[str, float, float]]:
         """Yield (key, value, timestamp) for all metrics."""
         pattern = f"{self._key_prefix}:*:*:metric:*"
 
-        with self._lock:
-            for metric_key in self._redis.scan_iter(match=pattern):
+        for metric_key in self._redis.scan_iter(match=pattern):
+            with self._lock:
                 # Get the original key from metadata
                 metadata_key = (
                     metric_key.replace(b":metric:", b":meta:", 1)
@@ -283,13 +351,13 @@ class RedisStorageDict:
                 metadata = {
                     "typ": typ,
                     "multiprocess_mode": multiprocess_mode,
-                    "created_at": str(time.time()),
+                    "created_at": str(self._redis_now()),
                 }
 
                 self._redis.hset(metadata_key, mapping=metadata)
 
                 # Set TTL if configured
-                if config.redis_ttl_seconds > 0:
+                if _should_set_ttl():
                     self._redis.expire(metadata_key, config.redis_ttl_seconds)
 
                 logger.debug(
@@ -361,38 +429,56 @@ class RedisStorageClient:
         """
         try:
             pattern = f"{self._key_prefix}:*:{pid}:*"
-            # Use scan_iter with timeout to avoid blocking
-            keys_to_delete = []
+            deleted_count = 0
+            batch_size = 100
+            current_batch = []
+
             try:
-                # Limit scan to avoid blocking for too long
+                # Process keys in streaming fashion to avoid memory issues
                 for key in self._redis_client.scan_iter(match=pattern, count=100):
-                    keys_to_delete.append(key)
-                    # Limit to 1000 keys to avoid blocking
-                    if len(keys_to_delete) >= 1000:
-                        break
+                    current_batch.append(key)
+
+                    # Delete when batch is full
+                    if len(current_batch) >= batch_size:
+                        try:
+                            self._redis_client.delete(*current_batch)
+                            deleted_count += len(current_batch)
+                        except Exception as delete_error:
+                            logger.warning(
+                                "Failed to delete Redis key batch for process %d: %s",
+                                pid,
+                                delete_error,
+                            )
+                        current_batch = []
+
+                        # Limit total cleanup to avoid blocking for too long
+                        if deleted_count >= 1000:
+                            logger.debug(
+                                "Reached cleanup limit of 1000 keys for process %d", pid
+                            )
+                            break
+
             except Exception as scan_error:
                 logger.warning(
                     "Failed to scan Redis keys for process %d: %s", pid, scan_error
                 )
                 return
 
-            if keys_to_delete:
-                # Delete keys in batches to avoid blocking
-                batch_size = 100
-                for i in range(0, len(keys_to_delete), batch_size):
-                    batch = keys_to_delete[i : i + batch_size]
-                    try:
-                        self._redis_client.delete(*batch)
-                    except Exception as delete_error:
-                        logger.warning(
-                            "Failed to delete Redis key batch for process %d: %s",
-                            pid,
-                            delete_error,
-                        )
-                        # Continue with next batch even if this one fails
+            # Delete any remaining keys in the final batch
+            if current_batch:
+                try:
+                    self._redis_client.delete(*current_batch)
+                    deleted_count += len(current_batch)
+                except Exception as delete_error:
+                    logger.warning(
+                        "Failed to delete final Redis key batch for process %d: %s",
+                        pid,
+                        delete_error,
+                    )
 
+            if deleted_count > 0:
                 logger.debug(
-                    "Cleaned up %d Redis keys for process %d", len(keys_to_delete), pid
+                    "Cleaned up %d Redis keys for process %d", deleted_count, pid
                 )
 
         except Exception as e:

@@ -88,9 +88,9 @@ cd system-test\n\
 export SKIP_VENV=true\n\
 # Use environment variables to determine test mode\n\
 if [ "$QUICK_MODE" = "true" ]; then\n\
-    ./system_test_redis_integ.sh --quick --ci\n\
+    ./system_test_redis_integ.sh --quick --ci --no-redis\n\
 else\n\
-    ./system_test_redis_integ.sh --ci\n\
+    ./system_test_redis_integ.sh --ci --no-redis\n\
 fi\n\
 ' > /start_test.sh && chmod +x /start_test.sh
 

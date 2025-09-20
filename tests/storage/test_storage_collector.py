@@ -457,6 +457,215 @@ class TestRedisMultiProcessCollector:
         # key_parts[2] is "12345", not "gauge_min", so it defaults to "all"
         assert mock_metric._multiprocess_mode == "all"
 
+    def test_add_sample_to_metric_gauge_all_mode_from_metadata(self):
+        """Test _add_sample_to_metric with gauge type and 'all' mode from metadata."""
+        mock_metric = Mock()
+        metadata = {"multiprocess_mode": "all"}
+
+        RedisMultiProcessCollector._add_sample_to_metric(
+            mock_metric,
+            "gauge",
+            "test_name",
+            (("label", "value"),),
+            1.0,
+            1234567890.0,
+            "12345",
+            metadata,
+        )
+
+        assert mock_metric._multiprocess_mode == "all"
+        mock_metric.add_sample.assert_called_once_with(
+            "test_name", (("label", "value"), ("pid", "12345")), 1.0, 1234567890.0
+        )
+
+    def test_add_sample_to_metric_gauge_liveall_mode_from_metadata(self):
+        """Test _add_sample_to_metric with gauge type and 'liveall' mode from metadata."""
+        mock_metric = Mock()
+        metadata = {"multiprocess_mode": "liveall"}
+
+        RedisMultiProcessCollector._add_sample_to_metric(
+            mock_metric,
+            "gauge",
+            "test_name",
+            (("label", "value"),),
+            1.0,
+            1234567890.0,
+            "12345",
+            metadata,
+        )
+
+        assert mock_metric._multiprocess_mode == "liveall"
+        mock_metric.add_sample.assert_called_once_with(
+            "test_name", (("label", "value"), ("pid", "12345")), 1.0, 1234567890.0
+        )
+
+    def test_add_sample_to_metric_gauge_live_mode_from_metadata(self):
+        """Test _add_sample_to_metric with gauge type and 'live' mode from metadata."""
+        mock_metric = Mock()
+        metadata = {"multiprocess_mode": "live"}
+
+        RedisMultiProcessCollector._add_sample_to_metric(
+            mock_metric,
+            "gauge",
+            "test_name",
+            (("label", "value"),),
+            1.0,
+            1234567890.0,
+            "12345",
+            metadata,
+        )
+
+        assert mock_metric._multiprocess_mode == "live"
+        mock_metric.add_sample.assert_called_once_with(
+            "test_name", (("label", "value"), ("pid", "12345")), 1.0, 1234567890.0
+        )
+
+    def test_add_sample_to_metric_gauge_max_mode_from_metadata(self):
+        """Test _add_sample_to_metric with gauge type and 'max' mode from metadata."""
+        mock_metric = Mock()
+        metadata = {"multiprocess_mode": "max"}
+
+        RedisMultiProcessCollector._add_sample_to_metric(
+            mock_metric,
+            "gauge",
+            "test_name",
+            (("label", "value"),),
+            1.0,
+            1234567890.0,
+            "12345",
+            metadata,
+        )
+
+        assert mock_metric._multiprocess_mode == "max"
+        mock_metric.add_sample.assert_called_once_with(
+            "test_name", (("label", "value"), ("pid", "12345")), 1.0, 1234567890.0
+        )
+
+    def test_add_sample_to_metric_gauge_min_mode_from_metadata(self):
+        """Test _add_sample_to_metric with gauge type and 'min' mode from metadata."""
+        mock_metric = Mock()
+        metadata = {"multiprocess_mode": "min"}
+
+        RedisMultiProcessCollector._add_sample_to_metric(
+            mock_metric,
+            "gauge",
+            "test_name",
+            (("label", "value"),),
+            1.0,
+            1234567890.0,
+            "12345",
+            metadata,
+        )
+
+        assert mock_metric._multiprocess_mode == "min"
+        mock_metric.add_sample.assert_called_once_with(
+            "test_name", (("label", "value"), ("pid", "12345")), 1.0, 1234567890.0
+        )
+
+    def test_add_sample_to_metric_gauge_sum_mode_from_metadata(self):
+        """Test _add_sample_to_metric with gauge type and 'sum' mode from metadata."""
+        mock_metric = Mock()
+        metadata = {"multiprocess_mode": "sum"}
+
+        RedisMultiProcessCollector._add_sample_to_metric(
+            mock_metric,
+            "gauge",
+            "test_name",
+            (("label", "value"),),
+            1.0,
+            1234567890.0,
+            "12345",
+            metadata,
+        )
+
+        assert mock_metric._multiprocess_mode == "sum"
+        mock_metric.add_sample.assert_called_once_with(
+            "test_name", (("label", "value"), ("pid", "12345")), 1.0, 1234567890.0
+        )
+
+    def test_add_sample_to_metric_gauge_bytes_mode_from_metadata(self):
+        """Test _add_sample_to_metric with gauge type and mode from bytes metadata."""
+        mock_metric = Mock()
+        metadata = {b"multiprocess_mode": b"max"}
+
+        RedisMultiProcessCollector._add_sample_to_metric(
+            mock_metric,
+            "gauge",
+            "test_name",
+            (("label", "value"),),
+            1.0,
+            1234567890.0,
+            "12345",
+            metadata,
+        )
+
+        assert mock_metric._multiprocess_mode == "max"
+        mock_metric.add_sample.assert_called_once_with(
+            "test_name", (("label", "value"), ("pid", "12345")), 1.0, 1234567890.0
+        )
+
+    def test_add_sample_to_metric_gauge_no_mode_in_metadata(self):
+        """Test _add_sample_to_metric with gauge type and no mode in metadata."""
+        mock_metric = Mock()
+        metadata = {"other_field": "value"}
+
+        RedisMultiProcessCollector._add_sample_to_metric(
+            mock_metric,
+            "gauge",
+            "test_name",
+            (("label", "value"),),
+            1.0,
+            1234567890.0,
+            "12345",
+            metadata,
+        )
+
+        assert mock_metric._multiprocess_mode == "all"  # Default fallback
+        mock_metric.add_sample.assert_called_once_with(
+            "test_name", (("label", "value"), ("pid", "12345")), 1.0, 1234567890.0
+        )
+
+    def test_add_sample_to_metric_gauge_empty_metadata(self):
+        """Test _add_sample_to_metric with gauge type and empty metadata."""
+        mock_metric = Mock()
+        metadata = {}
+
+        RedisMultiProcessCollector._add_sample_to_metric(
+            mock_metric,
+            "gauge",
+            "test_name",
+            (("label", "value"),),
+            1.0,
+            1234567890.0,
+            "12345",
+            metadata,
+        )
+
+        assert mock_metric._multiprocess_mode == "all"  # Default fallback
+        mock_metric.add_sample.assert_called_once_with(
+            "test_name", (("label", "value"), ("pid", "12345")), 1.0, 1234567890.0
+        )
+
+    def test_add_sample_to_metric_gauge_none_metadata(self):
+        """Test _add_sample_to_metric with gauge type and None metadata."""
+        mock_metric = Mock()
+
+        RedisMultiProcessCollector._add_sample_to_metric(
+            mock_metric,
+            "gauge",
+            "test_name",
+            (("label", "value"),),
+            1.0,
+            1234567890.0,
+            "12345",
+            None,
+        )
+
+        assert mock_metric._multiprocess_mode == "all"  # Default fallback
+        mock_metric.add_sample.assert_called_once_with(
+            "test_name", (("label", "value"), ("pid", "12345")), 1.0, 1234567890.0
+        )
+
     def test_add_sample_to_metric_counter(self):
         """Test _add_sample_to_metric with counter type."""
         mock_metric = Mock()
