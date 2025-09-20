@@ -30,6 +30,8 @@ All notable changes to this project will be documented in this file.
   - **Comprehensive Redis Integration**: Full Redis storage validation
   - **Signal Handling Testing**: Complete signal handling and metric capture validation
   - **TTL Configuration**: Redis key expiration verification
+  - **Worker Restart Metrics Testing**: Comprehensive testing of worker restart metrics with QUIT/ABRT signals
+  - **Enhanced Worker PID Detection**: Multiple fallback methods for finding worker processes in Docker
 - **Core Implementation Features**:
   - **Lock-Free Operations**: Non-blocking Redis operations with per-key locking
   - **Robust Data Parsing**: Centralized bytes→str + float parsing utilities
@@ -54,7 +56,20 @@ All notable changes to this project will be documented in this file.
 - **Key Structure**: Implemented structured Redis keys with embedded multiprocess modes
 - **Documentation**: Updated all documentation to reflect current Redis storage implementation
 - **System Tests**: Enhanced system tests with detailed Prometheus metrics verification
+- **Request Object Extraction**: Refactored to use robust attribute-based detection instead of fragile positional arguments
+- **Code Architecture**: Eliminated duplicate endpoint normalization logic with helper methods
+- **Worker Implementation**: Unified all worker types to use consistent `_generic_handle_request` method
 
+### Fixed
+
+- **Worker Restart Metrics**: Fixed `gunicorn_worker_restart_total` and `gunicorn_worker_restart_count_total` metrics
+  - Added proper imports for `WORKER_RESTART_REASON` and `WORKER_RESTART_COUNT`
+  - Implemented worker restart tracking in `_generic_handle_quit` and `_generic_handle_abort` methods
+  - Added comprehensive worker-specific signal testing (QUIT/ABRT) in system tests
+- **Request Object Detection**: Improved robustness across different worker types and method signatures
+- **Code Duplication**: Eliminated duplicate endpoint normalization logic with `_extract_request_info()` helper method
+- **Return Value Handling**: Fixed return value propagation in signal handlers and request methods
+- **Import Errors**: Resolved import issues after Tornado worker removal
 
 ### Technical Details
 
@@ -65,11 +80,19 @@ All notable changes to this project will be documented in this file.
 - **Atomic Operations**: Thread-safe metric updates using Redis transactions
 - **Process Isolation**: Each worker process maintains separate metric instances
 - **Label Preservation**: All metric labels and metadata preserved in Redis storage
+- **Robust Request Extraction**: Attribute-based request object detection using `hasattr()` checks
+- **Unified Error Handling**: Consistent error metrics collection across all worker types
 
 ### Removed
 
 - **Redis Forwarding References**: Removed all outdated Redis forwarding documentation and configuration
 - **Outdated Architecture**: Removed references to old forwarding-based Redis integration
+- **Request/Response Size Metrics**: Removed `gunicorn_worker_request_size_bytes` and `gunicorn_worker_response_size_bytes` metrics
+- **Tornado Worker Support**: Completely removed `PrometheusTornadoWorker` and all related functionality
+  - Removed Tornado worker from documentation and examples
+  - Updated installation instructions to exclude Tornado dependencies
+  - Added clear documentation that Tornado workers are not supported
+- **Unused Methods**: Removed `_extract_request_size` and related unused methods
 
 ## [0.1.3] - 2025-07-28
 
