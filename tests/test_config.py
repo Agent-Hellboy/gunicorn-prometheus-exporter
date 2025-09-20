@@ -843,3 +843,125 @@ class TestConfigEdgeCases:
                 os.environ["PROMETHEUS_MULTIPROC_DIR"] = original_multiproc_dir
             elif "PROMETHEUS_MULTIPROC_DIR" in os.environ:
                 del os.environ["PROMETHEUS_MULTIPROC_DIR"]
+
+
+class TestConfigPropertyMethods:
+    """Test config property methods for better coverage."""
+
+    def test_redis_enabled_setter(self):
+        """Test redis_enabled setter."""
+        config = ExporterConfig()
+
+        # Test setting to True
+        config.redis_enabled = True
+        assert os.environ.get("REDIS_ENABLED") == "true"
+
+        # Test setting to False
+        config.redis_enabled = False
+        assert os.environ.get("REDIS_ENABLED") == "false"
+
+    def test_redis_enabled_deleter(self):
+        """Test redis_enabled deleter."""
+        config = ExporterConfig()
+
+        # Set the environment variable
+        os.environ["REDIS_ENABLED"] = "true"
+        assert "REDIS_ENABLED" in os.environ
+
+        # Delete it using the deleter
+        del config.redis_enabled
+        assert "REDIS_ENABLED" not in os.environ
+
+    def test_redis_enabled_deleter_when_not_set(self):
+        """Test redis_enabled deleter when environment variable is not set."""
+        config = ExporterConfig()
+
+        # Ensure the environment variable is not set
+        if "REDIS_ENABLED" in os.environ:
+            del os.environ["REDIS_ENABLED"]
+
+        # Deleting should not raise an error
+        del config.redis_enabled
+        assert "REDIS_ENABLED" not in os.environ
+
+    def test_redis_ttl_disabled_true_values(self):
+        """Test redis_ttl_disabled with various true values."""
+        config = ExporterConfig()
+
+        true_values = ["true", "TRUE", "True", "1", "yes", "YES", "on", "ON"]
+
+        for value in true_values:
+            os.environ["REDIS_TTL_DISABLED"] = value
+            assert config.redis_ttl_disabled is True
+
+    def test_redis_ttl_disabled_false_values(self):
+        """Test redis_ttl_disabled with various false values."""
+        config = ExporterConfig()
+
+        false_values = [
+            "false",
+            "FALSE",
+            "False",
+            "0",
+            "no",
+            "NO",
+            "off",
+            "OFF",
+            "invalid",
+        ]
+
+        for value in false_values:
+            os.environ["REDIS_TTL_DISABLED"] = value
+            assert config.redis_ttl_disabled is False
+
+    def test_redis_ttl_disabled_default(self):
+        """Test redis_ttl_disabled default value."""
+        config = ExporterConfig()
+
+        # Remove the environment variable if it exists
+        if "REDIS_TTL_DISABLED" in os.environ:
+            del os.environ["REDIS_TTL_DISABLED"]
+
+        # Default should be False
+        assert config.redis_ttl_disabled is False
+
+    def test_cleanup_db_files_true_values(self):
+        """Test cleanup_db_files with various true values."""
+        config = ExporterConfig()
+
+        true_values = ["true", "TRUE", "True", "1", "yes", "YES", "on", "ON"]
+
+        for value in true_values:
+            os.environ["CLEANUP_DB_FILES"] = value
+            assert config.cleanup_db_files is True
+
+    def test_cleanup_db_files_false_values(self):
+        """Test cleanup_db_files with various false values."""
+        config = ExporterConfig()
+
+        false_values = [
+            "false",
+            "FALSE",
+            "False",
+            "0",
+            "no",
+            "NO",
+            "off",
+            "OFF",
+            "invalid",
+        ]
+
+        for value in false_values:
+            os.environ["CLEANUP_DB_FILES"] = value
+            assert config.cleanup_db_files is False
+
+    def test_cleanup_db_files_default(self):
+        """Test cleanup_db_files default value."""
+        config = ExporterConfig()
+
+        # Remove the environment variable if it exists
+        if "CLEANUP_DB_FILES" in os.environ:
+            del os.environ["CLEANUP_DB_FILES"]
+
+        # Default should be True
+        assert config.cleanup_db_files is True
