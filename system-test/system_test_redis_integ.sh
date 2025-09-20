@@ -928,10 +928,14 @@ verify_prometheus_scraping() {
 
             # Print the actual metrics grabbed from Prometheus
             print_status "Metrics grabbed from Prometheus:"
-            echo "$metrics_response" | jq -r '.data.result[]? | "\(.metric.__name__){\(.metric | to_entries | map("\(.key)=\"\(.value)\"") | join(","))} \(.value[1])"' 2>/dev/null || {
-                # Fallback if jq is not available
-                echo "$metrics_response" | grep -o '"__name__":"[^"]*"' | sed 's/"__name__":"//g' | sed 's/"//g' | head -10
-            }
+            if command -v jq >/dev/null 2>&1; then
+                echo "$metrics_response" | jq -r '.data.result[]? | "\(.metric.__name__){\(.metric | to_entries | map("\(.key)=\"\(.value)\"") | join(","))} \(.value[1])"' 2>/dev/null
+            else
+                # Fallback: extract metric names and values manually
+                echo "$metrics_response" | grep -o '"__name__":"[^"]*"' | sed 's/"__name__":"//g' | sed 's/"//g' | while read -r metric_name; do
+                    echo "  $metric_name: $(echo "$metrics_response" | grep -A 5 "\"__name__\":\"$metric_name\"" | grep -o '"value":\[[^]]*\]' | head -1)"
+                done
+            fi
 
             # Also query for other metric types to show comprehensive data
             print_status "Additional metrics from Prometheus:"
@@ -945,9 +949,14 @@ verify_prometheus_scraping() {
                     query_count=$(echo "$query_response" | grep -o '"value":' | wc -l)
                     if [ "$query_count" -gt 0 ]; then
                         print_status "  ${query} (${query_count} samples):"
-                        echo "$query_response" | jq -r '.data.result[]? | "    \(.metric.__name__){\(.metric | to_entries | map("\(.key)=\"\(.value)\"") | join(","))} \(.value[1])"' 2>/dev/null || {
-                            echo "$query_response" | grep -o '"__name__":"[^"]*"' | sed 's/"__name__":"//g' | sed 's/"//g' | head -3
-                        }
+                        if command -v jq >/dev/null 2>&1; then
+                            echo "$query_response" | jq -r '.data.result[]? | "    \(.metric.__name__){\(.metric | to_entries | map("\(.key)=\"\(.value)\"") | join(","))} \(.value[1])"' 2>/dev/null
+                        else
+                            # Fallback: show metric names and sample values
+                            echo "$query_response" | grep -o '"__name__":"[^"]*"' | sed 's/"__name__":"//g' | sed 's/"//g' | head -3 | while read -r metric_name; do
+                                echo "    $metric_name: $(echo "$query_response" | grep -A 5 "\"__name__\":\"$metric_name\"" | grep -o '"value":\[[^]]*\]' | head -1)"
+                            done
+                        fi
                     fi
                 fi
             done
