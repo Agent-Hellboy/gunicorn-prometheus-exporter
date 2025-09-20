@@ -7,13 +7,18 @@ import os
 from prometheus_client import CollectorRegistry
 
 from gunicorn_prometheus_exporter.metrics import (
+    MASTER_WORKER_RESTART_COUNT,
     MASTER_WORKER_RESTARTS,
     WORKER_CPU,
     WORKER_ERROR_HANDLING,
     WORKER_FAILED_REQUESTS,
     WORKER_MEMORY,
     WORKER_REQUEST_DURATION,
+    WORKER_REQUEST_SIZE,
     WORKER_REQUESTS,
+    WORKER_RESPONSE_SIZE,
+    WORKER_RESTART_COUNT,
+    WORKER_RESTART_REASON,
     WORKER_STATE,
     WORKER_UPTIME,
     registry,
@@ -34,6 +39,47 @@ def test_master_worker_restarts_metric():
         == "Total number of Gunicorn worker restarts"
     )
     assert MASTER_WORKER_RESTARTS._metric._labelnames == ("reason",)
+
+
+def test_master_worker_restart_count_metric():
+    """Test MASTER_WORKER_RESTART_COUNT metric configuration."""
+    assert (
+        MASTER_WORKER_RESTART_COUNT._metric._name
+        == "gunicorn_master_worker_restart_count"
+    )
+    assert (
+        MASTER_WORKER_RESTART_COUNT._metric._documentation
+        == "Total number of worker restarts by reason and worker"
+    )
+    assert MASTER_WORKER_RESTART_COUNT._metric._labelnames == (
+        "worker_id",
+        "reason",
+        "restart_type",
+    )
+
+
+def test_worker_restart_reason_metric():
+    """Test WORKER_RESTART_REASON metric configuration."""
+    assert WORKER_RESTART_REASON._metric._name == "gunicorn_worker_restart"
+    assert (
+        WORKER_RESTART_REASON._metric._documentation
+        == "Total number of worker restarts by reason"
+    )
+    assert WORKER_RESTART_REASON._metric._labelnames == ("worker_id", "reason")
+
+
+def test_worker_restart_count_metric():
+    """Test WORKER_RESTART_COUNT metric configuration."""
+    assert WORKER_RESTART_COUNT._metric._name == "gunicorn_worker_restart_count"
+    assert (
+        WORKER_RESTART_COUNT._metric._documentation
+        == "Total number of worker restarts by worker and restart type"
+    )
+    assert WORKER_RESTART_COUNT._metric._labelnames == (
+        "worker_id",
+        "restart_type",
+        "reason",
+    )
 
 
 def test_worker_state_metric():
@@ -104,6 +150,20 @@ def test_worker_failed_requests_metric():
     )
 
 
+def test_worker_request_size_metric():
+    """Test WORKER_REQUEST_SIZE metric configuration."""
+    assert WORKER_REQUEST_SIZE._metric._name == "gunicorn_worker_request_size_bytes"
+    assert WORKER_REQUEST_SIZE._metric._documentation == "Request size in bytes"
+    assert WORKER_REQUEST_SIZE._metric._labelnames == ("worker_id",)
+
+
+def test_worker_response_size_metric():
+    """Test WORKER_RESPONSE_SIZE metric configuration."""
+    assert WORKER_RESPONSE_SIZE._metric._name == "gunicorn_worker_response_size_bytes"
+    assert WORKER_RESPONSE_SIZE._metric._documentation == "Response size in bytes"
+    assert WORKER_RESPONSE_SIZE._metric._labelnames == ("worker_id",)
+
+
 def test_multiprocess_dir_setup():
     """Test that PROMETHEUS_MULTIPROC_DIR is set."""
     from gunicorn_prometheus_exporter.config import config
@@ -129,6 +189,11 @@ def test_metric_registration():
         WORKER_FAILED_REQUESTS,
         WORKER_ERROR_HANDLING,
         WORKER_STATE,
+        WORKER_REQUEST_SIZE,
+        WORKER_RESPONSE_SIZE,
+        WORKER_RESTART_REASON,
+        WORKER_RESTART_COUNT,
         MASTER_WORKER_RESTARTS,
+        MASTER_WORKER_RESTART_COUNT,
     ]
     assert all(metric._metric in collectors for metric in metric_classes)

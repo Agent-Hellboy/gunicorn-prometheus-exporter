@@ -32,7 +32,6 @@ class TestModuleInitialization:
             "is_redis_enabled",
             "get_prometheus_eventlet_worker",
             "get_prometheus_gevent_worker",
-            "get_prometheus_tornado_worker",
         ]
 
         for export in expected_exports:
@@ -51,19 +50,12 @@ class TestModuleInitialization:
         assert hasattr(gunicorn_prometheus_exporter, "GEVENT_AVAILABLE")
         assert isinstance(gunicorn_prometheus_exporter.GEVENT_AVAILABLE, bool)
 
-    def test_tornado_availability(self):
-        """Test Tornado availability detection."""
-        # Test that TORNADO_AVAILABLE is defined
-        assert hasattr(gunicorn_prometheus_exporter, "TORNADO_AVAILABLE")
-        assert isinstance(gunicorn_prometheus_exporter.TORNADO_AVAILABLE, bool)
-
     def test_worker_classes_availability(self):
         """Test that worker classes are available."""
         assert hasattr(gunicorn_prometheus_exporter, "PrometheusWorker")
         assert hasattr(gunicorn_prometheus_exporter, "PrometheusThreadWorker")
         assert hasattr(gunicorn_prometheus_exporter, "PrometheusEventletWorker")
         assert hasattr(gunicorn_prometheus_exporter, "PrometheusGeventWorker")
-        assert hasattr(gunicorn_prometheus_exporter, "PrometheusTornadoWorker")
 
     def test_master_class_availability(self):
         """Test that master class is available."""
@@ -103,16 +95,6 @@ class TestImportErrorHandling:
         worker_class = gunicorn_prometheus_exporter.PrometheusGeventWorker
         assert worker_class is None or callable(worker_class)
 
-    def test_tornado_import_error_simulation(self):
-        """Test handling of Tornado import error."""
-        # Test the actual import error handling by checking the availability flags
-        assert hasattr(gunicorn_prometheus_exporter, "TORNADO_AVAILABLE")
-        assert hasattr(gunicorn_prometheus_exporter, "PrometheusTornadoWorker")
-
-        # Test that the worker class is either available or None
-        worker_class = gunicorn_prometheus_exporter.PrometheusTornadoWorker
-        assert worker_class is None or callable(worker_class)
-
     def test_import_error_coverage(self):
         """Test that import error paths are covered."""
         # This test ensures that the ImportError exception handling paths are tested
@@ -121,7 +103,6 @@ class TestImportErrorHandling:
         # Test that all availability flags are boolean
         assert isinstance(gunicorn_prometheus_exporter.EVENTLET_AVAILABLE, bool)
         assert isinstance(gunicorn_prometheus_exporter.GEVENT_AVAILABLE, bool)
-        assert isinstance(gunicorn_prometheus_exporter.TORNADO_AVAILABLE, bool)
 
         # Test that worker classes are either callable or None
         assert (
@@ -130,9 +111,6 @@ class TestImportErrorHandling:
         )
         assert gunicorn_prometheus_exporter.PrometheusGeventWorker is None or callable(
             gunicorn_prometheus_exporter.PrometheusGeventWorker
-        )
-        assert gunicorn_prometheus_exporter.PrometheusTornadoWorker is None or callable(
-            gunicorn_prometheus_exporter.PrometheusTornadoWorker
         )
 
 

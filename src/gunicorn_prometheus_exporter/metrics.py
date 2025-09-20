@@ -206,6 +206,40 @@ class WorkerState(BaseMetric, metric_type=Gauge):
     multiprocess_mode = "all"  # Sum all worker states
 
 
+class WorkerRequestSize(BaseMetric, metric_type=Histogram):
+    """Request size in bytes."""
+
+    name = "gunicorn_worker_request_size_bytes"
+    documentation = "Request size in bytes"
+    labelnames = ["worker_id"]
+    buckets = (1024, 4096, 16384, 65536, 262144, 1048576, 4194304, float("inf"))
+
+
+class WorkerResponseSize(BaseMetric, metric_type=Histogram):
+    """Response size in bytes."""
+
+    name = "gunicorn_worker_response_size_bytes"
+    documentation = "Response size in bytes"
+    labelnames = ["worker_id"]
+    buckets = (1024, 4096, 16384, 65536, 262144, 1048576, 4194304, float("inf"))
+
+
+class WorkerRestartReason(BaseMetric, metric_type=Counter):
+    """Total number of worker restarts by reason."""
+
+    name = "gunicorn_worker_restart_total"
+    documentation = "Total number of worker restarts by reason"
+    labelnames = ["worker_id", "reason"]
+
+
+class WorkerRestartCount(BaseMetric, metric_type=Counter):
+    """Total number of worker restarts by worker and restart type."""
+
+    name = "gunicorn_worker_restart_count_total"
+    documentation = "Total number of worker restarts by worker and restart type"
+    labelnames = ["worker_id", "restart_type", "reason"]
+
+
 # ---------------------------------------------------------------------------------
 
 
@@ -219,6 +253,14 @@ class MasterWorkerRestarts(BaseMetric, metric_type=Counter):
     labelnames = ["reason"]
 
 
+class MasterWorkerRestartCount(BaseMetric, metric_type=Counter):
+    """Total number of worker restarts by reason and worker."""
+
+    name = "gunicorn_master_worker_restart_count_total"
+    documentation = "Total number of worker restarts by reason and worker"
+    labelnames = ["worker_id", "reason", "restart_type"]
+
+
 # ---------------------------------------------------------------------------------
 
 WORKER_REQUESTS = WorkerRequests
@@ -229,7 +271,12 @@ WORKER_UPTIME = WorkerUptime
 WORKER_FAILED_REQUESTS = WorkerFailedRequests
 WORKER_ERROR_HANDLING = WorkerErrorHandling
 WORKER_STATE = WorkerState
+WORKER_REQUEST_SIZE = WorkerRequestSize
+WORKER_RESPONSE_SIZE = WorkerResponseSize
+WORKER_RESTART_REASON = WorkerRestartReason
+WORKER_RESTART_COUNT = WorkerRestartCount
 MASTER_WORKER_RESTARTS = MasterWorkerRestarts
+MASTER_WORKER_RESTART_COUNT = MasterWorkerRestartCount
 
 
 def get_shared_registry():
@@ -238,4 +285,13 @@ def get_shared_registry():
 
 
 # Dictionary for easy access to master metrics
-MASTER_METRICS = {"worker_restart_total": MASTER_WORKER_RESTARTS}
+MASTER_METRICS = {
+    "worker_restart_total": MASTER_WORKER_RESTARTS,
+    "worker_restart_count_total": MASTER_WORKER_RESTART_COUNT,
+}
+
+# Dictionary for easy access to worker metrics
+WORKER_METRICS = {
+    "worker_restart_total": WORKER_RESTART_REASON,
+    "worker_restart_count_total": WORKER_RESTART_COUNT,
+}

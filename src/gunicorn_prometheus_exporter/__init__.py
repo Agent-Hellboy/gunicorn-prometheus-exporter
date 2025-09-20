@@ -84,7 +84,6 @@ from .plugin import (
     PrometheusWorker,
     get_prometheus_eventlet_worker,
     get_prometheus_gevent_worker,
-    get_prometheus_tornado_worker,
 )
 from .backend import (
     RedisStorageManager,
@@ -111,14 +110,6 @@ try:
 except ImportError:
     PrometheusGeventWorker = None
     GEVENT_AVAILABLE = False
-
-try:
-    from .plugin import PrometheusTornadoWorker
-
-    TORNADO_AVAILABLE = True
-except ImportError:
-    PrometheusTornadoWorker = None
-    TORNADO_AVAILABLE = False
 
 
 logger = logging.getLogger(__name__)
@@ -178,7 +169,6 @@ __all__ = [
     "is_redis_enabled",
     "get_prometheus_eventlet_worker",
     "get_prometheus_gevent_worker",
-    "get_prometheus_tornado_worker",
 ]
 
 # Add async workers if available
@@ -187,6 +177,3 @@ if EVENTLET_AVAILABLE:
 
 if GEVENT_AVAILABLE:
     __all__.append("PrometheusGeventWorker")
-
-if TORNADO_AVAILABLE:
-    __all__.append("PrometheusTornadoWorker")

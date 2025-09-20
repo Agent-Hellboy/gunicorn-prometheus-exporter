@@ -325,9 +325,12 @@ verify_metrics() {
         "gunicorn_worker_state"
     )
 
-    # Optional metrics (may not have values)
+    # Optional metrics (may not have values during normal operation)
     local optional_metrics=(
         "gunicorn_master_worker_restart_total"
+        "gunicorn_master_worker_restart_count_total"
+        "gunicorn_worker_restart_total"
+        "gunicorn_worker_restart_count_total"
     )
 
     local failed_checks=0
@@ -566,7 +569,129 @@ test_signal_handling() {
             else
                 print_warning "⚠ SIG${signal} metric not found (may need time to process)"
             fi
+
+            # Also check for worker restart metrics with reasons
+            print_status "Checking worker restart metrics for SIG${signal}..."
+            local worker_restart_response
+            worker_restart_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_total" | grep "reason=\"${reason}\"" || echo "")
+
+            if [ ! -z "$worker_restart_response" ]; then
+                print_success "✓ Worker restart metric captured: ${worker_restart_response}"
+            else
+                print_warning "⚠ Worker restart metric not found for SIG${signal}"
+            fi
+
+            # Check for restart count metrics
+            print_status "Checking restart count metrics for SIG${signal}..."
+            local restart_count_response
+            restart_count_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_count_total" | grep "reason=\"${reason}\"" || echo "")
+
+            if [ ! -z "$restart_count_response" ]; then
+                print_success "✓ Restart count metric captured: ${restart_count_response}"
+            else
+                print_warning "⚠ Restart count metric not found for SIG${signal}"
+            fi
         done
+
+        # Test worker-specific signals (QUIT/ABORT) to trigger worker restart metrics
+        print_status "Testing worker-specific signals to trigger worker restart metrics..."
+
+        # Get worker PIDs - try multiple methods to find Gunicorn workers
+        local worker_pids=""
+
+        # Method 1: Look for gunicorn worker processes
+        worker_pids=$(ps aux | grep -E "gunicorn.*worker|python.*worker" | grep -v grep | awk '{print $2}' | head -2)
+
+        # Method 2: If no workers found, look for python processes with worker in command line
+        if [ -z "$worker_pids" ]; then
+            worker_pids=$(ps aux | grep python | grep -E "worker|gunicorn" | grep -v grep | awk '{print $2}' | head -2)
+        fi
+
+        # Method 3: Look for processes listening on port 8088 (our test port)
+        if [ -z "$worker_pids" ]; then
+            worker_pids=$(lsof -ti:8088 2>/dev/null | head -2)
+        fi
+
+        # Method 4: Look for any python processes (as fallback)
+        if [ -z "$worker_pids" ]; then
+            worker_pids=$(ps aux | grep python | grep -v grep | awk '{print $2}' | head -2)
+        fi
+
+        print_status "Found worker PIDs: $worker_pids"
+
+        if [ ! -z "$worker_pids" ]; then
+            # Test QUIT signal on first worker
+            local first_worker_pid=$(echo "$worker_pids" | head -1)
+            if [ ! -z "$first_worker_pid" ]; then
+                print_status "Testing QUIT signal on worker PID $first_worker_pid..."
+
+                # Check metrics before QUIT
+                local quit_before=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_total" | grep "reason=\"quit\"" | wc -l)
+                print_status "Worker QUIT metrics before: $quit_before"
+
+                kill -QUIT "$first_worker_pid" 2>/dev/null || true
+                sleep 3  # Give time for the signal to be processed
+
+                # Check for worker restart metrics
+                local quit_metrics
+                quit_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_total" | grep "reason=\"quit\"" || echo "")
+
+                if [ ! -z "$quit_metrics" ]; then
+                    print_success "✓ Worker QUIT metric captured: ${quit_metrics}"
+                else
+                    print_warning "⚠ Worker QUIT metric not found"
+                fi
+
+                # Check for restart count metrics
+                local quit_count_metrics
+                quit_count_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_count_total" | grep "reason=\"quit\"" || echo "")
+
+                if [ ! -z "$quit_count_metrics" ]; then
+                    print_success "✓ Worker QUIT count metric captured: ${quit_count_metrics}"
+                else
+                    print_warning "⚠ Worker QUIT count metric not found"
+                fi
+            fi
+
+            # Test ABORT signal on second worker (if available)
+            local second_worker_pid=$(echo "$worker_pids" | tail -1)
+            if [ ! -z "$second_worker_pid" ] && [ "$second_worker_pid" != "$first_worker_pid" ]; then
+                print_status "Testing ABORT signal on worker PID $second_worker_pid..."
+
+                # Check metrics before ABORT
+                local abort_before=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_total" | grep "reason=\"abort\"" | wc -l)
+                print_status "Worker ABORT metrics before: $abort_before"
+
+                kill -ABRT "$second_worker_pid" 2>/dev/null || true
+                sleep 3  # Give time for the signal to be processed
+
+                # Check for worker restart metrics
+                local abort_metrics
+                abort_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_total" | grep "reason=\"abort\"" || echo "")
+
+                if [ ! -z "$abort_metrics" ]; then
+                    print_success "✓ Worker ABORT metric captured: ${abort_metrics}"
+                else
+                    print_warning "⚠ Worker ABORT metric not found"
+                fi
+
+                # Check for restart count metrics
+                local abort_count_metrics
+                abort_count_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_count_total" | grep "reason=\"abort\"" || echo "")
+
+                if [ ! -z "$abort_count_metrics" ]; then
+                    print_success "✓ Worker ABORT count metric captured: ${abort_count_metrics}"
+                else
+                    print_warning "⚠ Worker ABORT count metric not found"
+                fi
+            fi
+        else
+            print_warning "⚠ No worker PIDs found for worker-specific signal testing"
+            print_status "Debug: Available processes:"
+            ps aux | head -10
+            print_status "Debug: Python processes:"
+            ps aux | grep python | head -5
+        fi
 
         # Final test: SIGINT (Ctrl+C) - this should terminate the process
         print_status "Testing SIGINT (Ctrl+C) - should terminate process..."
