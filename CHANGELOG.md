@@ -25,25 +25,25 @@ All notable changes to this project will be documented in this file.
   - **Streaming Collection**: Processes metrics in batches to avoid memory overload
   - **Lock-Free Reads**: Uses Redis `scan_iter` for non-blocking key iteration
   - **Metadata Caching**: Reduces Redis lookups for frequently accessed metadata
-- **System Testing Enhancements**:
+- **System Testing Features**:
   - **Prometheus Metrics Verification**: Detailed metrics output after 15-second scraping wait
   - **Comprehensive Redis Integration**: Full Redis storage validation
   - **Signal Handling Testing**: Complete signal handling and metric capture validation
   - **TTL Configuration**: Redis key expiration verification
-- **Code Quality Features**:
+- **Core Implementation Features**:
   - **Lock-Free Operations**: Non-blocking Redis operations with per-key locking
   - **Robust Data Parsing**: Centralized bytes→str + float parsing utilities
   - **Unified TTL Management**: Single configuration gate for Redis key expiration
   - **Redis Server Time**: Coherent server-side timestamps using Redis time
   - **Memory-Efficient Cleanup**: Streaming cleanup operations to avoid memory overload
   - **Structured Key Architecture**: Embedded multiprocess modes in Redis key structure
-  - **Enhanced Method Signatures**: Extended `read_value` and `write_value` with `multiprocess_mode` parameter
+  - **Method Signatures**: `read_value` and `write_value` with `multiprocess_mode` parameter
   - **RedisValue Integration**: Complete integration with Redis storage methods
-  - **System Test Robustness**: Improved timeout handling and shell script reliability
+  - **System Test Robustness**: Timeout handling and shell script reliability
   - **Code Formatting**: Comprehensive linting and formatting compliance
-- **Comprehensive Documentation**:
+- **Complete Documentation Suite**:
   - **Backend Architecture Guide**: Complete architecture documentation (`docs/backend-architecture.md`)
-  - **API Reference Updates**: Detailed Redis backend API documentation
+  - **API Reference**: Detailed Redis backend API documentation
   - **Integration Examples**: Code examples for all Redis backend components
   - **Configuration Guide**: Complete Redis configuration options
 
