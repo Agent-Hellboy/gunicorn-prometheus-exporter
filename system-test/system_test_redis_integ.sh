@@ -925,6 +925,32 @@ verify_prometheus_scraping() {
 
         if [ "$metric_count" -gt 0 ]; then
             print_success "Prometheus has scraped metrics (${metric_count} data points found)"
+
+            # Print the actual metrics grabbed from Prometheus
+            print_status "Metrics grabbed from Prometheus:"
+            echo "$metrics_response" | jq -r '.data.result[]? | "\(.metric.__name__){\(.metric | to_entries | map("\(.key)=\"\(.value)\"") | join(","))} \(.value[1])"' 2>/dev/null || {
+                # Fallback if jq is not available
+                echo "$metrics_response" | grep -o '"__name__":"[^"]*"' | sed 's/"__name__":"//g' | sed 's/"//g' | head -10
+            }
+
+            # Also query for other metric types to show comprehensive data
+            print_status "Additional metrics from Prometheus:"
+            local additional_queries=("gunicorn_worker_memory_bytes" "gunicorn_worker_cpu_percent" "gunicorn_worker_uptime_seconds" "gunicorn_worker_state")
+
+            for query in "${additional_queries[@]}"; do
+                local query_response
+                query_response=$(curl -s "${prometheus_url}/api/v1/query?query=${query}" 2>/dev/null || echo "")
+                if [ ! -z "$query_response" ]; then
+                    local query_count
+                    query_count=$(echo "$query_response" | grep -o '"value":' | wc -l)
+                    if [ "$query_count" -gt 0 ]; then
+                        print_status "  ${query} (${query_count} samples):"
+                        echo "$query_response" | jq -r '.data.result[]? | "    \(.metric.__name__){\(.metric | to_entries | map("\(.key)=\"\(.value)\"") | join(","))} \(.value[1])"' 2>/dev/null || {
+                            echo "$query_response" | grep -o '"__name__":"[^"]*"' | sed 's/"__name__":"//g' | sed 's/"//g' | head -3
+                        }
+                    fi
+                fi
+            done
         else
             print_warning "Prometheus scraped but no metric data found"
         fi
