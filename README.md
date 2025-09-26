@@ -8,11 +8,41 @@
 
 A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities, featuring innovative Redis-based storage and advanced signal handling. This Gunicorn worker plugin exports Prometheus metrics to monitor worker performance, including memory usage, CPU usage, request durations, and error tracking (trying to replace <https://docs.gunicorn.org/en/stable/instrumentation.html> with extra info). It also aims to replace request-level tracking, such as the number of requests made to a particular endpoint, for any framework (e.g., Flask, Django, and others) that conforms to the WSGI specification.
 
+## WSGI Protocol Limitations & Error Handling
+
+### The Challenge with WSGI Error Tracking
+
+One of the fundamental limitations of the WSGI protocol is that **Python frameworks consume errors and exceptions internally**. Most frameworks (Flask, Django, Pyramid, etc.) handle exceptions within their own middleware and error handling systems, making it difficult to capture comprehensive error metrics at the WSGI level.
+
+This creates a challenge for monitoring tools like ours - we can only capture errors that bubble up to the WSGI layer, while many framework-specific errors are handled internally and never reach the WSGI interface.
+
+**Note**: This is a fundamental limitation of the WSGI protocol design. While open source communities create valuable tools, single companies often produce more powerful and impactful protocols (like gRPC, GraphQL, Kubernetes).
+
+### Our Approach
+
+We've implemented a two-tier error tracking system:
+
+1. **WSGI-Level Errors**: Captured at the worker level for errors that reach the WSGI interface
+2. **Framework Integration**: Designed to work with framework-specific error handlers when available
+
+**Current Error Metrics:**
+- `gunicorn_worker_failed_requests` - WSGI-level failed requests
+- `gunicorn_worker_error_handling` - Errors handled by the worker
+
+**Current Limitations**: Due to WSGI's design, we can only capture errors that bubble up to the WSGI layer. Framework-specific errors (like Django's 404s, Flask's route errors, etc.) are handled internally and never reach our monitoring system.
+
+**Future Enhancement**: We're exploring ways to integrate with framework-specific error handlers to capture more comprehensive error metrics. See [Issue #67](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues/67) for request/response payload size tracking per endpoint.
+
+
 ## Redis Storage Architecture
 
 ### Separating Storage from Compute
 
-I've extended the Prometheus Python client to support **Redis-based storage** as an alternative to traditional multiprocess files. This architectural innovation provides several key benefits:
+I've extended the Prometheus Python client to support **Redis-based storage** as an alternative to traditional multiprocess files. This architectural innovation is made possible by the brilliant protocol-based design of the Prometheus specification, which allows for clean storage backend replacement through the `StorageDictProtocol` interface.
+
+The Prometheus multiprocess specification's protocol-based design enables us to seamlessly replace the default file-based storage (`MmapedDict`) with our Redis implementation (`RedisStorageDict`) without breaking compatibility. This is a testament to the excellent engineering behind the Prometheus ecosystem.
+
+This architectural innovation provides several key benefits:
 
 #### **Traditional Approach (File-Based)**
 
@@ -30,6 +60,16 @@ I've extended the Prometheus Python client to support **Redis-based storage** as
 - Better performance and scalability
 - **Direct Redis integration** - no forwarding layer needed
 
+### **Protocol-Based Design Benefits:**
+
+The Prometheus specification's protocol-based design allows for:
+
+- **Clean Interface Contract**: `StorageDictProtocol` defines exactly what methods storage backends must implement
+- **Drop-in Replacement**: Our `RedisStorageDict` implements the same interface as `MmapedDict`
+- **Type Safety**: Protocol ensures compile-time checking of interface compliance
+- **Testing**: Easy to mock and test different storage implementations
+- **Future Extensibility**: Can easily add database, S3, or other storage backends
+
 ### **Key Benefits:**
 
 | Feature                | File-Based    | Redis Storage    |
@@ -39,6 +79,7 @@ I've extended the Prometheus Python client to support **Redis-based storage** as
 | **File I/O**           | High overhead | No file I/O      |
 | **Shared Metrics**     | No            | Yes              |
 | **Storage Separation** | Coupled       | Separated        |
+| **Protocol Compliance** | MmapedDict   | RedisStorageDict |
 
 ### **Use Cases:**
 
@@ -46,6 +87,7 @@ I've extended the Prometheus Python client to support **Redis-based storage** as
 - **Container Orchestration**: Kubernetes pods with shared Redis
 - **High Availability**: Metrics survive server restarts
 - **Cost Optimization**: Separate storage and compute resources
+- **Sidecar Deployment**: Deploy as sidecar container in the same pod for isolated monitoring
 
 ## Features
 
@@ -53,6 +95,7 @@ I've extended the Prometheus Python client to support **Redis-based storage** as
 - **Master Process Intelligence**: Signal tracking, restart analytics
 - **Multiprocess Support**: Full Prometheus multiprocess compatibility
 - **Redis Storage**: Store metrics directly in Redis (no files created)
+- **Protocol-Based Design**: Leverages Prometheus specification's brilliant protocol architecture
 - **Zero Configuration**: Works out-of-the-box with minimal setup
 - **Production Ready**: Retry logic, error handling, health monitoring
 
@@ -366,6 +409,82 @@ def when_ready(server):
     redis_when_ready(server)
 ```
 
+## Sidecar Deployment
+
+### Deploying as a Sidecar Container
+
+You can deploy the Gunicorn Prometheus Exporter as a **sidecar container** within the same Kubernetes pod for isolated monitoring. This approach provides several benefits:
+
+- **Isolated Monitoring**: Metrics collection doesn't interfere with the main application
+- **Shared Resources**: Both containers share the same pod resources and network
+- **Simplified Scaling**: Scale monitoring alongside your application
+- **Clean Separation**: Monitoring logic is completely separate from business logic
+
+### Example Kubernetes Configuration
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-gunicorn-app
+  labels:
+    app: my-gunicorn-app
+spec:
+  containers:
+    # Main application container
+    - name: gunicorn-app
+      image: my-app:latest
+      ports:
+        - containerPort: 8000
+      env:
+        - name: REDIS_ENABLED
+          value: "true"
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: PROMETHEUS_METRICS_PORT
+          value: "9091"
+
+    # Prometheus exporter sidecar
+    - name: prometheus-exporter
+      image: gunicorn-prometheus-exporter:latest
+      ports:
+        - containerPort: 9091
+      env:
+        - name: REDIS_ENABLED
+          value: "true"
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: PROMETHEUS_METRICS_PORT
+          value: "9091"
+        - name: PROMETHEUS_BIND_ADDRESS
+          value: "0.0.0.0"
+      command: ["gunicorn"]
+      args:
+        - "--worker-class=gunicorn_prometheus_exporter.PrometheusWorker"
+        - "--workers=2"
+        - "--bind=0.0.0.0:8000"
+        - "my_app:app"
+```
+
+### Benefits of Sidecar Deployment
+
+- **Zero Code Changes**: No modifications needed to your existing application
+- **Shared Redis**: Both containers can use the same Redis instance for metrics
+- **Network Efficiency**: Metrics are collected locally within the pod
+- **Resource Optimization**: Shared pod resources reduce overhead
+- **Monitoring Isolation**: Exporter failures don't affect the main application
+
+### Prometheus Configuration
+
+```yaml
+scrape_configs:
+  - job_name: 'gunicorn-sidecar'
+    static_configs:
+      - targets: ['my-gunicorn-app:9091']
+    scrape_interval: 15s
+    metrics_path: /metrics
+```
+
 ## System Testing
 
 I provide comprehensive system tests to validate the complete functionality of the Gunicorn Prometheus Exporter with Redis integration.
@@ -414,6 +533,8 @@ See [`system-test/README.md`](system-test/README.md) for detailed documentation.
 ## Contributing
 
 Contributions are welcome! Please see our [contributing guide](https://agent-hellboy.github.io/gunicorn-prometheus-exporter/contributing/) for details.
+
+**Current Issues**: Check our [GitHub Issues](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues) for known issues and feature requests.
 
 ### Development Setup
 
