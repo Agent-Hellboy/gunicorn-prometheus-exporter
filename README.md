@@ -139,12 +139,80 @@ Create a Gunicorn config file (`gunicorn.conf.py`):
 ```python
 # Basic configuration
 bind = "0.0.0.0:8000"
-workers = 2
 
-# Prometheus exporter (sync worker)
+# Worker configuration based on workload type
+# For I/O-bound applications (typical web apps):
+workers = 9  # 2 × CPU cores + 1 (classic Gunicorn formula)
+# For CPU-bound applications:
+# workers = 4  # 1 × CPU cores
+
+# Prometheus exporter worker classes
+# Sync workers (blocking I/O) - good for most web applications
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
+# Async workers (non-blocking I/O) - for high-concurrency apps
+# worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
+# worker_connections = 1000  # connections per worker (async only)
+
 # Optional: Custom hooks for advanced setup
+def when_ready(server):
+    from gunicorn_prometheus_exporter.hooks import default_when_ready
+    default_when_ready(server)
+```
+
+**Worker Count Guidelines:**
+- **Sync workers**: `2 × CPU cores + 1` (classic formula for I/O-bound apps)
+- **Async workers**: `1-4 workers` (each handles many concurrent connections)
+- **CPU-bound workloads**: Use closer to CPU core count
+- **Memory considerations**: Each worker consumes ~50-100MB RAM
+- **Monitor and adjust**: Start with the formula, then tune based on your app's behavior
+
+### Production Configuration Examples
+
+#### High-Traffic Web Application (I/O-bound)
+```python
+# gunicorn.conf.py for a typical web app
+bind = "0.0.0.0:8000"
+workers = 9  # 2×4 cores + 1 = 9 workers
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+worker_connections = 1000
+max_requests = 1000
+max_requests_jitter = 100
+timeout = 30
+keepalive = 2
+
+# Prometheus metrics
+def when_ready(server):
+    from gunicorn_prometheus_exporter.hooks import default_when_ready
+    default_when_ready(server)
+```
+
+#### High-Concurrency API (Async)
+```python
+# gunicorn.conf.py for high-concurrency API
+bind = "0.0.0.0:8000"
+workers = 4  # Fewer workers for async
+worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
+worker_connections = 2000  # More connections per worker
+max_requests = 2000
+timeout = 60
+
+# Prometheus metrics
+def when_ready(server):
+    from gunicorn_prometheus_exporter.hooks import default_when_ready
+    default_when_ready(server)
+```
+
+#### CPU-Intensive Application
+```python
+# gunicorn.conf.py for CPU-bound workloads
+bind = "0.0.0.0:8000"
+workers = 4  # 1×4 cores = 4 workers
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+max_requests = 500
+timeout = 120
+
+# Prometheus metrics
 def when_ready(server):
     from gunicorn_prometheus_exporter.hooks import default_when_ready
     default_when_ready(server)
