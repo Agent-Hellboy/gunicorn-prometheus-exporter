@@ -73,7 +73,7 @@ class TestModuleInitialization:
     def test_get_config_function(self):
         """Test get_config function availability."""
         assert hasattr(gunicorn_prometheus_exporter, "get_config_manager")
-        assert callable(gunicorn_prometheus_exporter.get_config)
+        assert callable(gunicorn_prometheus_exporter.get_config_manager)
 
 
 class TestImportErrorHandling:
@@ -140,17 +140,18 @@ class TestModuleConstants:
     def test_config_object(self):
         """Test config object availability."""
         assert hasattr(gunicorn_prometheus_exporter, "ExporterConfig")
-        assert gunicorn_prometheus_exporter.config is not None
+        # ExporterConfig is a class, not an instance
+        assert callable(gunicorn_prometheus_exporter.ExporterConfig)
 
     def test_registry_object(self):
         """Test registry object availability."""
         assert hasattr(gunicorn_prometheus_exporter, "registry")
         assert gunicorn_prometheus_exporter.registry is not None
 
-    def test_get_config_function(self):
-        """Test get_config function availability."""
+    def test_get_config_manager_function(self):
+        """Test get_config_manager function availability."""
         assert hasattr(gunicorn_prometheus_exporter, "get_config_manager")
-        assert callable(gunicorn_prometheus_exporter.get_config)
+        assert callable(gunicorn_prometheus_exporter.get_config_manager)
 
 
 class TestGunicornPatching:

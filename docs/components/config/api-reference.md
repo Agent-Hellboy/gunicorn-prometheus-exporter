@@ -331,18 +331,11 @@ def redis_port(self) -> int:
 
 ## Configuration Access Patterns
 
-### ConfigManager Access
+### Simple Configuration Access
 
 ```python
-# Import the config manager functions
-from gunicorn_prometheus_exporter.config import get_config, initialize_config
-
-# Initialize configuration (typically done once at startup)
-initialize_config(
-    PROMETHEUS_METRICS_PORT="9091",
-    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
-    GUNICORN_WORKERS="2"
-)
+# Import the config function
+from gunicorn_prometheus_exporter.config import get_config
 
 # Get the configuration instance
 config = get_config()
@@ -351,24 +344,7 @@ redis_enabled = config.redis_enabled
 timeout = config.gunicorn_timeout
 ```
 
-### Direct ConfigManager Access
-
-```python
-# Import the ConfigManager class
-from gunicorn_prometheus_exporter.config import ConfigManager
-
-# Create and manage configuration
-manager = ConfigManager()
-manager.initialize(
-    PROMETHEUS_METRICS_PORT="9091",
-    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
-    GUNICORN_WORKERS="2"
-)
-
-# Get configuration
-config = manager.get_config()
-port = config.prometheus_metrics_port
-```
+**Note**: Configuration is automatically initialized when the package is imported. You don't need to call any initialization functions - just use `get_config()` to access configuration values.
 
 ### Module-Level Access
 
@@ -379,26 +355,6 @@ from gunicorn_prometheus_exporter import get_config
 # Access configuration values
 config = get_config()
 port = config.prometheus_metrics_port
-```
-
-### Testing Configuration
-
-```python
-# For testing purposes, you can create a new ConfigManager
-from gunicorn_prometheus_exporter.config import ConfigManager
-
-manager = ConfigManager()
-manager.initialize(
-    PROMETHEUS_METRICS_PORT="9091",
-    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
-    GUNICORN_WORKERS="2",
-    REDIS_ENABLED="true",
-    REDIS_HOST="test-host"
-)
-
-config = manager.get_config()
-assert config.redis_enabled == True
-assert config.redis_host == "test-host"
 ```
 
 ## Best Practices

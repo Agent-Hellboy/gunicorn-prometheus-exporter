@@ -171,22 +171,14 @@ def _ensure_multiproc_dir():
     This function is called lazily when the registry is actually used,
     avoiding import-time side effects.
     """
+    from gunicorn_prometheus_exporter.config import get_config
+    cfg = get_config()
     try:
-        os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
+        os.makedirs(cfg.prometheus_multiproc_dir, exist_ok=True)
     except Exception as e:
-        logger.warning("Failed to prepare PROMETHEUS_MULTIPROC_DIR: %s", e)
+        logger.error("Failed to prepare PROMETHEUS_MULTIPROC_DIR: %s", e)
+        raise
 ```
-
-## Configuration
-
-### Environment Variables
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `PROMETHEUS_MULTIPROC_DIR` | str | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics |
-| `PROMETHEUS_METRICS_PORT` | int | `9091` | Port for metrics endpoint |
-| `PROMETHEUS_BIND_ADDRESS` | str | `0.0.0.0` | Bind address for metrics server |
-| `GUNICORN_WORKERS` | int | `1` | Number of workers for metrics calculation |
 
 ## Error Handling
 

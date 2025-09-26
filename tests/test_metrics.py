@@ -5,7 +5,7 @@ Tests for Gunicorn Prometheus Exporter metrics.
 import os
 import tempfile
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -300,8 +300,14 @@ class TestMetricsExceptionHandling:
 
         # Use a temporary directory that we can create
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Mock the environment variable directly
-            with patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": temp_dir}):
+            # Mock get_config to return our temp directory
+            with patch(
+                "gunicorn_prometheus_exporter.metrics.get_config"
+            ) as mock_get_config:
+                mock_config = MagicMock()
+                mock_config.prometheus_multiproc_dir = temp_dir
+                mock_get_config.return_value = mock_config
+
                 # Should not raise an exception
                 _ensure_multiproc_dir()
 
@@ -316,7 +322,13 @@ class TestMetricsExceptionHandling:
         # Use a path that will cause permission denied
         invalid_path = "/root/forbidden/prometheus_multiproc"
 
-        with patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": invalid_path}):
+        with patch(
+            "gunicorn_prometheus_exporter.metrics.get_config"
+        ) as mock_get_config:
+            mock_config = MagicMock()
+            mock_config.prometheus_multiproc_dir = invalid_path
+            mock_get_config.return_value = mock_config
+
             with patch("os.makedirs", side_effect=PermissionError("Permission denied")):
                 # Should raise the exception
                 with pytest.raises(PermissionError, match="Permission denied"):
@@ -329,7 +341,13 @@ class TestMetricsExceptionHandling:
         # Use an invalid path
         invalid_path = "/invalid/path/with/nonexistent/parent"
 
-        with patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": invalid_path}):
+        with patch(
+            "gunicorn_prometheus_exporter.metrics.get_config"
+        ) as mock_get_config:
+            mock_config = MagicMock()
+            mock_config.prometheus_multiproc_dir = invalid_path
+            mock_get_config.return_value = mock_config
+
             with patch("os.makedirs", side_effect=OSError("No such file or directory")):
                 # Should raise the exception
                 with pytest.raises(OSError, match="No such file or directory"):
@@ -341,7 +359,13 @@ class TestMetricsExceptionHandling:
 
         # Use a temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": temp_dir}):
+            with patch(
+                "gunicorn_prometheus_exporter.metrics.get_config"
+            ) as mock_get_config:
+                mock_config = MagicMock()
+                mock_config.prometheus_multiproc_dir = temp_dir
+                mock_get_config.return_value = mock_config
+
                 with patch(
                     "os.makedirs", side_effect=OSError("No space left on device")
                 ):

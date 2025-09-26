@@ -134,6 +134,7 @@ class MetricsServerManager:
         self.max_retries = 5  # Increased retries for restart scenarios
         self.retry_delay = 2  # Increased delay for port release
         self._server_thread = None  # Store the server thread
+        self._httpd = None  # Store the HTTP server instance
 
     def setup_server(self) -> Optional[tuple[int, Any]]:
         """Setup Prometheus metrics server."""
@@ -252,32 +253,17 @@ class MetricsServerManager:
 
     def _start_https_server(self, port: int, registry: Any, bind_address: str) -> None:
         """Start HTTPS server with SSL/TLS."""
-        import inspect
+        from prometheus_client.exposition import start_http_server
 
-        from prometheus_client.exposition import start_wsgi_server
-
-        # Start HTTPS server with SSL/TLS
-        # (pass only supported kwargs for compatibility)
-        sig = inspect.signature(start_wsgi_server)
-        kwargs = {
-            "port": port,
-            "addr": bind_address,
-            "registry": registry,
-            "certfile": get_config().prometheus_ssl_certfile,
-            "keyfile": get_config().prometheus_ssl_keyfile,
-        }
-        optional = {
-            "client_cafile": get_config().prometheus_ssl_client_cafile,
-            "client_capath": get_config().prometheus_ssl_client_capath,
-            "client_auth_required": (get_config().prometheus_ssl_client_auth_required),
-        }
-        for k, v in optional.items():
-            if k in sig.parameters and v:
-                kwargs[k] = v
-        httpd, thread = start_wsgi_server(**kwargs)
-        # Store references to prevent garbage collection
-        self._server_thread = thread
-        self._httpd = httpd
+        # Start HTTPS server with SSL/TLS using start_http_server
+        # which supports SSL parameters unlike start_wsgi_server
+        start_http_server(
+            port=port,
+            addr=bind_address,
+            registry=registry,
+            certfile=get_config().prometheus_ssl_certfile,
+            keyfile=get_config().prometheus_ssl_keyfile,
+        )
         self.logger.debug(
             "HTTPS metrics server started successfully on %s:%s",
             bind_address,

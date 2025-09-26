@@ -237,9 +237,21 @@ class PrometheusMaster(Arbiter):
 
     def handle_chld(self, sig, frame):
         """Handle CHLD signal."""
-        # Note: No logging here to avoid reentrant call issues
-        # CHLD signals are very frequent and logging can cause recursion
-        super().handle_chld(sig, frame)
+        # Handle CHLD signal with protection against logging reentrancy
+        # The parent handle_chld method may log worker termination messages
+        # which can cause RuntimeError: reentrant call when called from signal context
+        try:
+            super().handle_chld(sig, frame)
+        except RuntimeError as e:
+            if "reentrant call" in str(e):
+                # Silently ignore logging reentrancy errors during signal handling
+                # This prevents crashes when logging happens during signal context
+                pass
+            else:
+                # Re-raise other RuntimeErrors
+                raise
+
+        # Queue signal metric for asynchronous processing
         self._queue_signal_metric("chld")
 
     def handle_usr1(self):

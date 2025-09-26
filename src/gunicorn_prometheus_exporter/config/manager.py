@@ -67,6 +67,8 @@ class ConfigManager:
 
                 # Set environment variables if provided
                 for key, value in kwargs.items():
+                    if value is None:
+                        continue
                     os.environ[key] = str(value)
 
                 # Create configuration instance
@@ -114,25 +116,19 @@ class ConfigManager:
                 raise
 
     def _validate_required_settings(self) -> None:
-        """Validate required configuration settings."""
+        """Validate required configuration settings (delegates to ExporterConfig)."""
         config = self._config
-
-        # Validate Prometheus settings
-        if not config.prometheus_metrics_port:
-            self._validation_errors.append("PROMETHEUS_METRICS_PORT must be set")
-
-        if not config.prometheus_bind_address:
-            self._validation_errors.append("PROMETHEUS_BIND_ADDRESS must be set")
-
-        # Validate Gunicorn settings
-        if not config.gunicorn_workers:
-            self._validation_errors.append("GUNICORN_WORKERS must be set")
-
-        # Validate multiprocess directory
+        # Keep directory readiness check
         try:
             os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
         except Exception as e:
             self._validation_errors.append(f"Cannot create multiprocess directory: {e}")
+            return
+        # Delegate full validation (port ranges, workers, timeouts, etc.)
+        if not config.validate():
+            self._validation_errors.append(
+                "Base exporter configuration invalid (see logs)"
+            )
 
     def _validate_redis_settings(self) -> None:
         """Validate Redis configuration settings."""
@@ -219,6 +215,8 @@ class ConfigManager:
 
                 # Update environment variables
                 for key, value in kwargs.items():
+                    if value is None:
+                        continue
                     os.environ[key] = str(value)
                     logger.debug("Updated environment variable: %s", key)
 

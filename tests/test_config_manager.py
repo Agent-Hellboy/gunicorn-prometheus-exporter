@@ -73,7 +73,7 @@ class TestConfigManager:
         manager = ConfigManager()
 
         # Test with missing required settings
-        with pytest.raises(ValueError, match="invalid literal for int"):
+        with pytest.raises(ValueError, match="Configuration validation failed"):
             manager.initialize(
                 PROMETHEUS_METRICS_PORT="",  # Empty port should fail
                 PROMETHEUS_BIND_ADDRESS="",  # Empty address should fail
@@ -331,18 +331,21 @@ class TestGlobalConfigManager:
         # Clean up first
         cleanup_config()
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            initialize_config(
-                PROMETHEUS_METRICS_PORT="9091",
-                PROMETHEUS_BIND_ADDRESS="0.0.0.0",
-                GUNICORN_WORKERS="2",
-                PROMETHEUS_MULTIPROC_DIR=temp_dir,
-            )
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                initialize_config(
+                    PROMETHEUS_METRICS_PORT="9091",
+                    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+                    GUNICORN_WORKERS="2",
+                    PROMETHEUS_MULTIPROC_DIR=temp_dir,
+                )
 
-            manager = get_config_manager()
-            assert manager.is_initialized
-
-            # Re-initialize the global config for other tests
+                manager = get_config_manager()
+                assert manager.is_initialized
+        finally:
+            # Always cleanup to prevent leaving singleton pointing at deleted temp dir
+            cleanup_config()
+            # Re-initialize with session-scoped temp dir for other tests
             try:
                 initialize_config(
                     PROMETHEUS_METRICS_PORT="9091",
@@ -362,18 +365,21 @@ class TestGlobalConfigManager:
         # Clean up first
         cleanup_config()
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            initialize_config(
-                PROMETHEUS_METRICS_PORT="9091",
-                PROMETHEUS_BIND_ADDRESS="0.0.0.0",
-                GUNICORN_WORKERS="2",
-                PROMETHEUS_MULTIPROC_DIR=temp_dir,
-            )
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                initialize_config(
+                    PROMETHEUS_METRICS_PORT="9091",
+                    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+                    GUNICORN_WORKERS="2",
+                    PROMETHEUS_MULTIPROC_DIR=temp_dir,
+                )
 
-            config = get_config()
-            assert config.prometheus_metrics_port == 9091
-
-            # Re-initialize the global config for other tests
+                config = get_config()
+                assert config.prometheus_metrics_port == 9091
+        finally:
+            # Always cleanup to prevent leaving singleton pointing at deleted temp dir
+            cleanup_config()
+            # Re-initialize with session-scoped temp dir for other tests
             try:
                 initialize_config(
                     PROMETHEUS_METRICS_PORT="9091",
@@ -393,24 +399,27 @@ class TestGlobalConfigManager:
         # Clean up first
         cleanup_config()
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            initialize_config(
-                PROMETHEUS_METRICS_PORT="9091",
-                PROMETHEUS_BIND_ADDRESS="0.0.0.0",
-                GUNICORN_WORKERS="2",
-                PROMETHEUS_MULTIPROC_DIR=temp_dir,
-            )
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                initialize_config(
+                    PROMETHEUS_METRICS_PORT="9091",
+                    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+                    GUNICORN_WORKERS="2",
+                    PROMETHEUS_MULTIPROC_DIR=temp_dir,
+                )
 
-            manager = get_config_manager()
-            assert manager.is_initialized
+                manager = get_config_manager()
+                assert manager.is_initialized
 
+                cleanup_config()
+
+                # Get new manager instance
+                manager = get_config_manager()
+                assert not manager.is_initialized
+        finally:
+            # Always cleanup to prevent leaving singleton pointing at deleted temp dir
             cleanup_config()
-
-            # Get new manager instance
-            manager = get_config_manager()
-            assert not manager.is_initialized
-
-            # Re-initialize the global config for other tests
+            # Re-initialize with session-scoped temp dir for other tests
             try:
                 initialize_config(
                     PROMETHEUS_METRICS_PORT="9091",

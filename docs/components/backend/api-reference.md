@@ -172,10 +172,10 @@ gunicorn:histogram:12345:metric:ghi789
 |------|-------------|----------|
 | `all` | All processes (including dead ones) | Per-worker monitoring with PID labels |
 | `liveall` | All live processes | Current process monitoring |
+| `live` | Live processes only | Active process monitoring |
 | `max` | Maximum value across processes | Peak resource usage |
 | `min` | Minimum value across processes | Minimum resource usage |
 | `sum` | Sum of values across processes | Total resource consumption |
-| `mostrecent` | Most recent value | Latest metric values |
 
 ### Mode Implementation
 

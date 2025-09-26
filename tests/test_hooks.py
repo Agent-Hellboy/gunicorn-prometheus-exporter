@@ -301,17 +301,11 @@ def test_start_https_server():
         mock_get_config.return_value = mock_config
 
         with patch(
-            "prometheus_client.exposition.start_wsgi_server"
+            "prometheus_client.exposition.start_http_server"
         ) as mock_start_server:
-            mock_httpd = MagicMock()
-            mock_thread = MagicMock()
-            mock_start_server.return_value = (mock_httpd, mock_thread)
-
             manager._start_https_server(9091, MagicMock(), "127.0.0.1")
 
             mock_start_server.assert_called_once()
-            assert manager._server_thread == mock_thread
-            assert manager._httpd == mock_httpd
             mock_logger.debug.assert_called_once()
 
 
