@@ -86,6 +86,52 @@ class RedisStorageDict:
 - `clear()` - Clear all items
 - `update(other)` - Update with other dict
 
+### FactoryUtilsMixin
+
+Mixin class providing factory utilities for Redis value classes.
+
+```python
+class FactoryUtilsMixin:
+    """Mixin class for factory utilities."""
+
+    def create_redis_value_class(self, redis_client, redis_key_prefix=None):
+        """Create a RedisValue class configured with Redis client.
+
+        Args:
+            redis_client: Redis client instance
+            redis_key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
+
+        Returns:
+            Configured RedisValue class
+        """
+```
+
+**Methods:**
+
+- `create_redis_value_class(redis_client, redis_key_prefix=None)` - Create configured RedisValue class
+
+### CleanupUtilsMixin
+
+Mixin class providing cleanup utilities for Redis operations.
+
+```python
+class CleanupUtilsMixin:
+    """Mixin class for cleanup utilities."""
+
+    def cleanup_process_keys(self, pid, redis_client, redis_key_prefix=None):
+        """Clean up Redis keys for a specific process.
+
+        Args:
+            pid: Process ID to clean up
+            redis_client: Redis client instance
+            redis_key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
+        """
+```
+
+**Methods:**
+
+- `cleanup_process_keys(pid, redis_client, redis_key_prefix=None)` - Clean up process-specific Redis keys
+
 ### RedisMultiProcessCollector
 
 Collector that aggregates metrics from Redis across processes.
@@ -251,6 +297,49 @@ def with_retry(func, max_retries=3, delay=1):
             time.sleep(delay * (2 ** attempt))
 ```
 
+## Utility Functions
+
+### redis_key
+
+Utility function for generating consistent Redis keys.
+
+```python
+def redis_key(
+    metric_name: str,
+    name: str,
+    labelnames: List[str],
+    labelvalues: List[str],
+    help_text: str,
+) -> str:
+    """Format a key for use in Redis, similar to mmap_key.
+
+    Args:
+        metric_name: Name of the metric
+        name: Sample name
+        labelnames: List of label names
+        labelvalues: List of label values
+        help_text: Help text for the metric
+
+    Returns:
+        JSON-formatted key string for Redis storage
+    """
+```
+
+**Usage:**
+
+```python
+from gunicorn_prometheus_exporter.backend.core.dict import redis_key
+
+key = redis_key(
+    metric_name="gunicorn_requests_total",
+    name="requests_total",
+    labelnames=["method", "status"],
+    labelvalues=["GET", "200"],
+    help_text="Total number of requests"
+)
+# Returns: '["gunicorn_requests_total", "requests_total", {"method": "GET", "status": "200"}, "Total number of requests"]'
+```
+
 ## Performance Optimization
 
 ### Connection Pooling
@@ -298,6 +387,68 @@ def health_check(manager):
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return False
+```
+
+## Conditional Imports and Fallback Behavior
+
+### Redis Availability Detection
+
+The backend uses conditional imports to handle cases where Redis is not available:
+
+```python
+# Conditional Redis import - only import when needed
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    redis = None
+```
+
+### Collector Availability
+
+The Redis collector is conditionally imported based on Redis availability:
+
+```python
+# Conditional import of Redis collector
+try:
+    from .collector import RedisMultiProcessCollector
+    REDIS_COLLECTOR_AVAILABLE = True
+except ImportError:
+    RedisMultiProcessCollector = None
+    REDIS_COLLECTOR_AVAILABLE = False
+```
+
+### Fallback Behavior
+
+When Redis is not available, the system gracefully falls back to file-based storage:
+
+```python
+def _get_default_redis_client(self):
+    """Get default Redis client from environment variables."""
+    redis_url = os.environ.get("PROMETHEUS_REDIS_URL")
+    if redis_url:
+        try:
+            return redis.from_url(redis_url)
+        except redis.ConnectionError:
+            logger.warning("Redis connection failed, falling back to file storage")
+            return None
+    return None
+```
+
+### Error Handling Patterns
+
+The backend implements comprehensive error handling:
+
+```python
+def _redis_now(self) -> float:
+    """Get current timestamp using Redis server time for coherence."""
+    try:
+        sec, usec = self._redis.time()
+        return sec + usec / 1_000_000.0
+    except Exception as e:
+        logger.debug("Failed to get Redis time, falling back to local time: %s", e)
+        return time.time()
 ```
 
 ### Metrics

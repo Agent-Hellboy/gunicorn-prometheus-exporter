@@ -416,7 +416,11 @@ def get_prometheus_gevent_worker():
 
 ### Logging Setup
 
+The plugin component uses the singleton configuration pattern for logging setup:
+
 ```python
+from gunicorn_prometheus_exporter.config import config
+
 def _setup_logging():
     """Setup logging with configuration."""
     try:
@@ -428,6 +432,18 @@ def _setup_logging():
         logging.getLogger(__name__).warning(
             "Could not setup logging from config: %s", e
         )
+```
+
+### Configuration Access
+
+The plugin component accesses configuration through the global singleton:
+
+```python
+# Import the global config instance
+from gunicorn_prometheus_exporter.config import config
+
+# Access configuration values
+log_level = config.get_gunicorn_config().get("loglevel", "INFO").upper()
 ```
 
 ## Error Handling

@@ -288,6 +288,146 @@ def _redis_now(self) -> float:
         return time.time()
 ```
 
+### Comprehensive Error Handling
+
+The backend implements multiple layers of error handling:
+
+#### 1. **Import-Level Error Handling**
+
+```python
+# Conditional Redis import - only import when needed
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    redis = None
+```
+
+#### 2. **Connection-Level Error Handling**
+
+```python
+def setup(self) -> bool:
+    """Set up Redis-based metrics storage."""
+    if not config.redis_enabled:
+        logger.debug("Redis is not enabled, skipping Redis metrics setup")
+        return False
+
+    try:
+        # Create Redis client
+        self._redis_client = self._redis_client_factory()
+
+        # Test connection
+        self._redis_client.ping()
+        logger.debug("Connected to Redis successfully")
+        return True
+
+    except Exception as e:
+        logger.error("Failed to setup Redis metrics: %s", e)
+        self._cleanup()
+        return False
+```
+
+#### 3. **Operation-Level Error Handling**
+
+```python
+def _safe_parse_float(data: Union[bytes, bytearray, str, None], default: float = 0.0) -> float:
+    """Safely parse bytes/string to float with error handling."""
+    if data is None:
+        return default
+
+    try:
+        if isinstance(data, (bytes, bytearray)):
+            return float(data.decode("utf-8"))
+        return float(data)
+    except (ValueError, UnicodeDecodeError):
+        logger.debug("Failed to parse float value: %s, using default: %s", data, default)
+        return default
+```
+
+#### 4. **Timeout and Retry Logic**
+
+```python
+def _redis_operation_with_retry(self, operation, max_retries=3, delay=0.1):
+    """Execute Redis operation with retry logic."""
+    for attempt in range(max_retries):
+        try:
+            return operation()
+        except (redis.ConnectionError, redis.TimeoutError) as e:
+            if attempt == max_retries - 1:
+                logger.error("Redis operation failed after %d attempts: %s", max_retries, e)
+                raise
+            logger.warning("Redis operation failed (attempt %d/%d): %s", attempt + 1, max_retries, e)
+            time.sleep(delay * (2 ** attempt))
+```
+
+#### 5. **Fallback Mechanisms**
+
+```python
+def _get_multiprocess_mode_from_metadata(self, key: str, metric_type: str) -> str:
+    """Get multiprocess mode from metadata with fallback."""
+    try:
+        metadata_key = self._get_metadata_key(key, metric_type)
+        metadata = self._redis.hgetall(metadata_key)
+        if metadata:
+            return _safe_decode_bytes(metadata.get(b"multiprocess_mode", b"")).decode("utf-8")
+    except Exception as e:
+        logger.debug("Failed to get multiprocess mode from metadata: %s", e)
+
+    # Fallback to default mode
+    return "all" if metric_type == "gauge" else ""
+```
+
+### Error Recovery Strategies
+
+#### 1. **Automatic Fallback to File Storage**
+
+When Redis is unavailable, the system automatically falls back to file-based storage:
+
+```python
+def _create_redis_client(self) -> RedisClientProtocol:
+    """Create Redis client with fallback to file storage."""
+    try:
+        redis_url = f"redis://{config.redis_host}:{config.redis_port}/{config.redis_db}"
+        if config.redis_password:
+            redis_url = f"redis://:{config.redis_password}@{config.redis_host}:{config.redis_port}/{config.redis_db}"
+
+        client = redis.from_url(redis_url)
+        client.ping()  # Test connection
+        return client
+
+    except Exception as e:
+        logger.warning("Redis connection failed, falling back to file storage: %s", e)
+        return None
+```
+
+#### 2. **Graceful Degradation of Features**
+
+```python
+def is_redis_enabled(self) -> bool:
+    """Check if Redis is enabled and available."""
+    return (
+        config.redis_enabled and
+        REDIS_AVAILABLE and
+        self._redis_client is not None
+    )
+```
+
+#### 3. **Resource Cleanup on Failure**
+
+```python
+def _cleanup(self) -> None:
+    """Clean up Redis resources."""
+    try:
+        if self._redis_client:
+            self._redis_client.close()
+    except Exception as e:
+        logger.debug("Error during Redis cleanup: %s", e)
+    finally:
+        self._redis_client = None
+        self._redis_value_class = None
+```
+
 ## Integration Points
 
 ### Prometheus Client Integration

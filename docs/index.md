@@ -31,7 +31,7 @@ My implementation goes beyond basic metrics collection:
 - **Zero-configuration** metrics server with automatic port binding
 - **Comprehensive error tracking** with method and endpoint labels
 - **Resource monitoring** (CPU, memory, uptime) per worker
-- **Graceful degradation** when Redis is unavailable
+- **Automatic fallback** to file-based storage when Redis is unavailable
 - **SSL/TLS support** for secure metrics endpoints
 
 ## Technical Highlights
@@ -50,6 +50,7 @@ My implementation goes beyond basic metrics collection:
 - **Distributed Ready**: Metrics can be shared across multiple application instances
 - **Memory Efficient**: TTL-based cleanup prevents memory leaks
 - **High Performance**: Redis operations are faster than file I/O
+- **Automatic Fallback**: Seamlessly falls back to file storage when Redis is unavailable
 - **Production Tested**: Handles high-traffic scenarios with ease
 
 ## Quick Start
@@ -116,7 +117,7 @@ gunicorn -c gunicorn.conf.py your_app:app
 curl http://0.0.0.0:9091/metrics
 ```
 
-> **Note**: Redis setup eliminates file system dependencies and provides better performance for production environments.
+> **Note**: Redis setup eliminates file system dependencies and provides better performance for production environments. If Redis is not available, the system automatically falls back to file-based storage.
 
 ### Understanding the Three URLs
 
@@ -190,6 +191,7 @@ Traditional Prometheus exporters for Gunicorn face several limitations:
 - **No master process signal tracking** - critical for understanding server behavior
 - **Limited worker type support** - only basic sync workers
 - **Complex configuration** - requires extensive setup and maintenance
+- **No fallback mechanism** - fails completely when storage is unavailable
 
 ### *My Solution*
 
@@ -199,7 +201,8 @@ I've built a comprehensive solution that addresses all these issues:
 2. **Arbiter Patching**: Captures all master process signals for complete visibility
 3. **Universal Worker Support**: Works with sync, thread, eventlet, and gevent workers
 4. **Zero-Configuration**: Works out of the box with sensible defaults
-5. **Production Ready**: Handles high-traffic scenarios with automatic cleanup
+5. **Automatic Fallback**: Seamlessly falls back to file storage when Redis is unavailable
+6. **Production Ready**: Handles high-traffic scenarios with automatic cleanup
 
 ### *Technical Deep Dive*
 
