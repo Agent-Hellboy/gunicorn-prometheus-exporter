@@ -31,7 +31,8 @@ We've implemented a two-tier error tracking system:
 
 **Current Limitations**: Due to WSGI's design, we can only capture errors that bubble up to the WSGI layer. Framework-specific errors (like Django's 404s, Flask's route errors, etc.) are handled internally and never reach our monitoring system.
 
-**Future Enhancement**: I'm exploring ways to integrate with framework-specific error handlers to capture more comprehensive error metrics. See [Issue #67](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues/67) for request/response payload size tracking per endpoint , this is a nice issue and LLMs can't figure it out, please try it out if you can!
+**Future Enhancement**: I'm exploring ways to integrate with framework-specific error handlers to capture more comprehensive error metrics.
+And also, see [Issue #67](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues/67) for request/response payload size tracking per endpoint , this is a nice issue and LLMs can't figure it out, please try it out if you can!
 
 
 ## Redis Storage Architecture
