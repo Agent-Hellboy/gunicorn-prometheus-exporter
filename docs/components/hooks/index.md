@@ -28,7 +28,7 @@ The hooks component manages:
 
 ## Architecture
 
-The hooks system uses a modular, class-based architecture:
+The hooks system uses a modular, class-based architecture with the **Manager pattern**:
 
 ### Core Classes
 
@@ -36,6 +36,44 @@ The hooks system uses a modular, class-based architecture:
 - **`EnvironmentManager`** - CLI-to-environment variable mapping
 - **`MetricsServerManager`** - Prometheus metrics server lifecycle
 - **`ProcessManager`** - Process cleanup and termination
+
+## Design Pattern Choice: Manager
+
+### Why Manager Pattern for Hooks?
+
+We chose the **Manager pattern** for the hooks component because:
+
+1. **Centralized Control**: Managers coordinate complex operations across multiple systems
+2. **Lifecycle Management**: Handle startup, shutdown, and cleanup operations
+3. **Error Handling**: Provide consistent error handling and retry logic
+4. **Resource Management**: Manage connections, processes, and other resources
+5. **Separation of Concerns**: Each manager handles a specific domain (hooks, environment, metrics, processes)
+
+### Alternative Patterns Considered
+
+- **Factory Pattern**: Not suitable since we're not creating objects, but managing operations
+- **Observer Pattern**: Overkill for simple hook execution
+- **Command Pattern**: Unnecessary complexity for straightforward hook functions
+
+### Implementation Benefits
+
+```python
+# Global manager instances
+_hook_manager = None
+_metrics_manager = None
+_process_manager = None
+
+def _get_hook_manager() -> HookManager:
+    """Get or create the global hook manager instance."""
+    global _hook_manager
+    if _hook_manager is None:
+        _hook_manager = HookManager()
+    return _hook_manager
+
+# Centralized execution with error handling
+manager = _get_hook_manager()
+success = manager.safe_execute(hook_function)
+```
 
 ### HookContext
 

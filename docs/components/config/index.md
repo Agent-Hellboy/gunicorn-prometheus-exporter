@@ -12,6 +12,35 @@ The configuration component handles:
 - **CLI Integration**: Gunicorn CLI options update environment variables
 - **Comprehensive Validation**: Clear error messages for missing or invalid configuration
 
+## Design Pattern Choice: Singleton
+
+### Why Singleton for Configuration?
+
+We chose the **Singleton pattern** for the configuration component because:
+
+1. **Single Source of Truth**: Configuration should be consistent across the entire application
+2. **Memory Efficiency**: Only one configuration object exists in memory
+3. **Thread Safety**: Safe for multi-threaded and multi-process environments
+4. **Lazy Loading**: Environment variables are read only when properties are accessed
+5. **Global Access**: All components can access the same configuration instance
+
+### Alternative Patterns Considered
+
+- **Factory Pattern**: Overkill since we only need one configuration type
+- **Builder Pattern**: Unnecessary complexity for simple configuration loading
+- **Strategy Pattern**: Not needed since configuration behavior is consistent
+
+### Implementation Benefits
+
+```python
+# Global singleton instance
+config = ExporterConfig()
+
+# All components access the same instance
+from gunicorn_prometheus_exporter.config import config
+port = config.prometheus_metrics_port  # Consistent across all modules
+```
+
 ## Configuration Sources
 
 ### Environment Variables

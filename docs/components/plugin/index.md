@@ -40,6 +40,47 @@ class PrometheusMixin:
         self.start_time = time.time()
 ```
 
+## Design Pattern Choice: Mixin
+
+### Why Mixin Pattern for Plugin?
+
+We chose the **Mixin pattern** for the plugin component because:
+
+1. **Code Reuse**: Share common Prometheus functionality across different worker types
+2. **Multiple Inheritance**: Python supports multiple inheritance, making mixins natural
+3. **Separation of Concerns**: Metrics logic is separate from worker-specific logic
+4. **Flexibility**: Can mix and match with any Gunicorn worker class
+5. **No Object Creation**: Workers are created by Gunicorn, not by our code
+
+### Alternative Patterns Considered
+
+- **Factory Pattern**: Not suitable since Gunicorn creates workers, not our code
+- **Decorator Pattern**: Would require wrapping existing worker classes
+- **Strategy Pattern**: Overkill since metrics behavior is consistent across workers
+
+### Implementation Benefits
+
+```python
+# Mixin provides common functionality
+class PrometheusMixin:
+    def update_worker_metrics(self):
+        # Common metrics logic for all workers
+        pass
+
+# Different worker types inherit from mixin
+class PrometheusWorker(PrometheusMixin, SyncWorker):
+    """Sync worker with Prometheus metrics."""
+    pass
+
+class PrometheusThreadWorker(PrometheusMixin, ThreadWorker):
+    """Thread worker with Prometheus metrics."""
+    pass
+
+class PrometheusEventletWorker(PrometheusMixin, EventletWorker):
+    """Eventlet worker with Prometheus metrics."""
+    pass
+```
+
 ### Key Methods
 
 - `update_worker_metrics()` - Update worker-specific metrics
