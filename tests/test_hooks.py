@@ -427,8 +427,13 @@ def test_start_single_attempt_other_error():
             "gunicorn_prometheus_exporter.utils.get_multiprocess_dir",
             return_value="/tmp/test",
         ):
-            with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_config:
-                mock_config.prometheus_metrics_port = 9090
+            with patch(
+                "gunicorn_prometheus_exporter.hooks.get_config"
+            ) as mock_get_config:
+                cfg = MagicMock()
+                cfg.prometheus_metrics_port = 9090
+                cfg.redis_enabled = False
+                mock_get_config.return_value = cfg
 
                 with patch(
                     "gunicorn_prometheus_exporter.hooks.MultiProcessCollector",
@@ -1005,8 +1010,10 @@ def test_setup_redis_storage_enabled():
     """Test _setup_redis_storage_if_enabled when Redis is enabled."""
     mock_logger = MagicMock()
 
-    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_config:
-        mock_config.redis_enabled = True
+    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config:
+        cfg = MagicMock()
+        cfg.redis_enabled = True
+        mock_get_config.return_value = cfg
 
         with patch(
             "gunicorn_prometheus_exporter.backend.setup_redis_metrics"
@@ -1039,8 +1046,10 @@ def test_setup_redis_storage_exception():
     """Test _setup_redis_storage_if_enabled with exception."""
     mock_logger = MagicMock()
 
-    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_config:
-        mock_config.redis_enabled = True
+    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config:
+        cfg = MagicMock()
+        cfg.redis_enabled = True
+        mock_get_config.return_value = cfg
 
         with patch(
             "gunicorn_prometheus_exporter.backend.setup_redis_metrics",
@@ -1242,13 +1251,15 @@ class TestMetricsServerManagerComprehensive(unittest.TestCase):
         manager = MetricsServerManager(mock_logger)
 
         with (
-            patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_config,
+            patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config,
             patch(
                 "gunicorn_prometheus_exporter.utils.get_multiprocess_dir"
             ) as mock_get_dir,
         ):
-            mock_config.prometheus_metrics_port = 9091
-            mock_config.redis_enabled = False
+            cfg = MagicMock()
+            cfg.prometheus_metrics_port = 9091
+            cfg.redis_enabled = False
+            mock_get_config.return_value = cfg
             mock_get_dir.return_value = "/tmp/test"
 
             result = manager.setup_server()
@@ -1421,7 +1432,7 @@ class TestHookIntegration(unittest.TestCase):
         mock_server = Mock()
 
         with (
-            patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_config,
+            patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config,
             patch(
                 "gunicorn_prometheus_exporter.utils.get_multiprocess_dir"
             ) as mock_get_dir,
@@ -1433,8 +1444,10 @@ class TestHookIntegration(unittest.TestCase):
             mock_manager.setup_server.return_value = (9091, Mock())
             mock_manager.start_server.return_value = True
             mock_get_manager.return_value = mock_manager
-            mock_config.prometheus_metrics_port = 9091
-            mock_config.redis_enabled = False
+            cfg = MagicMock()
+            cfg.prometheus_metrics_port = 9091
+            cfg.redis_enabled = False
+            mock_get_config.return_value = cfg
             mock_get_dir.return_value = "/tmp/test"
 
             # Test multiple hooks

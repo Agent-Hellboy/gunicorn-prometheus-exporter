@@ -91,10 +91,11 @@ class TestConfigManager:
         """Test getting config in wrong state."""
         manager = ConfigManager()
 
-        # Manually set state to error
+        # Simulate initialized config but wrong state
+        manager._config = MagicMock()
         manager._state = ConfigState.ERROR
 
-        with pytest.raises(RuntimeError, match="Configuration not initialized"):
+        with pytest.raises(RuntimeError, match="Configuration not ready"):
             manager.get_config()
 
     def test_update_config_success(self):
