@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6] - 2025-09-27
+
+### Added
+
+- **Config Component Design Changes**: Updated configuration component architecture
+- **Documentation Updates**: Enhanced and updated project documentation
+
+### Changed
+
+- **Config Component**: Refactored configuration component design
+- **Documentation**: Updated documentation structure and content
+
+### Fixed
+
+- **Documentation Accuracy**: Fixed and improved documentation accuracy
+
 ## [0.1.5] - 2025-09-20
 
 ### Added
