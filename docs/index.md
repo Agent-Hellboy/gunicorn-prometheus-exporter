@@ -8,6 +8,7 @@ This isn't just another Prometheus exporter. I've implemented several innovative
 
 ### *Redis-Based Storage Innovation*
 Unlike traditional file-based multiprocess metrics, I've implemented a **Redis-backed storage system** that:
+
 - Eliminates file system bottlenecks and race conditions
 - Provides distributed metrics storage across multiple servers
 - Implements automatic TTL-based cleanup for stale metrics
@@ -15,6 +16,7 @@ Unlike traditional file-based multiprocess metrics, I've implemented a **Redis-b
 
 ### *Advanced Signal Handling Architecture*
 I've solved the complex challenge of capturing Gunicorn master process signals by:
+
 - **Patching the Arbiter class** to intercept all signal handling
 - Implementing **asynchronous signal capture** with thread-safe metrics updates
 - Providing comprehensive master process monitoring (HUP, USR1, USR2, CHLD signals)
@@ -22,6 +24,7 @@ I've solved the complex challenge of capturing Gunicorn master process signals b
 
 ### *Prometheus Spec Implementation*
 My implementation goes beyond basic metrics collection:
+
 - **Full Prometheus multiprocess protocol** compliance
 - **Custom RedisValue class** that replaces MmapedValue for distributed storage
 - **RedisMultiProcessCollector** that aggregates metrics across processes
@@ -186,10 +189,17 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 
 ### *The Problem We Solved*
 
-Traditional Prometheus exporters for Gunicorn face several limitations:
-- **File-based multiprocess metrics** create race conditions and performance bottlenecks
-- **No master process signal tracking** - critical for understanding server behavior
-- **Limited worker type support** - only basic sync workers
+## What Makes This Different
+
+### *The Problem We Solved*
+
+Monitoring Gunicorn applications with Prometheus has traditionally been challenging:
+
+- **No built-in Prometheus support** - Gunicorn doesn't provide native metrics
+- **Indirect solutions only** - existing approaches require statsd-exporter or manual implementation
+- **File-based multiprocess metrics** create race conditions and performance bottlenecks when manually implemented
+- **No master process signal tracking** - critical for understanding server behavior and worker restarts
+- **Limited worker type support** - most solutions only work with basic sync workers
 - **Complex configuration** - requires extensive setup and maintenance
 - **No fallback mechanism** - fails completely when storage is unavailable
 
