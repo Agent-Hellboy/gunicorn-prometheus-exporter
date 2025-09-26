@@ -1,4 +1,4 @@
-from ...config import config
+from ...config import get_config
 from .dict import redis_key
 
 
@@ -43,7 +43,7 @@ class RedisValue:
         from .client import RedisStorageDict
 
         self._redis_dict = RedisStorageDict(
-            redis_client, redis_key_prefix or config.redis_key_prefix
+            redis_client, redis_key_prefix or get_config().redis_key_prefix
         )
         self._params = (
             typ,
@@ -118,13 +118,14 @@ def get_redis_value_class(redis_client, redis_key_prefix=None):
 
     Args:
         redis_client: Redis client instance
-        redis_key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
+        redis_key_prefix: Prefix for Redis keys
+            (defaults to get_config().redis_key_prefix)
 
     Returns:
         Configured RedisValue class
     """
     if redis_key_prefix is None:
-        redis_key_prefix = config.redis_key_prefix
+        redis_key_prefix = get_config().redis_key_prefix
 
     class ConfiguredRedisValue(RedisValue):
         def __init__(
@@ -162,10 +163,11 @@ def cleanup_process_keys_for_pid(
     Args:
         pid: Process ID to clean up
         redis_client: Redis client instance
-        redis_key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
+        redis_key_prefix: Prefix for Redis keys
+            (defaults to get_config().redis_key_prefix)
     """
     if redis_key_prefix is None:
-        redis_key_prefix = config.redis_key_prefix
+        redis_key_prefix = get_config().redis_key_prefix
     from .client import RedisStorageClient
 
     storage_client = RedisStorageClient(redis_client, redis_key_prefix)
@@ -178,10 +180,11 @@ def mark_process_dead_redis(pid, redis_client, redis_key_prefix=None):
     Args:
         pid: Process ID to clean up
         redis_client: Redis client instance
-        redis_key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
+        redis_key_prefix: Prefix for Redis keys
+            (defaults to get_config().redis_key_prefix)
     """
     if redis_key_prefix is None:
-        redis_key_prefix = config.redis_key_prefix
+        redis_key_prefix = get_config().redis_key_prefix
     cleanup_process_keys_for_pid(pid, redis_client, redis_key_prefix)
 
 

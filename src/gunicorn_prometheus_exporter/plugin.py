@@ -23,7 +23,7 @@ import psutil
 from gunicorn.workers.gthread import ThreadWorker
 from gunicorn.workers.sync import SyncWorker
 
-from .config import config
+from .config import get_config
 from .metrics import (
     WORKER_CPU,
     WORKER_ERROR_HANDLING,
@@ -49,7 +49,7 @@ GEVENT_AVAILABLE = importlib.util.find_spec("gevent") is not None
 
 # Use configuration for logging level - with fallback for testing
 try:
-    log_level = config.get_gunicorn_config().get("loglevel", "INFO").upper()
+    log_level = get_config().get_gunicorn_config().get("loglevel", "INFO").upper()
     logging.basicConfig(level=getattr(logging, log_level))
 except Exception:
     # Fallback for testing when config is not fully set up
@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 def _setup_logging():
     """Setup logging with configuration."""
     try:
-        log_level = config.get_gunicorn_config().get("loglevel", "INFO").upper()
+        log_level = get_config().get_gunicorn_config().get("loglevel", "INFO").upper()
         logging.basicConfig(level=getattr(logging, log_level))
     except Exception as e:
         # Fallback to INFO level if config is not available

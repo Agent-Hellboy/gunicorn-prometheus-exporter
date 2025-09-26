@@ -3,6 +3,11 @@ Tests for Gunicorn Prometheus Exporter metrics.
 """
 
 import os
+import tempfile
+
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from prometheus_client import CollectorRegistry
 
@@ -166,8 +171,9 @@ def test_worker_response_size_metric():
 
 def test_multiprocess_dir_setup():
     """Test that PROMETHEUS_MULTIPROC_DIR is set."""
-    from gunicorn_prometheus_exporter.config import config
+    from gunicorn_prometheus_exporter.config import get_config
 
+    config = get_config()
     assert config.prometheus_multiproc_dir is not None
 
     # The directory should be set, but might not exist if cleaned up by other tests
@@ -287,3 +293,116 @@ class TestMetricsExceptionHandling:
         # Test that clear method exists and is callable
         assert hasattr(BaseMetric, "clear")
         assert callable(BaseMetric.clear)
+
+    def test_ensure_multiproc_dir_success(self):
+        """Test _ensure_multiproc_dir with valid directory."""
+        from gunicorn_prometheus_exporter.metrics import _ensure_multiproc_dir
+
+        # Use a temporary directory that we can create
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Mock get_config to return our temp directory
+            with patch(
+                "gunicorn_prometheus_exporter.metrics.get_config"
+            ) as mock_get_config:
+                mock_config = MagicMock()
+                mock_config.prometheus_multiproc_dir = temp_dir
+                mock_get_config.return_value = mock_config
+
+                # Should not raise an exception
+                _ensure_multiproc_dir()
+
+                # Directory should exist
+                assert os.path.exists(temp_dir)
+                assert os.path.isdir(temp_dir)
+
+    def test_ensure_multiproc_dir_failure_permission_denied(self):
+        """Test _ensure_multiproc_dir with permission denied error."""
+        from gunicorn_prometheus_exporter.metrics import _ensure_multiproc_dir
+
+        # Use a path that will cause permission denied
+        invalid_path = "/root/forbidden/prometheus_multiproc"
+
+        with patch(
+            "gunicorn_prometheus_exporter.metrics.get_config"
+        ) as mock_get_config:
+            mock_config = MagicMock()
+            mock_config.prometheus_multiproc_dir = invalid_path
+            mock_get_config.return_value = mock_config
+
+            with patch("os.makedirs", side_effect=PermissionError("Permission denied")):
+                # Should raise the exception
+                with pytest.raises(PermissionError, match="Permission denied"):
+                    _ensure_multiproc_dir()
+
+    def test_ensure_multiproc_dir_failure_invalid_path(self):
+        """Test _ensure_multiproc_dir with invalid path error."""
+        from gunicorn_prometheus_exporter.metrics import _ensure_multiproc_dir
+
+        # Use an invalid path
+        invalid_path = "/invalid/path/with/nonexistent/parent"
+
+        with patch(
+            "gunicorn_prometheus_exporter.metrics.get_config"
+        ) as mock_get_config:
+            mock_config = MagicMock()
+            mock_config.prometheus_multiproc_dir = invalid_path
+            mock_get_config.return_value = mock_config
+
+            with patch("os.makedirs", side_effect=OSError("No such file or directory")):
+                # Should raise the exception
+                with pytest.raises(OSError, match="No such file or directory"):
+                    _ensure_multiproc_dir()
+
+    def test_ensure_multiproc_dir_failure_disk_full(self):
+        """Test _ensure_multiproc_dir with disk full error."""
+        from gunicorn_prometheus_exporter.metrics import _ensure_multiproc_dir
+
+        # Use a temporary directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch(
+                "gunicorn_prometheus_exporter.metrics.get_config"
+            ) as mock_get_config:
+                mock_config = MagicMock()
+                mock_config.prometheus_multiproc_dir = temp_dir
+                mock_get_config.return_value = mock_config
+
+                with patch(
+                    "os.makedirs", side_effect=OSError("No space left on device")
+                ):
+                    # Should raise the exception
+                    with pytest.raises(OSError, match="No space left on device"):
+                        _ensure_multiproc_dir()
+
+    def test_get_shared_registry_calls_ensure_multiproc_dir(self):
+        """Test that get_shared_registry calls _ensure_multiproc_dir."""
+        from gunicorn_prometheus_exporter.metrics import (
+            get_shared_registry,
+        )
+
+        # Mock _ensure_multiproc_dir to verify it's called
+        with patch(
+            "gunicorn_prometheus_exporter.metrics._ensure_multiproc_dir"
+        ) as mock_ensure:
+            # Call get_shared_registry
+            registry = get_shared_registry()
+
+            # Verify _ensure_multiproc_dir was called
+            mock_ensure.assert_called_once()
+
+            # Verify registry is returned
+            assert registry is not None
+            assert hasattr(registry, "register")
+            assert hasattr(registry, "collect")
+
+    def test_get_shared_registry_fails_on_directory_error(self):
+        """Test that get_shared_registry fails when _ensure_multiproc_dir fails."""
+        from gunicorn_prometheus_exporter.metrics import get_shared_registry
+
+        # Mock _ensure_multiproc_dir to raise an exception
+        with patch(
+            "gunicorn_prometheus_exporter.metrics._ensure_multiproc_dir",
+            side_effect=OSError("Directory creation failed"),
+        ):
+            # Should raise the exception
+            with pytest.raises(OSError, match="Directory creation failed"):
+                get_shared_registry()

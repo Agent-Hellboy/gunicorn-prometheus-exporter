@@ -8,8 +8,8 @@ from typing import Dict, List, Optional, Type, Union
 
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
-# Import config early
-from .config import config
+# Import config manager
+from .config import get_config
 
 
 # Set up logging
@@ -18,11 +18,20 @@ logger = logging.getLogger(__name__)
 
 # === Auto setup multiprocess mode ===
 
-# Create and clean directory
-try:
-    os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
-except Exception as e:
-    logger.warning("Failed to prepare PROMETHEUS_MULTIPROC_DIR: %s", e)
+
+def _ensure_multiproc_dir():
+    """Ensure the multiprocess directory exists.
+
+    This function is called lazily when the registry is actually used,
+    avoiding import-time side effects.
+    """
+    try:
+        config = get_config()
+        os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
+    except Exception as e:
+        logger.error("Failed to prepare PROMETHEUS_MULTIPROC_DIR: %s", e)
+        raise
+
 
 # Prometheus Registry - Don't create MultiProcessCollector here
 # It will be created in the gunicorn config when needed
@@ -280,7 +289,12 @@ MASTER_WORKER_RESTART_COUNT = MasterWorkerRestartCount
 
 
 def get_shared_registry():
-    """Get the shared Prometheus registry."""
+    """Get the shared Prometheus registry.
+
+    This function ensures the multiprocess directory exists before
+    returning the registry, providing lazy initialization.
+    """
+    _ensure_multiproc_dir()
     return registry
 
 

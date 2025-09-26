@@ -9,7 +9,7 @@ import os
 
 from typing import Optional, Protocol
 
-from ...config import config
+from ...config import get_config
 from ..core import get_redis_value_class
 from ..core.client import RedisClientProtocol, _should_set_ttl
 
@@ -44,13 +44,13 @@ class FactoryUtilsMixin:
         Args:
             redis_client: Redis client instance
             redis_key_prefix: Prefix for Redis keys (defaults to \
-                config.redis_key_prefix)
+                get_config().redis_key_prefix)
 
         Returns:
             Configured RedisValue class
         """
         if redis_key_prefix is None:
-            redis_key_prefix = config.redis_key_prefix
+            redis_key_prefix = get_config().redis_key_prefix
         return get_redis_value_class(redis_client, redis_key_prefix)
 
     def create_storage_manager(
@@ -99,7 +99,7 @@ class RedisStorageManager:
         Returns:
             bool: True if setup was successful, False otherwise.
         """
-        if not config.redis_enabled:
+        if not get_config().redis_enabled:
             logger.debug("Redis is not enabled, skipping Redis metrics setup")
             return False
 
@@ -115,13 +115,15 @@ class RedisStorageManager:
             self._redis_client.ping()
             logger.debug(
                 "Connected to Redis at %s:%s (TTL: %s)",
-                config.redis_host,
-                config.redis_port,
-                "disabled" if not _should_set_ttl() else f"{config.redis_ttl_seconds}s",
+                get_config().redis_host,
+                get_config().redis_port,
+                "disabled"
+                if not _should_set_ttl()
+                else f"{get_config().redis_ttl_seconds}s",
             )
 
             # Create value class
-            prefix = config.redis_key_prefix.rstrip(":")
+            prefix = get_config().redis_key_prefix.rstrip(":")
             self._redis_value_class = self._value_class_factory(
                 self._redis_client, prefix
             )
@@ -170,7 +172,7 @@ class RedisStorageManager:
 
             pid = os.getpid()
             mark_process_dead_redis(
-                pid, self._redis_client, config.redis_key_prefix.rstrip(":")
+                pid, self._redis_client, get_config().redis_key_prefix.rstrip(":")
             )
             logger.debug("Cleaned up Redis keys for process %d", pid)
 
@@ -188,7 +190,7 @@ class RedisStorageManager:
 
             registry = get_shared_registry()
             return RedisMultiProcessCollector(
-                registry, self._redis_client, config.redis_key_prefix.rstrip(":")
+                registry, self._redis_client, get_config().redis_key_prefix.rstrip(":")
             )
 
         except Exception as e:
@@ -197,11 +199,12 @@ class RedisStorageManager:
 
     def _create_redis_client(self) -> RedisClientProtocol:
         """Create Redis client from configuration."""
+        config = get_config()
         redis_url = f"redis://{config.redis_host}:{config.redis_port}/{config.redis_db}"
-        if config.redis_password:
+        if get_config().redis_password:
             redis_url = (
-                f"redis://:{config.redis_password}@{config.redis_host}:"
-                f"{config.redis_port}/{config.redis_db}"
+                f"redis://:{get_config().redis_password}@{get_config().redis_host}:"
+                f"{get_config().redis_port}/{get_config().redis_db}"
             )
 
         os.environ["PROMETHEUS_REDIS_URL"] = redis_url

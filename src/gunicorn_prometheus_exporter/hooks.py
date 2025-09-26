@@ -23,7 +23,7 @@ import psutil
 
 from prometheus_client.multiprocess import MultiProcessCollector
 
-from .config import config
+from .config import get_config
 
 
 @dataclass
@@ -52,9 +52,11 @@ class HookManager:
             # Try to get loglevel from config, fallback to INFO
             loglevel = "INFO"
             try:
-                from .config import config
+                from .config import get_config
 
-                loglevel = config.get_gunicorn_config().get("loglevel", "INFO").upper()
+                loglevel = (
+                    get_config().get_gunicorn_config().get("loglevel", "INFO").upper()
+                )
             except (ValueError, AttributeError):
                 # Config not available (e.g., during testing), use default
                 pass
@@ -132,16 +134,26 @@ class MetricsServerManager:
         self.max_retries = 5  # Increased retries for restart scenarios
         self.retry_delay = 2  # Increased delay for port release
         self._server_thread = None  # Store the server thread
+        self._httpd = None  # Store the HTTP server instance
 
     def setup_server(self) -> Optional[tuple[int, Any]]:
         """Setup Prometheus metrics server."""
-        from .metrics import registry
+        from .config import initialize_config
+        from .metrics import get_shared_registry
         from .utils import get_multiprocess_dir
 
-        port = config.prometheus_metrics_port
+        # Initialize configuration if not already done
+        try:
+            initialize_config()
+        except RuntimeError:
+            # Configuration already initialized, that's fine
+            pass
+
+        port = get_config().prometheus_metrics_port
+        registry = get_shared_registry()
 
         # Try Redis collector first if Redis is enabled
-        if config.redis_enabled:
+        if get_config().redis_enabled:
             try:
                 from .backend import get_redis_storage_manager
 
@@ -206,51 +218,24 @@ class MetricsServerManager:
 
     def _start_single_attempt(self, port: int, registry: Any) -> bool:
         """Start metrics server in a single attempt."""
+        from .config import initialize_config
+
+        # Initialize configuration if not already done
+        try:
+            initialize_config()
+        except RuntimeError:
+            # Configuration already initialized, that's fine
+            pass
+
         try:
             # Get the bind address from configuration
-            bind_address = config.prometheus_bind_address
+            bind_address = get_config().prometheus_bind_address
 
             # Check if SSL/TLS is enabled
-            if config.prometheus_ssl_enabled:
-                import inspect
-
-                from prometheus_client.exposition import start_wsgi_server
-
-                # Start HTTPS server with SSL/TLS
-                # (pass only supported kwargs for compatibility)
-                sig = inspect.signature(start_wsgi_server)
-                kwargs = {
-                    "port": port,
-                    "addr": bind_address,
-                    "registry": registry,
-                    "certfile": config.prometheus_ssl_certfile,
-                    "keyfile": config.prometheus_ssl_keyfile,
-                }
-                optional = {
-                    "client_cafile": config.prometheus_ssl_client_cafile,
-                    "client_capath": config.prometheus_ssl_client_capath,
-                    "client_auth_required": config.prometheus_ssl_client_auth_required,
-                }
-                for k, v in optional.items():
-                    if k in sig.parameters and v:
-                        kwargs[k] = v
-                httpd, thread = start_wsgi_server(**kwargs)
-                # Store references to prevent garbage collection
-                self._server_thread = thread
-                self._httpd = httpd
-                self.logger.debug(
-                    "HTTPS metrics server started successfully on %s:%s",
-                    bind_address,
-                    port,
-                )
+            if get_config().prometheus_ssl_enabled:
+                self._start_https_server(port, registry, bind_address)
             else:
-                from prometheus_client.exposition import start_http_server
-
-                # Start HTTP server (default) without addr to preserve test expectations
-                start_http_server(port, registry=registry)
-                self.logger.debug(
-                    "HTTP metrics server started successfully on :%s", port
-                )
+                self._start_http_server(port, registry)
 
             return True
         except OSError as e:
@@ -265,6 +250,33 @@ class MetricsServerManager:
         except Exception as e:
             self.logger.error("Failed to start metrics server: %s", e)
             return False
+
+    def _start_https_server(self, port: int, registry: Any, bind_address: str) -> None:
+        """Start HTTPS server with SSL/TLS."""
+        from prometheus_client.exposition import start_http_server
+
+        # Start HTTPS server with SSL/TLS using start_http_server
+        # which supports SSL parameters unlike start_wsgi_server
+        start_http_server(
+            port=port,
+            addr=bind_address,
+            registry=registry,
+            certfile=get_config().prometheus_ssl_certfile,
+            keyfile=get_config().prometheus_ssl_keyfile,
+        )
+        self.logger.debug(
+            "HTTPS metrics server started successfully on %s:%s",
+            bind_address,
+            port,
+        )
+
+    def _start_http_server(self, port: int, registry: Any) -> None:
+        """Start HTTP server (default)."""
+        from prometheus_client.exposition import start_http_server
+
+        # Start HTTP server (default) without addr to preserve test expectations
+        start_http_server(port, registry=registry)
+        self.logger.debug("HTTP metrics server started successfully on :%s", port)
 
 
 class ProcessManager:
@@ -430,10 +442,19 @@ def default_on_exit(_server: Any) -> None:
 
 def redis_when_ready(_server: Any) -> None:
     """Redis-enabled when_ready hook with Prometheus metrics and Redis storage."""
+    from .config import initialize_config
+
+    # Initialize configuration if not already done
+    try:
+        initialize_config()
+    except RuntimeError:
+        # Configuration already initialized, that's fine
+        pass
+
     context = HookContext(server=_server, logger=_get_hook_manager().get_logger())
 
     # Setup Redis metrics storage if enabled
-    if config.redis_enabled:
+    if get_config().redis_enabled:
         from .backend import get_redis_storage_manager
 
         manager = get_redis_storage_manager()
@@ -465,7 +486,16 @@ def redis_when_ready(_server: Any) -> None:
 
 def _setup_redis_storage_if_enabled(logger: logging.Logger) -> None:
     """Setup Redis storage if enabled in configuration."""
-    if not config.redis_enabled:
+    from .config import initialize_config
+
+    # Initialize configuration if not already done
+    try:
+        initialize_config()
+    except RuntimeError:
+        # Configuration already initialized, that's fine
+        pass
+
+    if not get_config().redis_enabled:
         logger.debug("Redis storage disabled")
         return
 

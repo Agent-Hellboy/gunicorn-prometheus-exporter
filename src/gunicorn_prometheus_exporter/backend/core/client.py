@@ -11,7 +11,7 @@ import time
 
 from typing import Dict, Iterable, Optional, Protocol, Tuple, Union
 
-from ...config import config
+from ...config import get_config
 
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ def _should_set_ttl() -> bool:
     Returns:
         True if TTL should be set (TTL is not disabled and seconds > 0)
     """
-    return not config.redis_ttl_disabled and config.redis_ttl_seconds > 0
+    return not get_config().redis_ttl_disabled and get_config().redis_ttl_seconds > 0
 
 
 def _safe_extract_original_key(metadata: Dict) -> str:
@@ -161,10 +161,11 @@ class RedisStorageDict:
 
         Args:
             redis_client: Redis client instance
-            key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
+            key_prefix: Prefix for Redis keys
+                (defaults to get_config().redis_key_prefix)
         """
         self._redis = redis_client
-        self._key_prefix = key_prefix or config.redis_key_prefix
+        self._key_prefix = key_prefix or get_config().redis_key_prefix
         self._lock = threading.Lock()
         logger.debug("Initialized Redis storage dict with prefix: %s", key_prefix)
 
@@ -279,7 +280,7 @@ class RedisStorageDict:
 
             # Set TTL if not disabled
             if _should_set_ttl():
-                self._redis.expire(metric_key, config.redis_ttl_seconds)
+                self._redis.expire(metric_key, get_config().redis_ttl_seconds)
 
             # Store metadata separately for easier querying
             metadata_key = self._get_metadata_key(key, metric_type, multiprocess_mode)
@@ -289,7 +290,7 @@ class RedisStorageDict:
 
             # Set TTL for metadata key as well
             if _should_set_ttl():
-                self._redis.expire(metadata_key, config.redis_ttl_seconds)
+                self._redis.expire(metadata_key, get_config().redis_ttl_seconds)
 
     def _get_metric_key(
         self, key: str, metric_type: str = "counter", multiprocess_mode: str = ""
@@ -344,7 +345,7 @@ class RedisStorageDict:
 
         # Set TTL for metric key if not disabled
         if _should_set_ttl():
-            self._redis.expire(metric_key, config.redis_ttl_seconds)
+            self._redis.expire(metric_key, get_config().redis_ttl_seconds)
 
         # Store metadata separately for easier querying
         metadata_key = self._get_metadata_key(key, metric_type, multiprocess_mode)
@@ -354,7 +355,7 @@ class RedisStorageDict:
 
         # Set TTL for metadata key as well
         if _should_set_ttl():
-            self._redis.expire(metadata_key, config.redis_ttl_seconds)
+            self._redis.expire(metadata_key, get_config().redis_ttl_seconds)
 
     def _extract_original_key(self, metadata):
         """Extract original key from metadata, handling both bytes and string."""
@@ -399,7 +400,7 @@ class RedisStorageDict:
     def read_all_values_from_redis(redis_client, key_prefix: str = None):
         """Static method to read all values from Redis, similar to MmapedDict."""
         if key_prefix is None:
-            key_prefix = config.redis_key_prefix
+            key_prefix = get_config().redis_key_prefix
         redis_dict = RedisStorageDict(redis_client, key_prefix)
         return redis_dict.read_all_values()
 
@@ -434,7 +435,7 @@ class RedisStorageDict:
 
                 # Set TTL if configured
                 if _should_set_ttl():
-                    self._redis.expire(metadata_key, config.redis_ttl_seconds)
+                    self._redis.expire(metadata_key, get_config().redis_ttl_seconds)
 
                 logger.debug(
                     "Created metadata for key %s: typ=%s, mode=%s",
@@ -459,10 +460,11 @@ class RedisValueClass:
 
         Args:
             redis_client: Redis client instance
-            key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
+            key_prefix: Prefix for Redis keys
+                (defaults to get_config().redis_key_prefix)
         """
         self._redis_client = redis_client
-        self._key_prefix = key_prefix or config.redis_key_prefix
+        self._key_prefix = key_prefix or get_config().redis_key_prefix
         logger.debug("Initialized Redis value class with prefix: %s", key_prefix)
 
     def __call__(self, *args, **kwargs):
@@ -485,10 +487,11 @@ class RedisStorageClient:
 
         Args:
             redis_client: Redis client instance
-            key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
+            key_prefix: Prefix for Redis keys
+                (defaults to get_config().redis_key_prefix)
         """
         self._redis_client = redis_client
-        self._key_prefix = key_prefix or config.redis_key_prefix
+        self._key_prefix = key_prefix or get_config().redis_key_prefix
         self._value_class = RedisValueClass(redis_client, self._key_prefix)
         logger.debug("Initialized Redis storage client with prefix: %s", key_prefix)
 

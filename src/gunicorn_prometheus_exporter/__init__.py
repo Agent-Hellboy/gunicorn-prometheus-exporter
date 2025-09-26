@@ -76,7 +76,15 @@ import logging  # noqa: I001
 import gunicorn.app.base
 import gunicorn.arbiter
 
-from .config import config, get_config
+from .config import (
+    ExporterConfig,
+    ConfigManager,
+    ConfigState,
+    get_config_manager,
+    initialize_config,
+    get_config,
+    cleanup_config,
+)
 from .master import PrometheusMaster
 from .metrics import registry
 from .plugin import (
@@ -160,8 +168,13 @@ __all__ = [
     "PrometheusThreadWorker",
     "PrometheusMaster",
     "registry",
-    "config",
+    "ExporterConfig",
+    "ConfigManager",
+    "ConfigState",
+    "get_config_manager",
+    "initialize_config",
     "get_config",
+    "cleanup_config",
     "RedisStorageManager",
     "get_redis_storage_manager",
     "setup_redis_metrics",

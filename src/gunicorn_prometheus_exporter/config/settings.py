@@ -332,12 +332,3 @@ class ExporterConfig:
         logger.info("Gunicorn Timeout: %s", self.gunicorn_timeout)
         logger.info("Gunicorn Keepalive: %s", self.gunicorn_keepalive)
         logger.info("=" * 50)
-
-
-# Global configuration instance
-config = ExporterConfig()
-
-
-def get_config() -> ExporterConfig:
-    """Get the global configuration instance."""
-    return config

@@ -2,6 +2,224 @@
 
 Complete configuration guide for the Gunicorn Prometheus Exporter with all options and scenarios.
 
+## Configuration Architecture
+
+The Gunicorn Prometheus Exporter uses a **ConfigManager pattern** with lifecycle management that follows software engineering best practices for configuration management. This ensures consistent, centralized configuration across the entire application.
+
+### ConfigManager Pattern Benefits
+
+- **Lifecycle Management**: Proper initialization, validation, and cleanup states
+- **State Tracking**: Clear state transitions and error handling
+- **Thread Safety**: Safe concurrent access with proper locking mechanisms
+- **Validation Control**: Centralized validation with detailed error reporting
+- **Resource Management**: Proper cleanup and resource management
+- **Single Source of Truth**: One configuration instance for the entire application
+
+### Configuration Loading Flow
+
+```mermaid
+flowchart TD
+    A[Application Startup] --> B[initialize_config() called]
+    B --> C[ConfigManager.initialize()]
+    C --> D[State: INITIALIZING]
+    D --> E[Set environment variables]
+    E --> F[Create ExporterConfig instance]
+    F --> G[Validate configuration]
+    G --> H{Validation successful?}
+
+    H -->|No| I[State: ERROR]
+    H -->|Yes| J[State: INITIALIZED]
+
+    I --> K[Raise exception]
+    J --> L[Configuration ready]
+
+    L --> M[Property Access - Lazy Loading]
+    M --> N[Environment variables read with validation]
+    N --> O[CLI Updates via EnvironmentManager]
+    O --> P[Runtime Usage - Properties read current values]
+
+    P --> Q[Application Shutdown]
+    Q --> R[cleanup_config() called]
+    R --> S[ConfigManager.cleanup()]
+    S --> T[State: CLEANUP]
+
+    style A fill:#e1f5fe
+    style C fill:#f3e5f5
+    style M fill:#e8f5e8
+    style P fill:#fff3e0
+    style T fill:#ffebee
+```
+
+### Configuration Access Patterns
+
+#### **ConfigManager Access**
+```python
+# Import the config manager functions
+from gunicorn_prometheus_exporter.config import get_config, initialize_config
+
+# Initialize configuration (typically done once at startup)
+initialize_config(
+    PROMETHEUS_METRICS_PORT="9091",
+    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+    GUNICORN_WORKERS="2"
+)
+
+# Get the configuration instance
+config = get_config()
+port = config.prometheus_metrics_port
+redis_enabled = config.redis_enabled
+```
+
+#### **Direct ConfigManager Access**
+```python
+# Import the ConfigManager class
+from gunicorn_prometheus_exporter.config import ConfigManager
+
+# Create and manage configuration
+manager = ConfigManager()
+manager.initialize(
+    PROMETHEUS_METRICS_PORT="9091",
+    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+    GUNICORN_WORKERS="2"
+)
+
+# Get configuration
+config = manager.get_config()
+port = config.prometheus_metrics_port
+```
+
+#### **Module-Level Access**
+```python
+# Import config from the main module
+from gunicorn_prometheus_exporter import get_config
+
+# Access configuration values
+config = get_config()
+port = config.prometheus_metrics_port
+```
+
+### Environment Variable Processing
+
+The configuration system processes environment variables in multiple phases:
+
+#### **Phase 1: Module-Level Defaults**
+```python
+# config.py - Module level (read at import time)
+PROMETHEUS_MULTIPROC_DIR = os.environ.get("PROMETHEUS_MULTIPROC_DIR", _default_prometheus_dir)
+GUNICORN_TIMEOUT = os.environ.get("GUNICORN_TIMEOUT", 30)
+GUNICORN_KEEPALIVE = os.environ.get("GUNICORN_KEEPALIVE", 2)
+```
+
+#### **Phase 2: Singleton Initialization**
+```python
+# config.py - Global singleton creation
+config = ExporterConfig()  # Creates global instance
+
+def __init__(self):
+    """Initialize configuration with environment variables and defaults."""
+    self._setup_multiproc_dir()  # Sets up multiprocess directory
+
+def _setup_multiproc_dir(self):
+    """Set up the Prometheus multiprocess directory."""
+    if not os.environ.get(self.ENV_PROMETHEUS_MULTIPROC_DIR):
+        os.environ[self.ENV_PROMETHEUS_MULTIPROC_DIR] = self.PROMETHEUS_MULTIPROC_DIR
+```
+
+#### **Phase 3: Lazy Property Access**
+```python
+@property
+def prometheus_metrics_port(self) -> int:
+    """Get the Prometheus metrics server port."""
+    value = os.environ.get(self.ENV_PROMETHEUS_METRICS_PORT, self.PROMETHEUS_METRICS_PORT)
+    if value is None:
+        raise ValueError(f"Environment variable {self.ENV_PROMETHEUS_METRICS_PORT} must be set in production.")
+    return int(value)
+
+@property
+def redis_enabled(self) -> bool:
+    """Check if Redis storage is enabled."""
+    return os.environ.get(self.ENV_REDIS_ENABLED, "").lower() in ("true", "1", "yes", "on")
+```
+
+#### **Phase 4: CLI Integration**
+```python
+# hooks.py - EnvironmentManager class
+def update_from_cli(self, cfg: Any) -> None:
+    """Update environment variables from CLI configuration."""
+    self._update_workers_env(cfg)
+    self._update_bind_env(cfg)
+    self._update_worker_class_env(cfg)
+
+def _update_workers_env(self, cfg: Any) -> None:
+    """Update GUNICORN_WORKERS environment variable from CLI."""
+    if hasattr(cfg, "workers") and cfg.workers:
+        os.environ["GUNICORN_WORKERS"] = str(cfg.workers)
+```
+
+### Configuration Validation
+
+The configuration system includes comprehensive validation:
+
+#### **Required Variables Validation**
+```python
+@property
+def prometheus_metrics_port(self) -> int:
+    value = os.environ.get(self.ENV_PROMETHEUS_METRICS_PORT, self.PROMETHEUS_METRICS_PORT)
+    if value is None:
+        raise ValueError(
+            f"Environment variable {self.ENV_PROMETHEUS_METRICS_PORT} "
+            f"must be set in production. "
+            f"Example: export {self.ENV_PROMETHEUS_METRICS_PORT}=9091"
+        )
+    return int(value)
+```
+
+#### **Type Conversion and Validation**
+```python
+@property
+def gunicorn_timeout(self) -> int:
+    """Get the Gunicorn worker timeout."""
+    return int(
+        os.environ.get(self.ENV_GUNICORN_TIMEOUT, str(self.GUNICORN_TIMEOUT))
+    )
+
+@property
+def redis_ttl_seconds(self) -> int:
+    """Get Redis TTL in seconds for metric keys."""
+    return int(
+        os.environ.get(self.ENV_REDIS_TTL_SECONDS, "300")
+    )  # 5 minutes default
+```
+
+### Configuration Categories
+
+#### **Required (Production)**
+- `PROMETHEUS_METRICS_PORT` - Metrics server port
+- `PROMETHEUS_BIND_ADDRESS` - Metrics server bind address
+- `GUNICORN_WORKERS` - Number of workers
+
+#### **Optional (Defaults)**
+- `PROMETHEUS_MULTIPROC_DIR` - Multiprocess directory (defaults to `~/.gunicorn_prometheus`)
+- `GUNICORN_TIMEOUT` - Worker timeout (defaults to 30)
+- `GUNICORN_KEEPALIVE` - Keepalive setting (defaults to 2)
+
+#### **Redis Configuration**
+- `REDIS_ENABLED` - Enable Redis storage
+- `REDIS_HOST` - Redis host (defaults to 127.0.0.1)
+- `REDIS_PORT` - Redis port (defaults to 6379)
+- `REDIS_DB` - Redis database (defaults to 0)
+- `REDIS_PASSWORD` - Redis password
+- `REDIS_KEY_PREFIX` - Key prefix (defaults to "gunicorn")
+- `REDIS_TTL_SECONDS` - TTL for keys (defaults to 300)
+- `REDIS_TTL_DISABLED` - Disable TTL
+
+#### **SSL/TLS Configuration**
+- `PROMETHEUS_SSL_CERTFILE` - SSL certificate file
+- `PROMETHEUS_SSL_KEYFILE` - SSL key file
+- `PROMETHEUS_SSL_CLIENT_CAFILE` - Client CA file
+- `PROMETHEUS_SSL_CLIENT_CAPATH` - Client CA path
+- `PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED` - Require client auth
+
 ## 🔧 Environment Variables Reference
 
 ### Required Variables
