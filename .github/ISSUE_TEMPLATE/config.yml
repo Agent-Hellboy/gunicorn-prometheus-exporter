@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://agent-hellboy.github.io/gunicorn-prometheus-exporter
+    about: Check our comprehensive documentation for setup guides, API reference, and examples
+  - name: 💬 Discussions
+    url: https://github.com/agent-hellboy/gunicorn-prometheus-exporter/discussions
+    about: Ask questions and share ideas with the community
+  - name: 🐛 Bug Reports
+    url: https://github.com/agent-hellboy/gunicorn-prometheus-exporter/issues/new?template=bug_report.yml
+    about: Report bugs or unexpected behavior
+  - name: ✨ Feature Requests
+    url: https://github.com/agent-hellboy/gunicorn-prometheus-exporter/issues/new?template=feature_request.yml
+    about: Suggest new features or improvements
