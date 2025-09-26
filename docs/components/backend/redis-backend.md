@@ -158,7 +158,7 @@ os.environ["REDIS_SSL"] = "true"
 
 - **Memory Usage**: Redis stores metrics in memory for fast access
 - **Network Latency**: Consider Redis server location relative to application
-- **Connection Pooling**: Automatic connection management
+- **Connection Management**: Uses Redis client's built-in connection handling
 - **Key Expiration**: Configurable TTL prevents memory bloat
 
 ### Scaling Considerations
@@ -169,14 +169,7 @@ os.environ["REDIS_SSL"] = "true"
 
 ## Monitoring Redis Backend
 
-### Redis Metrics
-
-The Redis backend provides additional metrics for monitoring:
-
-- Connection status
-- Key count and memory usage
-- Operation latency
-- Error rates
+- Not doing this as of now.
 
 ### Health Checks
 

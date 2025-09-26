@@ -94,7 +94,7 @@ Our backend consists of several key components that work together to provide sea
 
 The main client for Redis operations, providing:
 
-- **Connection Management**: Handles Redis connections with pooling and error handling
+- **Connection Management**: Handles Redis connections with error handling
 - **Key Generation**: Creates structured Redis keys with embedded process information
 - **Value Operations**: Implements read/write operations for metric data
 - **Metadata Management**: Handles metric metadata storage and retrieval

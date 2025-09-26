@@ -28,7 +28,8 @@ def _ensure_multiproc_dir():
     try:
         os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
     except Exception as e:
-        logger.warning("Failed to prepare PROMETHEUS_MULTIPROC_DIR: %s", e)
+        logger.error("Failed to prepare PROMETHEUS_MULTIPROC_DIR: %s", e)
+        raise
 
 
 # Prometheus Registry - Don't create MultiProcessCollector here
