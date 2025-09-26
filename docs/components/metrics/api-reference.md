@@ -4,209 +4,177 @@ This document provides detailed API reference for the metrics component.
 
 ## Core Classes
 
-### PrometheusWorker
+### BaseMetric
 
-Base worker class that provides metrics collection for sync workers.
+Base class for all metrics using metaclass for automatic registry registration.
 
 ```python
-class PrometheusWorker(gunicorn.workers.sync.SyncWorker):
-    """Prometheus-enabled sync worker."""
+class BaseMetric(metaclass=MetricMeta):
+    """Base class for all metrics."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.metrics = Metrics()
+    name: str
+    documentation: str
+    labelnames: List[str]
+
+    @classmethod
+    def labels(cls, **kwargs):
+        """Get a labeled instance of the metric."""
+        return cls._metric.labels(**kwargs)
+
+    @classmethod
+    def inc(cls, **labels):
+        return cls._metric.labels(**labels).inc()
+
+    @classmethod
+    def set(cls, value, **labels):
+        return cls._metric.labels(**labels).set(value)
+
+    @classmethod
+    def observe(cls, value, **labels):
+        return cls._metric.labels(**labels).observe(value)
 ```
 
 **Methods:**
 
-- `__init__(*args, **kwargs)` - Initialize worker with metrics collection
-- `run()` - Run the worker with metrics tracking
-- `handle_request(*args, **kwargs)` - Handle individual requests with metrics
+- `labels(**kwargs)` - Get a labeled instance of the metric
+- `inc(**labels)` - Increment the metric
+- `set(value, **labels)` - Set the metric value
+- `observe(value, **labels)` - Observe a value (for histograms)
 
-### PrometheusThreadWorker
+### WorkerRequests
 
-Thread-based worker with metrics collection.
+Counter metric for total requests handled by workers.
 
 ```python
-class PrometheusThreadWorker(gunicorn.workers.gthread.ThreadWorker):
-    """Prometheus-enabled thread worker."""
+class WorkerRequests(BaseMetric, metric_type=Counter):
+    """Total number of requests handled by this worker."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.metrics = Metrics()
+    name = "gunicorn_worker_requests_total"
+    documentation = "Total number of requests handled by this worker"
+    labelnames = ["worker_id"]
 ```
 
-### PrometheusEventletWorker
+### WorkerRequestDuration
 
-Eventlet-based async worker with metrics collection.
+Histogram metric for request duration.
 
 ```python
-class PrometheusEventletWorker(gunicorn.workers.geventlet.EventletWorker):
-    """Prometheus-enabled eventlet worker."""
+class WorkerRequestDuration(BaseMetric, metric_type=Histogram):
+    """Request duration in seconds."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.metrics = Metrics()
+    name = "gunicorn_worker_request_duration_seconds"
+    documentation = "Request duration in seconds"
+    labelnames = ["worker_id"]
+    buckets = (0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, float("inf"))
 ```
 
-### PrometheusGeventWorker
+### WorkerMemory
 
-Gevent-based async worker with metrics collection.
+Gauge metric for worker memory usage.
 
 ```python
-class PrometheusGeventWorker(gunicorn.workers.ggevent.GeventWorker):
-    """Prometheus-enabled gevent worker."""
+class WorkerMemory(BaseMetric, metric_type=Gauge):
+    """Memory usage of the worker process."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.metrics = Metrics()
+    name = "gunicorn_worker_memory_bytes"
+    documentation = "Memory usage of the worker process"
+    labelnames = ["worker_id"]
+    multiprocess_mode = "all"  # Keep all worker instances with worker_id labels
 ```
 
-## Metrics Collection
+## Available Metrics
 
-### Metrics Class
+### Worker Metrics
 
-Main metrics collection class.
+All worker metrics are available as class constants:
 
 ```python
-class Metrics:
-    """Metrics collection and management."""
-
-    def __init__(self):
-        self.requests_total = Counter(
-            'gunicorn_worker_requests_total',
-            'Total requests handled by worker',
-            ['worker_id', 'method', 'endpoint']
-        )
-        self.request_duration = Histogram(
-            'gunicorn_worker_request_duration_seconds',
-            'Request duration in seconds',
-            ['worker_id', 'method', 'endpoint']
-        )
-        self.memory_usage = Gauge(
-            'gunicorn_worker_memory_bytes',
-            'Memory usage in bytes',
-            ['worker_id']
-        )
-        self.cpu_usage = Gauge(
-            'gunicorn_worker_cpu_percent',
-            'CPU usage percentage',
-            ['worker_id']
-        )
-        self.uptime = Gauge(
-            'gunicorn_worker_uptime_seconds',
-            'Worker uptime in seconds',
-            ['worker_id']
-        )
-        self.worker_state = Gauge(
-            'gunicorn_worker_state',
-            'Worker state with timestamp',
-            ['worker_id', 'state']
-        )
-        self.failed_requests = Counter(
-            'gunicorn_worker_failed_requests_total',
-            'Failed requests with method/endpoint labels',
-            ['worker_id', 'method', 'endpoint', 'error_type']
-        )
-        self.error_handling = Counter(
-            'gunicorn_worker_error_handling_total',
-            'Error tracking with method and endpoint labels',
-            ['worker_id', 'method', 'endpoint', 'error_type']
-        )
+from gunicorn_prometheus_exporter.metrics import (
+    WORKER_REQUESTS,
+    WORKER_REQUEST_DURATION,
+    WORKER_MEMORY,
+    WORKER_CPU,
+    WORKER_UPTIME,
+    WORKER_FAILED_REQUESTS,
+    WORKER_ERROR_HANDLING,
+    WORKER_STATE,
+    WORKER_REQUEST_SIZE,
+    WORKER_RESPONSE_SIZE,
+    WORKER_RESTART_REASON,
+    WORKER_RESTART_COUNT,
+)
 ```
 
-**Methods:**
+### Master Metrics
 
-- `record_request(method, endpoint, duration, success=True)` - Record request metrics
-- `record_error(method, endpoint, error_type)` - Record error metrics
-- `update_resource_usage()` - Update memory and CPU usage metrics
-- `update_uptime()` - Update worker uptime metric
-- `update_worker_state(state)` - Update worker state metric
-
-## Master Process Metrics
-
-### MasterMetrics Class
-
-Metrics collection for the master process.
+Master process metrics:
 
 ```python
-class MasterMetrics:
-    """Master process metrics collection."""
-
-    def __init__(self):
-        self.worker_restarts = Counter(
-            'gunicorn_master_worker_restarts_total',
-            'Total worker restarts',
-            ['worker_id', 'reason']
-        )
-        self.signals = Counter(
-            'gunicorn_master_signals_total',
-            'Signal handling metrics',
-            ['signal', 'action']
-        )
+from gunicorn_prometheus_exporter.metrics import (
+    MASTER_WORKER_RESTARTS,
+    MASTER_WORKER_RESTART_COUNT,
+)
 ```
 
-**Methods:**
-
-- `record_worker_restart(worker_id, reason)` - Record worker restart
-- `record_signal(signal, action)` - Record signal handling
-
-## Hooks
-
-### on_starting
-
-Called when the master process starts.
+### Registry Access
 
 ```python
-def on_starting(server):
-    """Initialize metrics collection on master start."""
-    server.master_metrics = MasterMetrics()
+from gunicorn_prometheus_exporter.metrics import get_shared_registry
+
+# Get the shared Prometheus registry
+registry = get_shared_registry()
 ```
 
-### on_reload
+## Metric Usage Examples
 
-Called when the master process reloads.
+### Using Worker Metrics
 
 ```python
-def on_reload(server):
-    """Handle metrics collection on reload."""
-    # Cleanup old metrics
-    # Initialize new metrics
+from gunicorn_prometheus_exporter.metrics import WORKER_REQUESTS, WORKER_MEMORY
+
+# Increment request counter
+WORKER_REQUESTS.labels(worker_id="worker_1_1234567890").inc()
+
+# Set memory usage
+WORKER_MEMORY.labels(worker_id="worker_1_1234567890").set(1024 * 1024 * 100)  # 100MB
 ```
 
-### worker_int
-
-Called when a worker is initialized.
+### Using Master Metrics
 
 ```python
-def worker_int(worker):
-    """Initialize worker metrics."""
-    worker.metrics = Metrics()
-    worker.start_time = time.time()
+from gunicorn_prometheus_exporter.metrics import MASTER_WORKER_RESTARTS
+
+# Record worker restart
+MASTER_WORKER_RESTARTS.labels(reason="timeout").inc()
 ```
 
-### pre_request
+## Configuration
 
-Called before processing a request.
+### Environment Variables
+
+The metrics component uses the following environment variables:
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `PROMETHEUS_MULTIPROC_DIR` | str | `~/.gunicorn_prometheus` | Directory for multiprocess metrics |
+| `PROMETHEUS_METRICS_PORT` | int | `None` | Port for metrics endpoint (required in production) |
+| `PROMETHEUS_BIND_ADDRESS` | str | `None` | Bind address for metrics server (required in production) |
+
+### Multiprocess Mode
+
+The metrics component automatically sets up multiprocess mode:
 
 ```python
-def pre_request(worker, req):
-    """Record request start time."""
-    req.start_time = time.time()
-```
+def _ensure_multiproc_dir():
+    """Ensure the multiprocess directory exists.
 
-### post_request
-
-Called after processing a request.
-
-```python
-def post_request(worker, req, environ, resp):
-    """Record request metrics."""
-    duration = time.time() - req.start_time
-    method = environ.get('REQUEST_METHOD', 'UNKNOWN')
-    endpoint = environ.get('PATH_INFO', '/')
-
-    worker.metrics.record_request(method, endpoint, duration)
+    This function is called lazily when the registry is actually used,
+    avoiding import-time side effects.
+    """
+    try:
+        os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
+    except Exception as e:
+        logger.warning("Failed to prepare PROMETHEUS_MULTIPROC_DIR: %s", e)
 ```
 
 ## Configuration

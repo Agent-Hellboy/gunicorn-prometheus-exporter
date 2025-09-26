@@ -54,9 +54,9 @@ class ExporterConfig:
 
 **Methods:**
 
-- `validate()` - Validate configuration
-- `get_gunicorn_config()` - Get Gunicorn-specific configuration
-- `get_prometheus_config()` - Get Prometheus-specific configuration
+- `validate() -> bool` - Validate configuration
+- `get_gunicorn_config() -> dict` - Get Gunicorn-specific configuration
+- `get_prometheus_config() -> dict` - Get Prometheus-specific configuration
 - `print_config()` - Print current configuration
 
 ### Global Configuration Instance

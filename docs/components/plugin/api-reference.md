@@ -13,10 +13,17 @@ class PrometheusMixin:
     """Mixin class that adds Prometheus metrics functionality to any worker type."""
 
     def __init__(self, *args, **kwargs):
+        # Call the parent class's __init__ first
         super().__init__(*args, **kwargs)
-        self.worker_id = f"worker_{self.age}_{int(self.start_time)}"
+
+        # Setup logging when worker is initialized
+        _setup_logging()
         self.start_time = time.time()
+        # Create a unique worker ID using worker age and timestamp
+        # Format: worker_<age>_<timestamp>
+        self.worker_id = f"worker_{self.age}_{int(self.start_time)}"
         self.process = psutil.Process()
+        # Initialize request counter
         self._request_count = 0
 ```
 

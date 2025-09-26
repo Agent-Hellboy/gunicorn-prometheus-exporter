@@ -568,23 +568,27 @@ flowchart TD
 
 #### 1. **Automatic Fallback to File Storage**
 
-When Redis is unavailable, the system automatically falls back to file-based storage:
+When Redis setup fails, the system continues with file-based storage:
 
 ```python
-def _create_redis_client(self) -> RedisClientProtocol:
-    """Create Redis client with fallback to file storage."""
+def setup(self) -> bool:
+    """Set up Redis-based metrics storage."""
+    if not config.redis_enabled:
+        logger.debug("Redis is not enabled, skipping Redis metrics setup")
+        return False
+
     try:
-        redis_url = f"redis://{config.redis_host}:{config.redis_port}/{config.redis_db}"
-        if config.redis_password:
-            redis_url = f"redis://:{config.redis_password}@{config.redis_host}:{config.redis_port}/{config.redis_db}"
-
-        client = redis.from_url(redis_url)
-        client.ping()  # Test connection
-        return client
-
+        # Create Redis client and test connection
+        self._redis_client = self._redis_client_factory()
+        self._redis_client.ping()
+        # ... setup Redis storage ...
+        return True
     except Exception as e:
-        logger.warning("Redis connection failed, falling back to file storage: %s", e)
-        return None
+        logger.error("Failed to setup Redis metrics: %s", e)
+        self._cleanup()
+        return False
+
+**Note**: When Redis setup fails, the Prometheus client library continues using its default file-based multiprocess storage mechanism. No additional fallback code is needed.
 ```
 
 #### 2. **Graceful Degradation of Features**

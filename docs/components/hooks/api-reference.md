@@ -19,9 +19,9 @@ class HookManager:
 
 **Methods:**
 
-- `get_logger()` - Get configured logger instance
-- `safe_execute(func, *args, **kwargs)` - Safely execute a function with error handling
-- `_setup_logging()` - Setup logging configuration
+- `get_logger() -> logging.Logger` - Get configured logger instance
+- `safe_execute(func, *args, **kwargs) -> bool` - Safely execute a function with error handling
+- `_setup_logging() -> None` - Setup logging configuration
 
 ### EnvironmentManager
 

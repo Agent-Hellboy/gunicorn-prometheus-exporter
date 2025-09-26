@@ -86,51 +86,33 @@ class RedisStorageDict:
 - `clear()` - Clear all items
 - `update(other)` - Update with other dict
 
-### FactoryUtilsMixin
+### RedisStorageManager
 
-Mixin class providing factory utilities for Redis value classes.
+The main manager class for Redis-based metrics storage.
 
 ```python
-class FactoryUtilsMixin:
-    """Mixin class for factory utilities."""
+class RedisStorageManager:
+    """Manages Redis-based metrics storage with proper lifecycle management."""
 
-    def create_redis_value_class(self, redis_client, redis_key_prefix=None):
-        """Create a RedisValue class configured with Redis client.
+    def __init__(self, redis_client_factory=None, value_class_factory=None):
+        """Initialize Redis storage manager.
 
         Args:
-            redis_client: Redis client instance
-            redis_key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
-
-        Returns:
-            Configured RedisValue class
+            redis_client_factory: Factory function to create Redis client (for testing)
+            value_class_factory: Factory function to create value class (for testing)
         """
 ```
 
-**Methods:**
+**Key Methods:**
 
-- `create_redis_value_class(redis_client, redis_key_prefix=None)` - Create configured RedisValue class
+- `setup() -> bool` - Set up Redis-based metrics storage
+- `teardown() -> None` - Teardown Redis storage and restore original behavior
+- `is_enabled() -> bool` - Check if Redis storage is enabled and working
+- `get_client() -> Optional[RedisClientProtocol]` - Get the Redis client instance
+- `cleanup_keys() -> None` - Clean up Redis keys for dead processes
+- `get_collector()` - Get Redis-based collector for metrics collection
 
-### CleanupUtilsMixin
-
-Mixin class providing cleanup utilities for Redis operations.
-
-```python
-class CleanupUtilsMixin:
-    """Mixin class for cleanup utilities."""
-
-    def cleanup_process_keys(self, pid, redis_client, redis_key_prefix=None):
-        """Clean up Redis keys for a specific process.
-
-        Args:
-            pid: Process ID to clean up
-            redis_client: Redis client instance
-            redis_key_prefix: Prefix for Redis keys (defaults to config.redis_key_prefix)
-        """
-```
-
-**Methods:**
-
-- `cleanup_process_keys(pid, redis_client, redis_key_prefix=None)` - Clean up process-specific Redis keys
+**Note**: The mixin classes (`FactoryUtilsMixin`, `CleanupUtilsMixin`) are internal implementation details and not part of the public API.
 
 ### RedisMultiProcessCollector
 
@@ -138,19 +120,24 @@ Collector that aggregates metrics from Redis across processes.
 
 ```python
 class RedisMultiProcessCollector:
-    """Collector that aggregates metrics from Redis across processes."""
+    """Collector for Redis-based multi-process mode."""
 
-    def __init__(self, storage_dict, registry=None):
-        self.storage_dict = storage_dict
-        self.registry = registry or CollectorRegistry()
+    def __init__(self, registry, redis_client=None, redis_key_prefix=None):
+        """Initialize Redis multi-process collector.
+
+        Args:
+            registry: Prometheus registry to register with
+            redis_client: Redis client instance (optional)
+            redis_key_prefix: Key prefix for Redis keys (optional)
+        """
 ```
 
-**Methods:**
+**Key Methods:**
 
 - `collect()` - Collect metrics from Redis
-- `describe()` - Describe metrics
-- `register(metric)` - Register metric
-- `unregister(metric)` - Unregister metric
+- `merge_from_redis(redis_client, redis_key_prefix=None, accumulate=True)` - Static method to merge metrics from Redis
+
+**Note**: The collector requires a registry parameter and does not default to `CollectorRegistry()`. It also requires either a `redis_client` parameter or `PROMETHEUS_REDIS_URL` environment variable to be set.
 
 ### RedisValue
 
@@ -158,21 +145,37 @@ Redis-backed value implementation for individual metrics.
 
 ```python
 class RedisValue:
-    """Redis-backed value implementation for individual metrics."""
+    """A float backed by Redis for multi-process mode.
 
-    def __init__(self, client, key, value_type='float'):
-        self.client = client
-        self.key = key
-        self.value_type = value_type
+    This replaces MmapedValue for storing metrics in Redis instead of files.
+    """
+
+    def __init__(
+        self,
+        typ=None,
+        metric_name=None,
+        name=None,
+        labelnames=None,
+        labelvalues=None,
+        help_text=None,
+        multiprocess_mode="",
+        redis_client=None,
+        redis_key_prefix=None,
+        **_kwargs,
+    ):
+        """Initialize RedisValue with Redis client and key prefix."""
 ```
 
-**Methods:**
+**Key Methods:**
 
 - `get()` - Get current value
-- `set(value)` - Set value
-- `inc(value=1)` - Increment value
-- `dec(value=1)` - Decrement value
-- `reset()` - Reset to default value
+- `set(value, timestamp=None)` - Set value and optional timestamp
+- `inc(amount=1)` - Increment value by amount
+- `get_timestamp()` - Get current timestamp
+- `set_exemplar(_exemplar)` - Set exemplar (not implemented for Redis yet)
+- `get_exemplar()` - Get exemplar (not implemented for Redis yet)
+
+**Note**: The `RedisValue` class is created by the `RedisValueClass` factory and is not directly instantiated by users.
 
 ## Key Management
 
@@ -216,22 +219,14 @@ gunicorn:histogram:12345:metric:ghi789
 
 ### Mode Implementation
 
-```python
-def aggregate_metrics(mode, values):
-    """Aggregate metrics based on mode."""
-    if mode == 'all':
-        return values
-    elif mode == 'liveall':
-        return [v for v in values if is_process_alive(v.pid)]
-    elif mode == 'max':
-        return max(values, key=lambda x: x.value)
-    elif mode == 'min':
-        return min(values, key=lambda x: x.value)
-    elif mode == 'sum':
-        return sum(v.value for v in values)
-    elif mode == 'mostrecent':
-        return max(values, key=lambda x: x.timestamp)
-```
+The actual aggregation logic is implemented in `RedisMultiProcessCollector._accumulate_metrics()` and handles:
+
+- **Worker lifetime management**: Dead PID cleanup and process tracking
+- **Histogram bucket accumulation**: Proper bucket value aggregation
+- **Metric wrapper handling**: Works with `MetricWrapperBase` instances, not simple value/timestamp pairs
+- **Complex aggregation rules**: Implements Prometheus multiprocess specification
+
+**Note**: The aggregation logic is internal to the collector and not exposed as a public API. For custom aggregation needs, refer to the `RedisMultiProcessCollector` implementation in `backend/core/collector.py`.
 
 ## Configuration
 
@@ -248,21 +243,28 @@ def aggregate_metrics(mode, values):
 | `REDIS_PASSWORD` | str | - | Redis password (if required) |
 | `REDIS_SSL` | bool | `false` | Enable SSL connection to Redis |
 
-### Configuration Loading
+### Configuration
 
+Configuration is driven by the `ExporterConfig` singleton and environment variables. See [Configuration Guide](../config/configuration.md) for complete details.
+
+**Key Configuration Properties:**
+- `config.redis_enabled` - Enable/disable Redis storage
+- `config.redis_host` - Redis server host
+- `config.redis_port` - Redis server port
+- `config.redis_db` - Redis database number
+- `config.redis_key_prefix` - Key prefix for Redis keys
+- `config.redis_ttl_seconds` - TTL for Redis keys
+- `config.redis_password` - Redis password
+- `config.redis_ssl` - Enable SSL/TLS
+
+**Example:**
 ```python
-def load_redis_config():
-    """Load Redis configuration from environment."""
-    return {
-        'enabled': os.getenv('REDIS_ENABLED', 'false').lower() == 'true',
-        'host': os.getenv('REDIS_HOST', 'localhost'),
-        'port': int(os.getenv('REDIS_PORT', '6379')),
-        'db': int(os.getenv('REDIS_DB', '0')),
-        'prefix': os.getenv('REDIS_KEY_PREFIX', 'gunicorn'),
-        'ttl': int(os.getenv('REDIS_TTL_SECONDS', '300')),
-        'password': os.getenv('REDIS_PASSWORD'),
-        'ssl': os.getenv('REDIS_SSL', 'false').lower() == 'true'
-    }
+from gunicorn_prometheus_exporter.config import config
+
+# Check if Redis is enabled
+if config.redis_enabled:
+    print(f"Redis host: {config.redis_host}:{config.redis_port}")
+    print(f"Key prefix: {config.redis_key_prefix}")
 ```
 
 ## Error Handling
@@ -340,74 +342,64 @@ key = redis_key(
 # Returns: '["gunicorn_requests_total", "requests_total", {"method": "GET", "status": "200"}, "Total number of requests"]'
 ```
 
+**Note**: The `redis_key` function is located in `backend/core/dict.py` and returns a JSON string, not a tuple.
+
 ## Performance Optimization
 
-### Connection Pooling
+The Redis backend uses the standard Redis Python client with built-in connection pooling and health checks:
 
 ```python
-class RedisConnectionPool:
-    """Redis connection pool for better performance."""
-
-    def __init__(self, max_connections=10):
-        self.max_connections = max_connections
-        self.pool = []
-        self.in_use = set()
+# Redis client configuration with performance optimizations
+redis.from_url(
+    redis_url,
+    decode_responses=False,
+    socket_timeout=5.0,  # 5 second timeout for socket operations
+    socket_connect_timeout=5.0,  # 5 second timeout for connection
+    retry_on_timeout=True,  # Retry on timeout
+    health_check_interval=30,  # Health check every 30 seconds
+)
 ```
 
-### Batch Operations
-
-```python
-def batch_set(client, items, ttl=None):
-    """Set multiple items in batch."""
-    pipe = client.pipeline()
-    for key, value in items:
-        pipe.set(key, value, ex=ttl)
-    return pipe.execute()
-```
+**Note**: The backend doesn't provide custom connection pooling or batch operations. It uses the standard Redis client's built-in features for optimal performance.
 
 ## Monitoring
 
 ### Health Checks
 
+The Redis storage manager provides built-in health checking through its setup process:
+
 ```python
-def health_check(manager):
-    """Perform comprehensive health check."""
+def check_redis_health():
+    """Check Redis storage health using the manager."""
+    from gunicorn_prometheus_exporter.backend import get_redis_storage_manager
+
+    manager = get_redis_storage_manager()
+
+    # Check if Redis is enabled and working
+    if not manager.is_enabled():
+        return False
+
+    # Get client and test connection
+    client = manager.get_client()
+    if client is None:
+        return False
+
     try:
-        # Test connection
-        client = manager.get_client()
+        # Test Redis connection
         client.ping()
-
-        # Test write/read
-        test_key = f"{manager.prefix}:health_check"
-        client.set(test_key, "ok", ex=60)
-        value = client.get(test_key)
-        client.delete(test_key)
-
-        return value == b"ok"
+        return True
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
+        logger.error(f"Redis health check failed: {e}")
         return False
 ```
+
+**Note**: The `RedisStorageManager` doesn't have a `prefix` attribute or `get_client()` method that returns a raw Redis connection. Use `manager.get_client()` to get the Redis client protocol instance.
 
 ## Conditional Imports and Fallback Behavior
 
 ### Redis Availability Detection
 
-The backend uses conditional imports to handle cases where Redis is not available:
-
-```python
-# Conditional Redis import - only import when needed
-try:
-    import redis
-    REDIS_AVAILABLE = True
-except ImportError:
-    REDIS_AVAILABLE = False
-    redis = None
-```
-
-### Collector Availability
-
-The Redis collector is conditionally imported based on Redis availability:
+The backend uses conditional imports in `backend/core/__init__.py` to handle Redis availability:
 
 ```python
 # Conditional import of Redis collector
@@ -419,46 +411,92 @@ except ImportError:
     REDIS_COLLECTOR_AVAILABLE = False
 ```
 
-### Fallback Behavior
+### Redis Client Configuration
 
-When Redis is not available, the system gracefully falls back to file-based storage:
+The `RedisMultiProcessCollector` provides a default Redis client factory:
 
 ```python
 def _get_default_redis_client(self):
     """Get default Redis client from environment variables."""
     redis_url = os.environ.get("PROMETHEUS_REDIS_URL")
     if redis_url:
-        try:
-            return redis.from_url(redis_url)
-        except redis.ConnectionError:
-            logger.warning("Redis connection failed, falling back to file storage")
-            return None
-    return None
+        return redis.from_url(
+            redis_url,
+            decode_responses=False,
+            socket_timeout=5.0,
+            socket_connect_timeout=5.0,
+            retry_on_timeout=True,
+            health_check_interval=30,
+        )
+
+    # Try to connect to local Redis
+    try:
+        return redis.Redis(
+            host="localhost",
+            port=6379,
+            db=0,
+            decode_responses=False,
+            socket_timeout=5.0,
+            socket_connect_timeout=5.0,
+            retry_on_timeout=True,
+            health_check_interval=30,
+        )
+    except redis.ConnectionError:
+        return None
 ```
 
 ### Error Handling Patterns
 
-The backend implements comprehensive error handling:
+The `RedisStorageDict` implements timestamp fallback:
 
 ```python
 def _redis_now(self) -> float:
-    """Get current timestamp using Redis server time for coherence."""
+    """Get current timestamp using Redis server time for coherence.
+
+    Falls back to local time if Redis time is not available.
+    """
     try:
-        sec, usec = self._redis.time()
+        sec, usec = self._redis.time()  # returns (seconds, microseconds)
         return sec + usec / 1_000_000.0
     except Exception as e:
         logger.debug("Failed to get Redis time, falling back to local time: %s", e)
         return time.time()
 ```
 
-### Metrics
+### Fallback Mechanism
 
-The backend provides additional metrics for monitoring:
+When Redis setup fails, the system continues with file-based storage:
 
-- `redis_connections_total` - Total Redis connections
-- `redis_operations_total` - Total Redis operations
-- `redis_operation_duration_seconds` - Redis operation duration
-- `redis_errors_total` - Total Redis errors
+```python
+def setup(self) -> bool:
+    """Set up Redis-based metrics storage."""
+    if not config.redis_enabled:
+        logger.debug("Redis is not enabled, skipping Redis metrics setup")
+        return False
+
+    try:
+        # Create Redis client and test connection
+        self._redis_client = self._redis_client_factory()
+        self._redis_client.ping()
+        # ... setup Redis storage ...
+        return True
+    except Exception as e:
+        logger.error("Failed to setup Redis metrics: %s", e)
+        self._cleanup()
+        return False
+```
+
+**Note**: The fallback to file-based storage is automatic when Redis setup fails. The Prometheus client library continues using its default file-based multiprocess storage mechanism.
+
+### Redis Metrics
+
+**Important**: The backend does not expose Redis-specific metrics like `redis_operations_total` or `redis_errors_total`. The Redis backend is a storage mechanism for existing Gunicorn metrics, not a source of additional metrics.
+
+The Redis backend stores the same metrics that are available with file-based storage:
+- All Gunicorn worker metrics (requests, duration, memory, CPU, etc.)
+- All Gunicorn master metrics (worker restarts, etc.)
+
+The only difference is the storage mechanism (Redis vs files), not the metrics themselves.
 
 ## Related Documentation
 
