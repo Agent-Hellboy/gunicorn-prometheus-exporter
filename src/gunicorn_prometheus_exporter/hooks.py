@@ -135,10 +135,11 @@ class MetricsServerManager:
 
     def setup_server(self) -> Optional[tuple[int, Any]]:
         """Setup Prometheus metrics server."""
-        from .metrics import registry
+        from .metrics import get_shared_registry
         from .utils import get_multiprocess_dir
 
         port = config.prometheus_metrics_port
+        registry = get_shared_registry()
 
         # Try Redis collector first if Redis is enabled
         if config.redis_enabled:

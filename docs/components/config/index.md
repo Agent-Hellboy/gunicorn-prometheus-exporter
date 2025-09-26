@@ -1,15 +1,16 @@
 # Configuration Component
 
-The configuration component manages all settings and options for the Gunicorn Prometheus Exporter.
+The configuration component manages all settings and options for the Gunicorn Prometheus Exporter using a **singleton pattern** that follows software engineering best practices.
 
 ## Overview
 
 The configuration component handles:
 
-- Environment variable management
-- Configuration validation
-- Default value assignment
-- Runtime configuration updates
+- **Singleton Pattern**: Single configuration instance for the entire application
+- **Lazy Loading**: Environment variables are read only when needed
+- **Type Safety**: Automatic type conversion with validation
+- **CLI Integration**: Gunicorn CLI options update environment variables
+- **Comprehensive Validation**: Clear error messages for missing or invalid configuration
 
 ## Configuration Sources
 
@@ -68,8 +69,40 @@ os.environ.setdefault("GUNICORN_WORKERS", "2")
 
 ## Documentation
 
-- [Configuration Guide](configuration.md) - Complete configuration documentation
-- [API Reference](api-reference.md) - Configuration API documentation
+- [Configuration Guide](configuration.md) - Complete configuration guide with all options and scenarios
+- [Configuration Flow](configuration-flow.md) - Visual representation of the configuration loading process
+- [API Reference](api-reference.md) - Detailed API documentation for configuration classes and methods
+
+## Configuration Access Patterns
+
+### Global Singleton Access
+```python
+# Import the global config instance
+from gunicorn_prometheus_exporter.config import config
+
+# Access configuration values
+port = config.prometheus_metrics_port
+redis_enabled = config.redis_enabled
+```
+
+### Function-Based Access
+```python
+# Import the get_config function
+from gunicorn_prometheus_exporter.config import get_config
+
+# Get the singleton instance
+config = get_config()
+port = config.prometheus_metrics_port
+```
+
+### Module-Level Access
+```python
+# Import config from the main module
+from gunicorn_prometheus_exporter import config
+
+# Access configuration values
+port = config.prometheus_metrics_port
+```
 
 ## Validation
 
