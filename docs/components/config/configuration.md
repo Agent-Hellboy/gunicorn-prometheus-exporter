@@ -4,64 +4,97 @@ Complete configuration guide for the Gunicorn Prometheus Exporter with all optio
 
 ## Configuration Architecture
 
-The Gunicorn Prometheus Exporter uses a **singleton configuration pattern** that follows software engineering best practices for configuration management. This ensures consistent, centralized configuration across the entire application.
+The Gunicorn Prometheus Exporter uses a **ConfigManager pattern** with lifecycle management that follows software engineering best practices for configuration management. This ensures consistent, centralized configuration across the entire application.
 
-### Singleton Pattern Benefits
+### ConfigManager Pattern Benefits
 
+- **Lifecycle Management**: Proper initialization, validation, and cleanup states
+- **State Tracking**: Clear state transitions and error handling
+- **Thread Safety**: Safe concurrent access with proper locking mechanisms
+- **Validation Control**: Centralized validation with detailed error reporting
+- **Resource Management**: Proper cleanup and resource management
 - **Single Source of Truth**: One configuration instance for the entire application
-- **Consistent State**: All modules access the same configuration values
-- **Lazy Loading**: Environment variables are read only when needed
-- **Thread Safety**: Safe for multi-threaded and multi-process environments
-- **Memory Efficiency**: Only one configuration object exists in memory
 
 ### Configuration Loading Flow
 
 ```mermaid
 flowchart TD
-    A[Module Import] --> B[Read env vars at module level]
-    B --> C[Singleton Creation]
-    C --> D[ExporterConfig created globally]
-    D --> E[__init__ method called]
-    E --> F[_setup_multiproc_dir modifies os.environ]
-    F --> G[Property Access - Lazy Loading]
-    G --> H[Environment variables read with validation]
-    H --> I[CLI Updates via EnvironmentManager]
-    I --> J[Runtime Usage - Properties read current values]
+    A[Application Startup] --> B[initialize_config() called]
+    B --> C[ConfigManager.initialize()]
+    C --> D[State: INITIALIZING]
+    D --> E[Set environment variables]
+    E --> F[Create ExporterConfig instance]
+    F --> G[Validate configuration]
+    G --> H{Validation successful?}
+
+    H -->|No| I[State: ERROR]
+    H -->|Yes| J[State: INITIALIZED]
+
+    I --> K[Raise exception]
+    J --> L[Configuration ready]
+
+    L --> M[Property Access - Lazy Loading]
+    M --> N[Environment variables read with validation]
+    N --> O[CLI Updates via EnvironmentManager]
+    O --> P[Runtime Usage - Properties read current values]
+
+    P --> Q[Application Shutdown]
+    Q --> R[cleanup_config() called]
+    R --> S[ConfigManager.cleanup()]
+    S --> T[State: CLEANUP]
 
     style A fill:#e1f5fe
     style C fill:#f3e5f5
-    style G fill:#e8f5e8
-    style J fill:#fff3e0
+    style M fill:#e8f5e8
+    style P fill:#fff3e0
+    style T fill:#ffebee
 ```
 
 ### Configuration Access Patterns
 
-#### **Global Singleton Access**
+#### **ConfigManager Access**
 ```python
-# Import the global config instance
-from gunicorn_prometheus_exporter.config import config
+# Import the config manager functions
+from gunicorn_prometheus_exporter.config import get_config, initialize_config
 
-# Access configuration values
+# Initialize configuration (typically done once at startup)
+initialize_config(
+    PROMETHEUS_METRICS_PORT="9091",
+    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+    GUNICORN_WORKERS="2"
+)
+
+# Get the configuration instance
+config = get_config()
 port = config.prometheus_metrics_port
 redis_enabled = config.redis_enabled
 ```
 
-#### **Function-Based Access**
+#### **Direct ConfigManager Access**
 ```python
-# Import the get_config function
-from gunicorn_prometheus_exporter.config import get_config
+# Import the ConfigManager class
+from gunicorn_prometheus_exporter.config import ConfigManager
 
-# Get the singleton instance
-config = get_config()
+# Create and manage configuration
+manager = ConfigManager()
+manager.initialize(
+    PROMETHEUS_METRICS_PORT="9091",
+    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+    GUNICORN_WORKERS="2"
+)
+
+# Get configuration
+config = manager.get_config()
 port = config.prometheus_metrics_port
 ```
 
 #### **Module-Level Access**
 ```python
 # Import config from the main module
-from gunicorn_prometheus_exporter import config
+from gunicorn_prometheus_exporter import get_config
 
 # Access configuration values
+config = get_config()
 port = config.prometheus_metrics_port
 ```
 

@@ -14,9 +14,9 @@ A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with suppo
 
 One of the fundamental limitations of the WSGI protocol is that **Python frameworks consume errors and exceptions internally**. Most frameworks (Flask, Django, Pyramid, etc.) handle exceptions within their own middleware and error handling systems, making it difficult to capture comprehensive error metrics at the WSGI level.
 
-This creates a challenge for monitoring tools like ours - we can only capture errors that bubble up to the WSGI layer, while many framework-specific errors are handled internally and never reach the WSGI interface.
+This creates a challenge for monitoring tools like ours , we can only capture errors that bubble up to the WSGI layer, while many framework-specific errors are handled internally and never reach the WSGI interface.
 
-**Note**: This is a fundamental limitation of the WSGI protocol design. While open source communities create valuable tools, single companies often produce more powerful and impactful protocols (like gRPC, GraphQL, Kubernetes).
+**Note**: This is a fundamental limitation of the WSGI protocol design.
 
 ### Our Approach
 
@@ -31,7 +31,7 @@ We've implemented a two-tier error tracking system:
 
 **Current Limitations**: Due to WSGI's design, we can only capture errors that bubble up to the WSGI layer. Framework-specific errors (like Django's 404s, Flask's route errors, etc.) are handled internally and never reach our monitoring system.
 
-**Future Enhancement**: We're exploring ways to integrate with framework-specific error handlers to capture more comprehensive error metrics. See [Issue #67](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues/67) for request/response payload size tracking per endpoint.
+**Future Enhancement**: I'm exploring ways to integrate with framework-specific error handlers to capture more comprehensive error metrics. See [Issue #67](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues/67) for request/response payload size tracking per endpoint , this is a nice issue and LLMs can't figure it out, please try it out if you can!
 
 
 ## Redis Storage Architecture
@@ -409,81 +409,90 @@ def when_ready(server):
     redis_when_ready(server)
 ```
 
-## Sidecar Deployment
+## Deployment Options
 
-### Deploying as a Sidecar Container
+### Quick Start
+- **Local Development**: See [Deployment Guide](docs/examples/deployment-guide.md#quick-start)
+- **Docker**: See [Docker Deployment](docs/examples/deployment-guide.md#docker-deployment)
+- **Kubernetes**: See [Kubernetes Deployment](docs/examples/deployment-guide.md#kubernetes-deployment)
 
-You can deploy the Gunicorn Prometheus Exporter as a **sidecar container** within the same Kubernetes pod for isolated monitoring. This approach provides several benefits:
+### Sidecar Deployment
 
-- **Isolated Monitoring**: Metrics collection doesn't interfere with the main application
-- **Shared Resources**: Both containers share the same pod resources and network
-- **Simplified Scaling**: Scale monitoring alongside your application
-- **Clean Separation**: Monitoring logic is completely separate from business logic
-
-### Example Kubernetes Configuration
+Deploy the exporter as a **sidecar container** within the same Kubernetes pod for isolated monitoring:
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: my-gunicorn-app
-  labels:
-    app: my-gunicorn-app
+  name: gunicorn-app-with-sidecar
 spec:
-  containers:
-    # Main application container
-    - name: gunicorn-app
-      image: my-app:latest
-      ports:
-        - containerPort: 8000
-      env:
-        - name: REDIS_ENABLED
-          value: "true"
-        - name: REDIS_HOST
-          value: "redis-service"
-        - name: PROMETHEUS_METRICS_PORT
-          value: "9091"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: gunicorn-app
+  template:
+    metadata:
+      labels:
+        app: gunicorn-app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        # Main application container
+        - name: app
+          image: your-registry/gunicorn-app:latest
+          ports:
+            - containerPort: 8200
+              name: http
+          env:
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: "/tmp/prometheus_multiproc"
+            - name: GUNICORN_WORKERS
+              value: "4"
+          volumeMounts:
+            - name: prometheus-data
+              mountPath: /tmp/prometheus_multiproc
 
-    # Prometheus exporter sidecar
-    - name: prometheus-exporter
-      image: gunicorn-prometheus-exporter:latest
-      ports:
-        - containerPort: 9091
-      env:
-        - name: REDIS_ENABLED
-          value: "true"
-        - name: REDIS_HOST
-          value: "redis-service"
-        - name: PROMETHEUS_METRICS_PORT
-          value: "9091"
-        - name: PROMETHEUS_BIND_ADDRESS
-          value: "0.0.0.0"
-      command: ["gunicorn"]
-      args:
-        - "--worker-class=gunicorn_prometheus_exporter.PrometheusWorker"
-        - "--workers=2"
-        - "--bind=0.0.0.0:8000"
-        - "my_app:app"
+        # Prometheus exporter sidecar
+        - name: prometheus-exporter
+          image: your-registry/gunicorn-prometheus-exporter:latest
+          ports:
+            - containerPort: 9091
+              name: metrics
+          env:
+            - name: PROMETHEUS_METRICS_PORT
+              value: "9091"
+            - name: PROMETHEUS_BIND_ADDRESS
+              value: "0.0.0.0"
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: "/tmp/prometheus_multiproc"
+          volumeMounts:
+            - name: prometheus-data
+              mountPath: /tmp/prometheus_multiproc
+      volumes:
+        - name: prometheus-data
+          emptyDir: {}
 ```
 
-### Benefits of Sidecar Deployment
+**Benefits:**
+- **Isolation**: Metrics collection separate from application logic
+- **Resource Management**: Independent resource limits
+- **Security**: Reduced attack surface
+- **Maintenance**: Update monitoring independently
 
-- **Zero Code Changes**: No modifications needed to your existing application
-- **Shared Redis**: Both containers can use the same Redis instance for metrics
-- **Network Efficiency**: Metrics are collected locally within the pod
-- **Resource Optimization**: Shared pod resources reduce overhead
-- **Monitoring Isolation**: Exporter failures don't affect the main application
+### Future Deployment Options
 
-### Prometheus Configuration
+We're actively testing and will add support for:
+- **Helm Charts** - Kubernetes package management
+- **Terraform** - Infrastructure as Code
+- **Ansible** - Configuration management
+- **AWS ECS/Fargate** - Container orchestration
+- **Google Cloud Run** - Serverless containers
+- **Azure Container Instances** - Managed containers
 
-```yaml
-scrape_configs:
-  - job_name: 'gunicorn-sidecar'
-    static_configs:
-      - targets: ['my-gunicorn-app:9091']
-    scrape_interval: 15s
-    metrics_path: /metrics
-```
+See the [Deployment Guide](docs/examples/deployment-guide.md) for complete deployment options and configurations.
 
 ## System Testing
 

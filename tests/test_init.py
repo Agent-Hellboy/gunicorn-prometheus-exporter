@@ -14,7 +14,7 @@ class TestModuleInitialization:
         assert hasattr(gunicorn_prometheus_exporter, "PrometheusMaster")
         assert hasattr(gunicorn_prometheus_exporter, "PrometheusWorker")
         assert hasattr(gunicorn_prometheus_exporter, "registry")
-        assert hasattr(gunicorn_prometheus_exporter, "config")
+        assert hasattr(gunicorn_prometheus_exporter, "ExporterConfig")
 
     def test_all_exports(self):
         """Test __all__ exports."""
@@ -23,8 +23,12 @@ class TestModuleInitialization:
             "PrometheusThreadWorker",
             "PrometheusMaster",
             "registry",
-            "config",
-            "get_config",
+            "ExporterConfig",
+            "ConfigManager",
+            "ConfigState",
+            "get_config_manager",
+            "initialize_config",
+            "cleanup_config",
             "RedisStorageManager",
             "get_redis_storage_manager",
             "setup_redis_metrics",
@@ -68,7 +72,7 @@ class TestModuleInitialization:
 
     def test_get_config_function(self):
         """Test get_config function availability."""
-        assert hasattr(gunicorn_prometheus_exporter, "get_config")
+        assert hasattr(gunicorn_prometheus_exporter, "get_config_manager")
         assert callable(gunicorn_prometheus_exporter.get_config)
 
 
@@ -135,7 +139,7 @@ class TestModuleConstants:
 
     def test_config_object(self):
         """Test config object availability."""
-        assert hasattr(gunicorn_prometheus_exporter, "config")
+        assert hasattr(gunicorn_prometheus_exporter, "ExporterConfig")
         assert gunicorn_prometheus_exporter.config is not None
 
     def test_registry_object(self):
@@ -145,7 +149,7 @@ class TestModuleConstants:
 
     def test_get_config_function(self):
         """Test get_config function availability."""
-        assert hasattr(gunicorn_prometheus_exporter, "get_config")
+        assert hasattr(gunicorn_prometheus_exporter, "get_config_manager")
         assert callable(gunicorn_prometheus_exporter.get_config)
 
 

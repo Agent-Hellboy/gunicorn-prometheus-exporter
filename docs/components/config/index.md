@@ -1,31 +1,35 @@
 # Configuration Component
 
-The configuration component manages all settings and options for the Gunicorn Prometheus Exporter using a **singleton pattern** that follows software engineering best practices.
+The configuration component manages all settings and options for the Gunicorn Prometheus Exporter using a **ConfigManager pattern** with lifecycle management that follows software engineering best practices.
 
 ## Overview
 
 The configuration component handles:
 
-- **Singleton Pattern**: Single configuration instance for the entire application
+- **ConfigManager Pattern**: Centralized configuration lifecycle management
+- **State Management**: Proper initialization, validation, and cleanup states
 - **Lazy Loading**: Environment variables are read only when needed
 - **Type Safety**: Automatic type conversion with validation
 - **CLI Integration**: Gunicorn CLI options update environment variables
 - **Comprehensive Validation**: Clear error messages for missing or invalid configuration
+- **Thread Safety**: Safe concurrent access with proper locking
 
-## Design Pattern Choice: Singleton
+## Design Pattern Choice: ConfigManager
 
-### Why Singleton for Configuration?
+### Why ConfigManager for Configuration?
 
-We chose the **Singleton pattern** for the configuration component because:
+We chose the **ConfigManager pattern** for the configuration component because:
 
-1. **Single Source of Truth**: Configuration should be consistent across the entire application
-2. **Memory Efficiency**: Only one configuration object exists in memory
-3. **Thread Safety**: Safe for multi-threaded and multi-process environments
-4. **Lazy Loading**: Environment variables are read only when properties are accessed
-5. **Global Access**: All components can access the same configuration instance
+1. **Lifecycle Management**: Proper initialization, validation, and cleanup states
+2. **State Tracking**: Clear state transitions and error handling
+3. **Thread Safety**: Safe concurrent access with proper locking mechanisms
+4. **Validation Control**: Centralized validation with detailed error reporting
+5. **Resource Management**: Proper cleanup and resource management
+6. **Global Access**: All components can access the same configuration instance
 
 ### Alternative Patterns Considered
 
+- **Singleton Pattern**: Lacks lifecycle management and state tracking
 - **Factory Pattern**: Overkill since we only need one configuration type
 - **Builder Pattern**: Unnecessary complexity for simple configuration loading
 - **Strategy Pattern**: Not needed since configuration behavior is consistent
@@ -33,11 +37,18 @@ We chose the **Singleton pattern** for the configuration component because:
 ### Implementation Benefits
 
 ```python
-# Global singleton instance
-config = ExporterConfig()
+# ConfigManager with lifecycle management
+from gunicorn_prometheus_exporter.config import get_config, initialize_config
+
+# Initialize configuration with validation
+initialize_config(
+    PROMETHEUS_METRICS_PORT="9091",
+    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+    GUNICORN_WORKERS="2"
+)
 
 # All components access the same instance
-from gunicorn_prometheus_exporter.config import config
+config = get_config()
 port = config.prometheus_metrics_port  # Consistent across all modules
 ```
 
@@ -104,32 +115,49 @@ os.environ.setdefault("GUNICORN_WORKERS", "2")
 
 ## Configuration Access Patterns
 
-### Global Singleton Access
+### ConfigManager Access
 ```python
-# Import the global config instance
-from gunicorn_prometheus_exporter.config import config
+# Import the config manager functions
+from gunicorn_prometheus_exporter.config import get_config, initialize_config
 
-# Access configuration values
+# Initialize configuration (typically done once at startup)
+initialize_config(
+    PROMETHEUS_METRICS_PORT="9091",
+    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+    GUNICORN_WORKERS="2"
+)
+
+# Get the configuration instance
+config = get_config()
 port = config.prometheus_metrics_port
 redis_enabled = config.redis_enabled
 ```
 
-### Function-Based Access
+### Direct ConfigManager Access
 ```python
-# Import the get_config function
-from gunicorn_prometheus_exporter.config import get_config
+# Import the ConfigManager class
+from gunicorn_prometheus_exporter.config import ConfigManager
 
-# Get the singleton instance
-config = get_config()
+# Create and manage configuration
+manager = ConfigManager()
+manager.initialize(
+    PROMETHEUS_METRICS_PORT="9091",
+    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+    GUNICORN_WORKERS="2"
+)
+
+# Get configuration
+config = manager.get_config()
 port = config.prometheus_metrics_port
 ```
 
 ### Module-Level Access
 ```python
 # Import config from the main module
-from gunicorn_prometheus_exporter import config
+from gunicorn_prometheus_exporter import get_config
 
 # Access configuration values
+config = get_config()
 port = config.prometheus_metrics_port
 ```
 

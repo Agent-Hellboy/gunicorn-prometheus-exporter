@@ -7,7 +7,7 @@ from prometheus_client.metrics_core import Metric
 from prometheus_client.samples import Sample
 from prometheus_client.utils import floatToGoString
 
-from ...config import config
+from ...config import get_config
 from .client import _safe_decode_bytes, _safe_extract_original_key, _safe_parse_float
 
 
@@ -32,7 +32,7 @@ class RedisMultiProcessCollector:
             )
 
         self._redis_client = redis_client or self._get_default_redis_client()
-        self._redis_key_prefix = redis_key_prefix or config.redis_key_prefix
+        self._redis_key_prefix = redis_key_prefix or get_config().redis_key_prefix
 
         if self._redis_client is None:
             raise ValueError(
@@ -79,7 +79,7 @@ class RedisMultiProcessCollector:
         accumulate=False to avoid compound accumulation.
         """
         if redis_key_prefix is None:
-            redis_key_prefix = config.redis_key_prefix
+            redis_key_prefix = get_config().redis_key_prefix
         metrics = RedisMultiProcessCollector._read_metrics_from_redis(
             redis_client, redis_key_prefix
         )

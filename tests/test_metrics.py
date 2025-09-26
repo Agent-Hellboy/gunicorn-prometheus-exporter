@@ -171,8 +171,9 @@ def test_worker_response_size_metric():
 
 def test_multiprocess_dir_setup():
     """Test that PROMETHEUS_MULTIPROC_DIR is set."""
-    from gunicorn_prometheus_exporter.config import config
+    from gunicorn_prometheus_exporter.config import get_config
 
+    config = get_config()
     assert config.prometheus_multiproc_dir is not None
 
     # The directory should be set, but might not exist if cleaned up by other tests

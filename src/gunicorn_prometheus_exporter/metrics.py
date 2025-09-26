@@ -8,8 +8,8 @@ from typing import Dict, List, Optional, Type, Union
 
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
-# Import config early
-from .config import config
+# Import config manager
+from .config import get_config
 
 
 # Set up logging
@@ -26,6 +26,7 @@ def _ensure_multiproc_dir():
     avoiding import-time side effects.
     """
     try:
+        config = get_config()
         os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
     except Exception as e:
         logger.error("Failed to prepare PROMETHEUS_MULTIPROC_DIR: %s", e)

@@ -168,9 +168,9 @@ class PrometheusMaster(Arbiter):
             # Force flush to storage for SIGINT to ensure metric is written before
             # termination
             try:
-                from .config import config
+                from .config import get_config
 
-                if config.redis_enabled:
+                if get_config().redis_enabled:
                     logger.debug("SIGINT - forcing Redis flush")
                     # For Redis storage
                     from .backend import get_redis_storage_manager

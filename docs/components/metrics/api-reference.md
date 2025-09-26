@@ -202,12 +202,12 @@ def _ensure_multiproc_dir():
 ```python
 def record_error(worker, method, endpoint, error_type, error_message):
     """Record error metrics."""
-    worker.metrics.error_handling.labels(
+    WorkerErrorHandling.inc(
         worker_id=worker.pid,
         method=method,
         endpoint=endpoint,
         error_type=error_type
-    ).inc()
+    )
 ```
 
 ## Performance Considerations

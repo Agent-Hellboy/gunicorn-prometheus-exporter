@@ -1,12 +1,12 @@
 # Configuration API Reference
 
-This document provides detailed API reference for the configuration component using the **singleton pattern**.
+This document provides detailed API reference for the configuration component using the **ConfigManager pattern** with lifecycle management.
 
 ## Core Classes
 
 ### ExporterConfig
 
-Main configuration management class using singleton pattern.
+Main configuration class that holds all configuration properties and settings.
 
 ```python
 class ExporterConfig:
@@ -59,33 +59,74 @@ class ExporterConfig:
 - `get_prometheus_config() -> dict` - Get Prometheus-specific configuration
 - `print_config()` - Print current configuration
 
-### Global Configuration Instance
+### ConfigManager
 
-The configuration system uses a global singleton instance:
+Configuration lifecycle management class with state tracking and validation:
 
 ```python
-# Global configuration instance
-config = ExporterConfig()
+class ConfigManager:
+    """Manages configuration lifecycle with proper state management and validation."""
+
+    def __init__(self):
+        """Initialize the configuration manager."""
+        self._config: Optional[ExporterConfig] = None
+        self._state = ConfigState.UNINITIALIZED
+        self._lock = threading.RLock()
+        self._validation_errors: List[str] = []
+        self._initialization_time: Optional[float] = None
+
+    def initialize(self, **kwargs) -> None:
+        """Initialize configuration with proper lifecycle management."""
+        # Implementation details...
+
+    def get_config(self) -> ExporterConfig:
+        """Get the configuration instance with state validation."""
+        # Implementation details...
+
+    def cleanup(self) -> None:
+        """Clean up configuration resources."""
+        # Implementation details...
+```
+
+### Global Configuration Functions
+
+The configuration system provides global functions for easy access:
+
+```python
+def get_config_manager() -> ConfigManager:
+    """Get the global configuration manager instance."""
+    # Returns singleton ConfigManager instance
+
+def initialize_config(**kwargs) -> None:
+    """Initialize the global configuration."""
+    # Initializes global ConfigManager
 
 def get_config() -> ExporterConfig:
     """Get the global configuration instance."""
-    return config
+    # Returns ExporterConfig from global ConfigManager
+
+def cleanup_config() -> None:
+    """Clean up the global configuration."""
+    # Cleans up global ConfigManager
 ```
 
 **Usage:**
 
 ```python
-# Import the global config instance
-from gunicorn_prometheus_exporter.config import config
+# Import the config manager functions
+from gunicorn_prometheus_exporter.config import get_config, initialize_config
 
-# Access configuration values
-port = config.prometheus_metrics_port
-redis_enabled = config.redis_enabled
+# Initialize configuration (typically done once at startup)
+initialize_config(
+    PROMETHEUS_METRICS_PORT="9091",
+    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+    GUNICORN_WORKERS="2"
+)
 
-# Or use the get_config function
-from gunicorn_prometheus_exporter.config import get_config
+# Get the configuration instance
 config = get_config()
 port = config.prometheus_metrics_port
+redis_enabled = config.redis_enabled
 ```
 
 ## Configuration Loading
@@ -290,26 +331,42 @@ def redis_port(self) -> int:
 
 ## Configuration Access Patterns
 
-### Global Singleton Access
+### ConfigManager Access
 
 ```python
-# Import the global config instance
-from gunicorn_prometheus_exporter.config import config
+# Import the config manager functions
+from gunicorn_prometheus_exporter.config import get_config, initialize_config
 
-# Access configuration values
+# Initialize configuration (typically done once at startup)
+initialize_config(
+    PROMETHEUS_METRICS_PORT="9091",
+    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+    GUNICORN_WORKERS="2"
+)
+
+# Get the configuration instance
+config = get_config()
 port = config.prometheus_metrics_port
 redis_enabled = config.redis_enabled
 timeout = config.gunicorn_timeout
 ```
 
-### Function-Based Access
+### Direct ConfigManager Access
 
 ```python
-# Import the get_config function
-from gunicorn_prometheus_exporter.config import get_config
+# Import the ConfigManager class
+from gunicorn_prometheus_exporter.config import ConfigManager
 
-# Get the singleton instance
-config = get_config()
+# Create and manage configuration
+manager = ConfigManager()
+manager.initialize(
+    PROMETHEUS_METRICS_PORT="9091",
+    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+    GUNICORN_WORKERS="2"
+)
+
+# Get configuration
+config = manager.get_config()
 port = config.prometheus_metrics_port
 ```
 
@@ -317,40 +374,53 @@ port = config.prometheus_metrics_port
 
 ```python
 # Import config from the main module
-from gunicorn_prometheus_exporter import config
+from gunicorn_prometheus_exporter import get_config
 
 # Access configuration values
+config = get_config()
 port = config.prometheus_metrics_port
 ```
 
 ### Testing Configuration
 
 ```python
-# For testing purposes, you can modify the singleton
-config.redis_enabled = True
-config.redis_host = "test-host"
+# For testing purposes, you can create a new ConfigManager
+from gunicorn_prometheus_exporter.config import ConfigManager
 
-# Or delete properties to test defaults
-del config.redis_enabled
+manager = ConfigManager()
+manager.initialize(
+    PROMETHEUS_METRICS_PORT="9091",
+    PROMETHEUS_BIND_ADDRESS="0.0.0.0",
+    GUNICORN_WORKERS="2",
+    REDIS_ENABLED="true",
+    REDIS_HOST="test-host"
+)
+
+config = manager.get_config()
+assert config.redis_enabled == True
+assert config.redis_host == "test-host"
 ```
 
 ## Best Practices
 
-### Singleton Pattern Benefits
+### ConfigManager Pattern Benefits
 
-1. **Single Source of Truth**: One configuration instance for the entire application
-2. **Consistent State**: All modules access the same configuration values
-3. **Lazy Loading**: Environment variables are read only when needed
-4. **Thread Safety**: Safe for multi-threaded and multi-process environments
-5. **Memory Efficiency**: Only one configuration object exists in memory
+1. **Lifecycle Management**: Proper initialization, validation, and cleanup states
+2. **State Tracking**: Clear state transitions and error handling
+3. **Thread Safety**: Safe concurrent access with proper locking mechanisms
+4. **Validation Control**: Centralized validation with detailed error reporting
+5. **Resource Management**: Proper cleanup and resource management
+6. **Single Source of Truth**: One configuration instance for the entire application
 
 ### Configuration Management
 
 1. **Use Environment Variables**: Primary configuration method
-2. **Lazy Loading**: Properties read environment variables on access
-3. **Validation**: Clear error messages for missing or invalid configuration
-4. **Type Safety**: Automatic type conversion with validation
-5. **CLI Integration**: Gunicorn CLI options update environment variables
+2. **Initialize Early**: Call `initialize_config()` at application startup
+3. **Lazy Loading**: Properties read environment variables on access
+4. **Validation**: Clear error messages for missing or invalid configuration
+5. **Type Safety**: Automatic type conversion with validation
+6. **CLI Integration**: Gunicorn CLI options update environment variables
+7. **Cleanup**: Call `cleanup_config()` when shutting down
 
 ### Security Considerations
 

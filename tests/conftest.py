@@ -9,7 +9,7 @@ import pytest
 
 from prometheus_client import CollectorRegistry
 
-from gunicorn_prometheus_exporter.config import config
+from gunicorn_prometheus_exporter.config import initialize_config
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -23,11 +23,27 @@ def setup_test_environment():
     # Set up the Prometheus multiprocess directory
     temp_dir = tempfile.mkdtemp()
     os.environ["PROMETHEUS_MULTIPROC_DIR"] = temp_dir
-    # Update config to use the test directory
-    # Note: This calls the private method during test setup
-    # The config will be re-initialized with the new environment
-    config._setup_multiproc_dir()
+
+    # Initialize configuration with explicit parameters
+    # Handle case where config might already be initialized
+    try:
+        initialize_config(
+            PROMETHEUS_BIND_ADDRESS="127.0.0.1",
+            PROMETHEUS_METRICS_PORT="9091",
+            GUNICORN_WORKERS="2",
+            PROMETHEUS_MULTIPROC_DIR=temp_dir,
+        )
+    except RuntimeError as e:
+        if "Configuration already initialized" in str(e):
+            # Config is already initialized, that's fine
+            pass
+        else:
+            raise
+
     yield
+
+    # Don't cleanup config to avoid global state issues between tests
+    # Just clean up the environment variable
     os.environ.pop("PROMETHEUS_MULTIPROC_DIR", None)
 
 

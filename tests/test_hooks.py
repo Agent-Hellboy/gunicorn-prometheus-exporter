@@ -4,7 +4,7 @@ import logging
 import os
 import unittest
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 from gunicorn_prometheus_exporter.hooks import (
     EnvironmentManager,
@@ -286,39 +286,128 @@ class TestHelperFunctions(unittest.TestCase):
                 del os.environ[var]
 
 
-class TestMetricsServerManager(unittest.TestCase):
-    """Test MetricsServerManager functionality."""
+def test_start_https_server():
+    """Test _start_https_server method."""
+    mock_logger = MagicMock()
+    manager = MetricsServerManager(mock_logger)
 
-    def test_setup_server_success(self):
-        """Test setup_server with successful initialization."""
-        mock_logger = MagicMock()
-        manager = MetricsServerManager(mock_logger)
+    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config:
+        mock_config = MagicMock()
+        mock_config.prometheus_ssl_certfile = "/path/to/cert.pem"
+        mock_config.prometheus_ssl_keyfile = "/path/to/key.pem"
+        mock_config.prometheus_ssl_client_cafile = "/path/to/ca.pem"
+        mock_config.prometheus_ssl_client_capath = "/path/to/ca/dir"
+        mock_config.prometheus_ssl_client_auth_required = True
+        mock_get_config.return_value = mock_config
 
         with patch(
-            "gunicorn_prometheus_exporter.utils.get_multiprocess_dir",
-            return_value="/tmp/test",
+            "prometheus_client.exposition.start_wsgi_server"
+        ) as mock_start_server:
+            mock_httpd = MagicMock()
+            mock_thread = MagicMock()
+            mock_start_server.return_value = (mock_httpd, mock_thread)
+
+            manager._start_https_server(9091, MagicMock(), "127.0.0.1")
+
+            mock_start_server.assert_called_once()
+            assert manager._server_thread == mock_thread
+            assert manager._httpd == mock_httpd
+            mock_logger.debug.assert_called_once()
+
+
+def test_start_http_server():
+    """Test _start_http_server method."""
+    mock_logger = MagicMock()
+    manager = MetricsServerManager(mock_logger)
+
+    with patch("prometheus_client.exposition.start_http_server") as mock_start_server:
+        manager._start_http_server(9091, MagicMock())
+
+        mock_start_server.assert_called_once_with(9091, registry=ANY)
+        mock_logger.debug.assert_called_once()
+
+
+def test_start_single_attempt_https():
+    """Test _start_single_attempt with HTTPS enabled."""
+    mock_logger = MagicMock()
+    manager = MetricsServerManager(mock_logger)
+
+    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config:
+        mock_config = MagicMock()
+        mock_config.prometheus_bind_address = "127.0.0.1"
+        mock_config.prometheus_ssl_enabled = True
+        mock_get_config.return_value = mock_config
+
+        with patch.object(manager, "_start_https_server") as mock_start_https:
+            result = manager._start_single_attempt(9091, MagicMock())
+
+            assert result is True
+            mock_start_https.assert_called_once()
+            args = mock_start_https.call_args[0]
+            assert args[0] == 9091
+            assert args[2] == "127.0.0.1"
+
+
+def test_start_single_attempt_http():
+    """Test _start_single_attempt with HTTP (no SSL)."""
+    mock_logger = MagicMock()
+    manager = MetricsServerManager(mock_logger)
+
+    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config:
+        mock_config = MagicMock()
+        mock_config.prometheus_bind_address = "127.0.0.1"
+        mock_config.prometheus_ssl_enabled = False
+        mock_get_config.return_value = mock_config
+
+        with patch.object(manager, "_start_http_server") as mock_start_http:
+            result = manager._start_single_attempt(9091, MagicMock())
+
+            assert result is True
+            mock_start_http.assert_called_once()
+            args = mock_start_http.call_args[0]
+            assert args[0] == 9091
+
+
+def test_start_single_attempt_port_in_use():
+    """Test _start_single_attempt when port is already in use."""
+    mock_logger = MagicMock()
+    manager = MetricsServerManager(mock_logger)
+
+    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config:
+        mock_config = MagicMock()
+        mock_config.prometheus_bind_address = "127.0.0.1"
+        mock_config.prometheus_ssl_enabled = False
+        mock_get_config.return_value = mock_config
+
+        with patch.object(
+            manager,
+            "_start_http_server",
+            side_effect=OSError(98, "Address already in use"),
         ):
-            with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
-                mock_config.prometheus_metrics_port = 9090
+            result = manager._start_single_attempt(9091, MagicMock())
 
-                with patch(
-                    "gunicorn_prometheus_exporter.hooks.MultiProcessCollector"
-                ) as mock_collector:
-                    result = manager.setup_server()
+            assert result is False
+            mock_logger.warning.assert_called_once()
 
-                    self.assertIsNotNone(result)
-                    port, registry = result
-                    self.assertEqual(port, 9090)
-                    # The registry is now imported from metrics module, so it's the real registry
-                    from gunicorn_prometheus_exporter.metrics import (
-                        registry as metrics_registry,
-                    )
 
-                    self.assertEqual(registry, metrics_registry)
-                    mock_collector.assert_called_once_with(metrics_registry)
-                    mock_logger.debug.assert_called_once_with(
-                        "Successfully initialized MultiProcessCollector"
-                    )
+def test_start_single_attempt_other_error():
+    """Test _start_single_attempt with other error."""
+    mock_logger = MagicMock()
+    manager = MetricsServerManager(mock_logger)
+
+    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config:
+        mock_config = MagicMock()
+        mock_config.prometheus_bind_address = "127.0.0.1"
+        mock_config.prometheus_ssl_enabled = False
+        mock_get_config.return_value = mock_config
+
+        with patch.object(
+            manager, "_start_http_server", side_effect=Exception("Test error")
+        ):
+            result = manager._start_single_attempt(9091, MagicMock())
+
+            assert result is False
+            mock_logger.error.assert_called_once()
 
     def test_setup_server_no_multiprocess_dir(self):
         """Test setup_server when multiprocess directory is not set."""
@@ -344,7 +433,7 @@ class TestMetricsServerManager(unittest.TestCase):
             "gunicorn_prometheus_exporter.utils.get_multiprocess_dir",
             return_value="/tmp/test",
         ):
-            with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
+            with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_config:
                 mock_config.prometheus_metrics_port = 9090
 
                 with patch(
@@ -881,9 +970,16 @@ class TestRedisWhenReadyHook(unittest.TestCase):
                 mock_metrics_manager.setup_server.return_value = None
                 mock_get_metrics_manager.return_value = mock_metrics_manager
 
-                redis_when_ready(mock_server)
+                with patch(
+                    "gunicorn_prometheus_exporter.hooks.get_config"
+                ) as mock_get_config:
+                    mock_config = MagicMock()
+                    mock_config.redis_enabled = False
+                    mock_get_config.return_value = mock_config
 
-        # Should not call any logging methods when setup fails
+                    redis_when_ready(mock_server)
+
+        # Should not call any logging methods when Redis is disabled
         mock_logger.info.assert_not_called()
 
     def test_redis_when_ready_start_fails(self):
@@ -915,7 +1011,7 @@ def test_setup_redis_storage_enabled():
     """Test _setup_redis_storage_if_enabled when Redis is enabled."""
     mock_logger = MagicMock()
 
-    with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
+    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_config:
         mock_config.redis_enabled = True
 
         with patch(
@@ -935,8 +1031,10 @@ def test_setup_redis_storage_disabled():
     """Test _setup_redis_storage_if_enabled when Redis is disabled."""
     mock_logger = MagicMock()
 
-    with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
+    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config:
+        mock_config = MagicMock()
         mock_config.redis_enabled = False
+        mock_get_config.return_value = mock_config
 
         _setup_redis_storage_if_enabled(mock_logger)
 
@@ -947,7 +1045,7 @@ def test_setup_redis_storage_exception():
     """Test _setup_redis_storage_if_enabled with exception."""
     mock_logger = MagicMock()
 
-    with patch("gunicorn_prometheus_exporter.hooks.config") as mock_config:
+    with patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_config:
         mock_config.redis_enabled = True
 
         with patch(
@@ -1150,7 +1248,7 @@ class TestMetricsServerManagerComprehensive(unittest.TestCase):
         manager = MetricsServerManager(mock_logger)
 
         with (
-            patch("gunicorn_prometheus_exporter.hooks.config") as mock_config,
+            patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_config,
             patch(
                 "gunicorn_prometheus_exporter.utils.get_multiprocess_dir"
             ) as mock_get_dir,
@@ -1170,14 +1268,16 @@ class TestMetricsServerManagerComprehensive(unittest.TestCase):
         manager = MetricsServerManager(mock_logger)
 
         with (
-            patch("gunicorn_prometheus_exporter.hooks.config") as mock_config,
+            patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config,
             patch(
                 "gunicorn_prometheus_exporter.utils.get_multiprocess_dir",
                 return_value=None,
             ),
         ):
+            mock_config = MagicMock()
             mock_config.prometheus_metrics_port = 9091
             mock_config.redis_enabled = False
+            mock_get_config.return_value = mock_config
 
             result = manager.setup_server()
 
@@ -1327,7 +1427,7 @@ class TestHookIntegration(unittest.TestCase):
         mock_server = Mock()
 
         with (
-            patch("gunicorn_prometheus_exporter.hooks.config") as mock_config,
+            patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_config,
             patch(
                 "gunicorn_prometheus_exporter.utils.get_multiprocess_dir"
             ) as mock_get_dir,

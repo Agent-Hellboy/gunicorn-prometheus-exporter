@@ -27,7 +27,9 @@ class TestPluginLogging:
         """Test successful logging setup."""
         mock_config = MagicMock()
         mock_config.get_gunicorn_config.return_value = {"loglevel": "DEBUG"}
-        monkeypatch.setattr("gunicorn_prometheus_exporter.plugin.config", mock_config)
+        monkeypatch.setattr(
+            "gunicorn_prometheus_exporter.plugin.get_config", mock_config
+        )
 
         original_level = logging.getLogger().level
 
@@ -41,7 +43,9 @@ class TestPluginLogging:
         """Test logging setup falls back when config fails."""
         mock_config = MagicMock()
         mock_config.get_gunicorn_config.side_effect = Exception("Config error")
-        monkeypatch.setattr("gunicorn_prometheus_exporter.plugin.config", mock_config)
+        monkeypatch.setattr(
+            "gunicorn_prometheus_exporter.plugin.get_config", mock_config
+        )
 
         original_level = logging.getLogger().level
 
@@ -60,7 +64,9 @@ class TestPluginLogging:
         """Test logging setup falls back when log level is invalid."""
         mock_config = MagicMock()
         mock_config.get_gunicorn_config.return_value = {"loglevel": "INVALID_LEVEL"}
-        monkeypatch.setattr("gunicorn_prometheus_exporter.plugin.config", mock_config)
+        monkeypatch.setattr(
+            "gunicorn_prometheus_exporter.plugin.get_config", mock_config
+        )
 
         original_level = logging.getLogger().level
 

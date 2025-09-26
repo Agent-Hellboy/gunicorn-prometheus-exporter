@@ -3,7 +3,7 @@
 import hashlib
 
 from typing import Dict, Optional, Tuple
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 import redis
@@ -796,9 +796,11 @@ class TestValuesModuleFunctions:
 
         # Test with default redis_key_prefix
         with patch(
-            "gunicorn_prometheus_exporter.backend.core.values.config"
-        ) as mock_config:
+            "gunicorn_prometheus_exporter.backend.core.values.get_config"
+        ) as mock_get_config:
+            mock_config = MagicMock()
             mock_config.redis_key_prefix = "default_prefix"
+            mock_get_config.return_value = mock_config
 
             with patch(
                 "gunicorn_prometheus_exporter.backend.core.client.RedisStorageClient"
@@ -857,9 +859,11 @@ class TestValuesModuleFunctions:
             "gunicorn_prometheus_exporter.backend.core.values.cleanup_process_keys_for_pid"
         ) as mock_cleanup:
             with patch(
-                "gunicorn_prometheus_exporter.backend.core.values.config"
-            ) as mock_config:
+                "gunicorn_prometheus_exporter.backend.core.values.get_config"
+            ) as mock_get_config:
+                mock_config = MagicMock()
                 mock_config.redis_key_prefix = "default_prefix"
+                mock_get_config.return_value = mock_config
 
                 mark_process_dead_redis(12345, mock_redis)
 

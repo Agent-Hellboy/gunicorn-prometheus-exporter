@@ -1,6 +1,6 @@
 """Tests for Redis storage module."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from gunicorn_prometheus_exporter.backend.service import RedisStorageManager
 
@@ -17,10 +17,12 @@ class TestRedisStorageManager:
         if self.manager.is_enabled():
             self.manager.teardown()
 
-    @patch("gunicorn_prometheus_exporter.backend.service.manager.config")
-    def test_setup_redis_metrics_disabled(self, mock_config):
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.get_config")
+    def test_setup_redis_metrics_disabled(self, mock_get_config):
         """Test setup when Redis is disabled."""
+        mock_config = MagicMock()
         mock_config.redis_enabled = False
+        mock_get_config.return_value = mock_config
 
         with patch(
             "gunicorn_prometheus_exporter.backend.service.manager.logger"
@@ -32,20 +34,22 @@ class TestRedisStorageManager:
                 "Redis is not enabled, skipping Redis metrics setup"
             )
 
-    @patch("gunicorn_prometheus_exporter.backend.service.manager.config")
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.get_config")
     @patch("redis.from_url")
     @patch("prometheus_client.values")
     def test_setup_redis_metrics_success(
-        self, mock_values, mock_redis_from_url, mock_config
+        self, mock_values, mock_redis_from_url, mock_get_config
     ):
         """Test successful Redis setup."""
         # Configure mocks
+        mock_config = MagicMock()
         mock_config.redis_enabled = True
         mock_config.redis_host = "localhost"
         mock_config.redis_port = 6379
         mock_config.redis_db = 0
         mock_config.redis_password = None
         mock_config.redis_key_prefix = "gunicorn"
+        mock_get_config.return_value = mock_config
 
         mock_client = Mock()
         mock_client.ping.return_value = True
@@ -72,7 +76,7 @@ class TestRedisStorageManager:
 
             # Verify value class was replaced
             self.manager._value_class_factory.assert_called_once_with(
-                mock_client, "gunicorn"
+                mock_client, mock_config.redis_key_prefix.rstrip()
             )
             assert mock_values.ValueClass is mock_value_class
 
@@ -81,7 +85,7 @@ class TestRedisStorageManager:
                 "Redis metrics storage enabled - using Redis instead of files"
             )
 
-    @patch("gunicorn_prometheus_exporter.backend.service.manager.config")
+    @patch("gunicorn_prometheus_exporter.backend.service.manager.get_config")
     @patch("redis.from_url")
     def test_setup_redis_metrics_connection_error(
         self, mock_redis_from_url, mock_config

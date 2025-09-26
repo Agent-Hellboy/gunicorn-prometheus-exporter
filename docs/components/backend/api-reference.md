@@ -4,79 +4,27 @@ This document provides detailed API reference for the backend component.
 
 ## Core Classes
 
-### RedisStorageManager
-
-Main service layer managing Redis connections and lifecycle.
-
-```python
-class RedisStorageManager:
-    """Service layer managing Redis connections and lifecycle."""
-
-    def __init__(self, host='localhost', port=6379, db=0, password=None, ssl=False):
-        self.host = host
-        self.port = port
-        self.db = db
-        self.password = password
-        self.ssl = ssl
-        self._client = None
-        self._collector = None
-```
-
-**Methods:**
-
-- `get_client()` - Get Redis client instance
-- `get_collector()` - Get Redis multiprocess collector
-- `is_connected()` - Check Redis connection status
-- `close()` - Close Redis connections
-- `health_check()` - Perform health check
-
-### RedisStorageClient
-
-Main client for Redis operations.
-
-```python
-class RedisStorageClient:
-    """Main client for Redis operations."""
-
-    def __init__(self, host='localhost', port=6379, db=0, password=None, ssl=False):
-        self.host = host
-        self.port = port
-        self.db = db
-        self.password = password
-        self.ssl = ssl
-        self._redis = None
-```
-
-**Methods:**
-
-- `connect()` - Establish Redis connection
-- `disconnect()` - Close Redis connection
-- `ping()` - Test Redis connection
-- `get(key)` - Get value by key
-- `set(key, value, ttl=None)` - Set value with optional TTL
-- `delete(key)` - Delete key
-- `exists(key)` - Check if key exists
-- `keys(pattern)` - Get keys matching pattern
-- `flushdb()` - Flush current database
-
 ### RedisStorageDict
 
-Storage abstraction implementing Prometheus multiprocess protocols.
+Dictionary-like interface for Redis storage implementing the `StorageDictProtocol`.
 
 ```python
 class RedisStorageDict:
-    """Storage abstraction implementing Prometheus multiprocess protocols."""
+    """Dictionary-like interface for Redis storage."""
 
-    def __init__(self, client, prefix='gunicorn'):
-        self.client = client
-        self.prefix = prefix
+    def __init__(self, redis_client, key_prefix=''):
+        self.redis_client = redis_client
+        self.key_prefix = key_prefix
 ```
 
 **Methods:**
 
-- `__getitem__(key)` - Get item by key
-- `__setitem__(key, value)` - Set item by key
-- `__delitem__(key)` - Delete item by key
+- `read_value(key)` - Read value from Redis
+- `write_value(key, value)` - Write value to Redis
+- `cleanup_dead_worker(pid)` - Clean up keys for dead worker process
+- `__getitem__(key)` - Get value by key
+- `__setitem__(key, value)` - Set key-value pair
+- `__delitem__(key)` - Delete key
 - `__contains__(key)` - Check if key exists
 - `__iter__()` - Iterate over keys
 - `__len__()` - Get number of items
@@ -88,7 +36,7 @@ class RedisStorageDict:
 
 ### RedisStorageManager
 
-The main manager class for Redis-based metrics storage.
+The main manager class for Redis-based metrics storage with proper lifecycle management.
 
 ```python
 class RedisStorageManager:
@@ -141,7 +89,7 @@ class RedisMultiProcessCollector:
 
 ### RedisValue
 
-Redis-backed value implementation for individual metrics.
+Redis-backed value implementation for individual metrics. This class is not instantiated directly by users but is used internally by the Prometheus client when Redis storage is enabled.
 
 ```python
 class RedisValue:
@@ -152,18 +100,30 @@ class RedisValue:
 
     def __init__(
         self,
-        typ=None,
-        metric_name=None,
-        name=None,
-        labelnames=None,
-        labelvalues=None,
-        help_text=None,
+        typ,
+        metric_name,
+        name,
+        labelnames,
+        labelvalues,
+        help_text,
         multiprocess_mode="",
         redis_client=None,
         redis_key_prefix=None,
-        **_kwargs,
+        **kwargs,
     ):
-        """Initialize RedisValue with Redis client and key prefix."""
+        """Initialize RedisValue with Redis client and key prefix.
+
+        Args:
+            typ: Metric type (counter, gauge, histogram, summary)
+            metric_name: Name of the metric
+            name: Sample name
+            labelnames: Label names
+            labelvalues: Label values
+            help_text: Help text for the metric
+            multiprocess_mode: Multiprocess mode for gauge metrics
+            redis_client: Redis client instance (required)
+            redis_key_prefix: Prefix for Redis keys
+        """
 ```
 
 **Key Methods:**
@@ -175,7 +135,7 @@ class RedisValue:
 - `set_exemplar(_exemplar)` - Set exemplar (not implemented for Redis yet)
 - `get_exemplar()` - Get exemplar (not implemented for Redis yet)
 
-**Note**: The `RedisValue` class is created by the `RedisValueClass` factory and is not directly instantiated by users.
+**Note**: Users do not instantiate `RedisValue` directly. It is created automatically by the Prometheus client when Redis storage is enabled via `RedisStorageManager.setup()`.
 
 ## Key Management
 
@@ -497,6 +457,49 @@ The Redis backend stores the same metrics that are available with file-based sto
 - All Gunicorn master metrics (worker restarts, etc.)
 
 The only difference is the storage mechanism (Redis vs files), not the metrics themselves.
+
+## Global Functions
+
+The backend provides several global convenience functions for managing Redis storage:
+
+### Storage Management Functions
+
+```python
+def get_redis_storage_manager() -> RedisStorageManager:
+    """Get or create global Redis storage manager."""
+```
+
+```python
+def setup_redis_metrics() -> bool:
+    """Set up Redis-based metrics storage."""
+```
+
+```python
+def teardown_redis_metrics() -> None:
+    """Teardown Redis-based metrics storage."""
+```
+
+```python
+def is_redis_enabled() -> bool:
+    """Check if Redis metrics are enabled and working."""
+```
+
+### Client and Collector Functions
+
+```python
+def get_redis_client():
+    """Get the Redis client instance."""
+```
+
+```python
+def cleanup_redis_keys() -> None:
+    """Clean up Redis keys for dead processes."""
+```
+
+```python
+def get_redis_collector():
+    """Get Redis-based collector for metrics collection."""
+```
 
 ## Related Documentation
 
