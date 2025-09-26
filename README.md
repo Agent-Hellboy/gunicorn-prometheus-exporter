@@ -6,19 +6,13 @@
 [![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://agent-hellboy.github.io/gunicorn-prometheus-exporter)
 [![PyPI Downloads](https://static.pepy.tech/badge/gunicorn-prometheus-exporter)](https://pepy.tech/projects/gunicorn-prometheus-exporter)
 
-A Gunicorn worker plugin that exports Prometheus metrics to monitor worker
-performance, including memory usage, CPU usage, request durations, and error
-tracking (trying to replace
-<https://docs.gunicorn.org/en/stable/instrumentation.html> with extra info).
-It also aims to replace request-level tracking, such as the number of requests
-made to a particular endpoint, for any framework (e.g., Flask, Django, and
-others) that conforms to the WSGI specification.
+A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities, featuring innovative Redis-based storage and advanced signal handling. This Gunicorn worker plugin exports Prometheus metrics to monitor worker performance, including memory usage, CPU usage, request durations, and error tracking (trying to replace <https://docs.gunicorn.org/en/stable/instrumentation.html> with extra info). It also aims to replace request-level tracking, such as the number of requests made to a particular endpoint, for any framework (e.g., Flask, Django, and others) that conforms to the WSGI specification.
 
 ## Redis Storage Architecture
 
 ### Separating Storage from Compute
 
-We've extended the Prometheus Python client to support **Redis-based storage** as an alternative to traditional multiprocess files. This architectural innovation provides several key benefits:
+I've extended the Prometheus Python client to support **Redis-based storage** as an alternative to traditional multiprocess files. This architectural innovation provides several key benefits:
 
 #### **Traditional Approach (File-Based)**
 
@@ -374,7 +368,7 @@ def when_ready(server):
 
 ## System Testing
 
-We provide comprehensive system tests to validate the complete functionality of the Gunicorn Prometheus Exporter with Redis integration.
+I provide comprehensive system tests to validate the complete functionality of the Gunicorn Prometheus Exporter with Redis integration.
 
 ### Quick Test (Local Development)
 

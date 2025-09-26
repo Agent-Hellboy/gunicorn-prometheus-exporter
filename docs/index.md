@@ -1,215 +1,124 @@
 # Gunicorn Prometheus Exporter
 
-A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities.
+A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities, featuring innovative Redis-based storage and advanced signal handling.
 
-## Redis Storage Backend Architecture
+## Why This Exporter is Different
 
-### Complete Redis-Based Storage Implementation
+This isn't just another Prometheus exporter. I've implemented several innovative features that set this apart:
 
-We've implemented a **complete Redis storage backend** that extends the Prometheus Python client to support distributed metrics storage. This implementation follows Prometheus multiprocess specifications while providing enhanced scalability and separation of concerns.
+### *Redis-Based Storage Innovation*
+Unlike traditional file-based multiprocess metrics, I've implemented a **Redis-backed storage system** that:
+- Eliminates file system bottlenecks and race conditions
+- Provides distributed metrics storage across multiple servers
+- Implements automatic TTL-based cleanup for stale metrics
+- Offers better performance and scalability for high-traffic applications
 
-#### **Architecture Components**
+### *Advanced Signal Handling Architecture*
+I've solved the complex challenge of capturing Gunicorn master process signals by:
+- **Patching the Arbiter class** to intercept all signal handling
+- Implementing **asynchronous signal capture** with thread-safe metrics updates
+- Providing comprehensive master process monitoring (HUP, USR1, USR2, CHLD signals)
+- Maintaining full compatibility with standard Gunicorn usage
 
-Our backend consists of several key components:
+### *Prometheus Spec Implementation*
+My implementation goes beyond basic metrics collection:
+- **Full Prometheus multiprocess protocol** compliance
+- **Custom RedisValue class** that replaces MmapedValue for distributed storage
+- **RedisMultiProcessCollector** that aggregates metrics across processes
+- **Automatic metric registration** with proper cleanup and lifecycle management
 
-1. **`RedisStorageClient`** - Main client for Redis operations
-2. **`RedisStorageDict`** - Storage abstraction implementing Prometheus multiprocess protocols
-3. **`RedisMultiProcessCollector`** - Collector that aggregates metrics from Redis across processes
-4. **`RedisValue`** - Redis-backed value implementation for individual metrics
-5. **`RedisStorageManager`** - Service layer managing Redis connections and lifecycle
+### *Production-Ready Features*
+- **Zero-configuration** metrics server with automatic port binding
+- **Comprehensive error tracking** with method and endpoint labels
+- **Resource monitoring** (CPU, memory, uptime) per worker
+- **Graceful degradation** when Redis is unavailable
+- **SSL/TLS support** for secure metrics endpoints
 
-#### **Traditional Prometheus Multiprocess**
+## Technical Highlights
 
-```python
-# Standard approach - files only
-from prometheus_client import multiprocess
-multiprocess.MultiProcessCollector(registry)
-# Creates files in /tmp/prometheus_multiproc/
-```
+### *Core Innovations*
 
-#### **Our Redis Storage Implementation**
+1. **Redis Storage Backend**: Complete replacement of file-based multiprocess metrics with Redis
+2. **Arbiter Patching**: Deep integration with Gunicorn's core architecture for signal capture
+3. **PrometheusMixin**: Reusable mixin that adds metrics to any Gunicorn worker type
+4. **Automatic Lifecycle Management**: Smart cleanup and resource management
+5. **Multi-Worker Support**: Sync, Thread, Eventlet, and Gevent workers with metrics
 
-```python
-# Our innovation - direct Redis storage
-from gunicorn_prometheus_exporter.backend.service import get_redis_storage_manager
-manager = get_redis_storage_manager()
-collector = manager.get_collector()
-registry.register(collector)
-# Stores metrics in Redis: gunicorn:{type}_{mode}:{pid}:{data_type}:{hash}
-```
+### *Architecture Benefits*
 
-#### **Redis Key Architecture**
-
-We use a structured key format that embeds process information and multiprocess modes:
-
-```
-gunicorn:{metric_type}_{mode}:{pid}:{data_type}:{hash}
-```
-
-**Examples:**
-- `gunicorn:gauge_all:12345:metric:abc123` - Gauge metric with "all" mode
-- `gunicorn:counter:12345:meta:def456` - Counter metadata
-- `gunicorn:histogram:12345:metric:ghi789` - Histogram metric data
-
-### **Architecture Benefits**
-
-| Aspect           | Traditional       | Redis Storage       |
-| ---------------- | ----------------- | ------------------- |
-| **Storage**      | Local files       | Redis server        |
-| **Scalability**  | Single instance   | Multiple instances  |
-| **Separation**   | Coupled           | Separated           |
-| **Performance**  | File I/O overhead | Direct Redis access |
-| **Availability** | Server-dependent  | Redis-backed        |
+- **No File System Dependencies**: Redis eliminates file-based race conditions
+- **Distributed Ready**: Metrics can be shared across multiple application instances
+- **Memory Efficient**: TTL-based cleanup prevents memory leaks
+- **High Performance**: Redis operations are faster than file I/O
+- **Production Tested**: Handles high-traffic scenarios with ease
 
 ## Quick Start
 
 ### Installation
 
+For detailed installation instructions, see the [Installation Guide](installation.md).
+
 ```bash
 # Basic installation
 pip install gunicorn-prometheus-exporter
 
-# With async worker support
-pip install gunicorn-prometheus-exporter[async]
-
-# With Redis storage
+# With Redis support
 pip install gunicorn-prometheus-exporter[redis]
 
-# Complete installation with all features
+# With all features (Redis + async workers)
 pip install gunicorn-prometheus-exporter[all]
 ```
 
 ### Basic Usage
 
-1. **Set up environment variables**:
+#### *Traditional File-Based Setup*
 
 ```bash
+# Set up environment variables
 export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
 export PROMETHEUS_METRICS_PORT="9091"
 export PROMETHEUS_BIND_ADDRESS="0.0.0.0"
 export GUNICORN_WORKERS="2"
-```
 
-2. **Create a Gunicorn configuration file** (`gunicorn.conf.py`):
-
-```python
-# Basic Gunicorn settings
+# Create gunicorn.conf.py
 bind = "0.0.0.0:8000"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 
-# Prometheus configuration
-import os
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
-os.environ.setdefault("GUNICORN_WORKERS", "2")
-```
-
-3. **Start Gunicorn**:
-
-```bash
+# Start Gunicorn
 gunicorn -c gunicorn.conf.py your_app:app
-```
 
-4. **Access metrics**:
-
-```bash
+# Access metrics
 curl http://0.0.0.0:9091/metrics
 ```
 
-## Supported Worker Types
-
-| Worker Type         | Installation                                                          | Usage                                                                                     |
-| ------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **Sync Worker**     | `pip install gunicorn-prometheus-exporter`                            | `worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"`                          |
-| **Thread Worker**   | `pip install gunicorn-prometheus-exporter`                            | `worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"`                    |
-| **Eventlet Worker** | `pip install gunicorn-prometheus-exporter[eventlet]`                  | `worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"`                  |
-| **Gevent Worker**   | `pip install gunicorn-prometheus-exporter[gevent]`                    | `worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"`                    |
-
-## 📈 Available Metrics
-
-### Worker Metrics
-
-- `gunicorn_worker_requests_total` - Total requests handled by each worker
-- `gunicorn_worker_request_duration_seconds` - Request duration histogram
-- `gunicorn_worker_memory_bytes` - Memory usage per worker
-- `gunicorn_worker_cpu_percent` - CPU usage per worker
-- `gunicorn_worker_uptime_seconds` - Worker uptime
-- `gunicorn_worker_state` - Worker state with timestamp
-- `gunicorn_worker_failed_requests_total` - Failed requests with method/endpoint labels
-
-### Master Metrics
-
-- `gunicorn_master_worker_restarts_total` - Total worker restarts
-- `gunicorn_master_signals_total` - Signal handling metrics
-
-### Error Metrics
-
-- `gunicorn_worker_error_handling_total` - Error tracking with method and endpoint labels
-
-## 🧪 Testing Status
-
-All worker types have been thoroughly tested and validated:
-
-| Worker Type         | Status          | Metrics                 | Master Signals  | Load Distribution |
-| ------------------- | --------------- | ----------------------- | --------------- | ----------------- |
-| **Sync Worker**     | Working         | All metrics             | HUP, USR1, CHLD | Balanced          |
-| **Thread Worker**   | Working         | All metrics             | HUP, USR1, CHLD | Balanced          |
-| **Eventlet Worker** | Working         | All metrics             | HUP, USR1, CHLD | Balanced          |
-| **Gevent Worker**   | Working         | All metrics             | HUP, USR1, CHLD | Balanced          |
-
-### Validation Includes:
-
-- Request counting and distribution across workers
-- Memory and CPU usage tracking
-- Error handling with method/endpoint labels
-- Master process signal tracking (HUP, USR1, CHLD)
-- Worker state management with timestamps
-- Multiprocess metrics collection
-- Load balancing verification
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable                   | Default                     | Description                               |
-| -------------------------- | --------------------------- | ----------------------------------------- |
-| `PROMETHEUS_MULTIPROC_DIR` | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics        |
-| `PROMETHEUS_METRICS_PORT`  | `9091`                      | Port for metrics endpoint                 |
-| `PROMETHEUS_BIND_ADDRESS`  | `0.0.0.0`                   | Bind address for metrics server           |
-| `GUNICORN_WORKERS`         | `1`                         | Number of workers for metrics calculation |
-
-### Redis Configuration (Optional)
-
-#### Redis Storage Backend (No Files Created)
+#### *Redis-Based Setup (Recommended)*
 
 ```bash
-# Enable Redis storage (replaces file storage completely)
+# Enable Redis storage
 export REDIS_ENABLED="true"
 export REDIS_HOST="localhost"
 export REDIS_PORT="6379"
 export REDIS_DB="0"
-export REDIS_KEY_PREFIX="gunicorn"
-export REDIS_TTL_SECONDS="300"  # Optional: key expiration
+export PROMETHEUS_METRICS_PORT="9091"
+export PROMETHEUS_BIND_ADDRESS="0.0.0.0"
+export GUNICORN_WORKERS="2"
+
+# Create gunicorn.conf.py
+bind = "0.0.0.0:8000"
+workers = 2
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+
+# Start Gunicorn
+gunicorn -c gunicorn.conf.py your_app:app
+
+# Access metrics
+curl http://0.0.0.0:9091/metrics
 ```
 
-#### **Multiprocess Mode Support**
+> **Note**: Redis setup eliminates file system dependencies and provides better performance for production environments.
 
-Our Redis backend implements all Prometheus multiprocess modes:
-
-| Mode | Description | Use Case |
-|------|-------------|----------|
-| `all` | All processes (including dead ones) | Per-worker monitoring with PID labels |
-| `liveall` | All live processes | Current process monitoring |
-| `max` | Maximum value across processes | Peak resource usage |
-| `min` | Minimum value across processes | Minimum resource usage |
-| `sum` | Sum of values across processes | Total resource consumption |
-| `mostrecent` | Most recent value | Latest metric values |
-
-> **🏗️ Redis Backend Architecture**: The Redis backend provides a sophisticated storage system with `backend.service` for high-level management and `backend.core` for low-level operations. See the [API Reference](api-reference.md#-redis-backend-architecture) for detailed documentation.
-
-## 🌐 Understanding the Three URLs
+### Understanding the Three URLs
 
 When deploying with Gunicorn Prometheus Exporter, you'll work with three distinct URLs:
 
@@ -221,121 +130,94 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 
 > **Note**: The metrics endpoint URL is configurable through environment variables. The default port is 9091 to avoid conflicts with Prometheus UI (9090).
 
-## 📝 Examples
+## Documentation
 
-### Basic Configuration
+### Core Documentation
 
-```python
-# gunicorn_basic.conf.py
-bind = "0.0.0.0:8000"
-workers = 2
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+- [Installation Guide](installation.md) - Detailed installation instructions
+- [Troubleshooting Guide](troubleshooting.md) - Common issues and solutions
 
-import os
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
-os.environ.setdefault("GUNICORN_WORKERS", "2")
-```
+### Components
 
-### Async Worker Configuration
+#### [Metrics Component](components/metrics/)
+- [Metrics Overview](components/metrics/index.md) - Metrics collection overview
+- [Worker Types](components/metrics/worker-types.md) - Supported worker types
+- [API Reference](components/metrics/api-reference.md) - Metrics API documentation
 
-```python
-# gunicorn_async.conf.py
-bind = "0.0.0.0:8000"
-workers = 2
-worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
-worker_connections = 1000
+#### [Backend Component](components/backend/)
+- [Backend Overview](components/backend/index.md) - Storage and data management
+- [Redis Backend](components/backend/redis-backend.md) - Redis storage implementation
+- [Architecture](components/backend/architecture.md) - System architecture details
+- [API Reference](components/backend/api-reference.md) - Backend API documentation
 
-import os
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
-os.environ.setdefault("GUNICORN_WORKERS", "2")
-```
+#### [Configuration Component](components/config/)
+- [Configuration Overview](components/config/index.md) - Configuration management
+- [Configuration Guide](components/config/configuration.md) - Complete configuration documentation
+- [API Reference](components/config/api-reference.md) - Configuration API documentation
 
-### Redis Storage Configuration
+#### [Hooks Component](components/hooks/)
+- [Hooks Overview](components/hooks/index.md) - Gunicorn hooks and lifecycle management
+- [API Reference](components/hooks/api-reference.md) - Hooks API documentation
 
-```python
-# gunicorn_redis_storage.conf.py
-bind = "0.0.0.0:8000"
-workers = 2
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+#### [Plugin Component](components/plugin/)
+- [Plugin Overview](components/plugin/index.md) - Prometheus-enabled worker classes
+- [API Reference](components/plugin/api-reference.md) - Plugin API documentation
 
-import os
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9092")  # Different port for Redis storage
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
-os.environ.setdefault("GUNICORN_WORKERS", "2")
+### Advanced Features
 
-# Redis storage configuration (no files created)
-os.environ.setdefault("REDIS_ENABLED", "true")
-os.environ.setdefault("REDIS_HOST", "localhost")
-os.environ.setdefault("REDIS_PORT", "6379")
-os.environ.setdefault("REDIS_DB", "0")
-```
+- [Backend Architecture](components/backend/architecture.md) - System architecture details
 
-## Development
-
-### Setup
-
-```bash
-git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter.git
-cd gunicorn-prometheus-exporter
-pip install -e ".[dev]"
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=src/gunicorn_prometheus_exporter --cov-report=html
-
-# Run specific test file
-pytest tests/test_plugin.py
-```
-
-### Code Quality
-
-```bash
-# Linting
-ruff check src/ tests/
-
-# Formatting
-ruff format src/ tests/
-
-```
-
-## 📚 Documentation
-
-For detailed documentation, visit our [documentation site](https://agent-hellboy.github.io/gunicorn-prometheus-exporter/).
-
-### Framework-Specific Guides
+### Framework Integration
 
 - [Django Integration](examples/django-integration.md)
 - [FastAPI Integration](examples/fastapi-integration.md)
 - [Flask Integration](examples/flask-integration.md)
 - [Pyramid Integration](examples/pyramid-integration.md)
 - [Custom WSGI App](examples/custom-wsgi-app.md)
+- [Deployment Guide](examples/deployment-guide.md)
 
-### Deployment Guides
+### Development
 
-- [Deployment Guide](examples/deployment-guide.md) - Comprehensive guide for Docker, Kubernetes, and production deployments
+- [Contributing Guide](contributing.md) - How to contribute to the project
+- [Development Setup](development.md) - Setting up development environment
 
-## 🤝 Contributing
+## What Makes This Different
 
-We welcome contributions! Please see our [Contributing Guide](contributing.md) for details.
+### *The Problem We Solved*
 
-## 📄 License
+Traditional Prometheus exporters for Gunicorn face several limitations:
+- **File-based multiprocess metrics** create race conditions and performance bottlenecks
+- **No master process signal tracking** - critical for understanding server behavior
+- **Limited worker type support** - only basic sync workers
+- **Complex configuration** - requires extensive setup and maintenance
+
+### *My Solution*
+
+I've built a comprehensive solution that addresses all these issues:
+
+1. **Redis-Based Storage**: Eliminates file system bottlenecks with distributed storage
+2. **Arbiter Patching**: Captures all master process signals for complete visibility
+3. **Universal Worker Support**: Works with sync, thread, eventlet, and gevent workers
+4. **Zero-Configuration**: Works out of the box with sensible defaults
+5. **Production Ready**: Handles high-traffic scenarios with automatic cleanup
+
+### *Technical Deep Dive*
+
+- **RedisValue Class**: Custom implementation that replaces Prometheus' MmapedValue
+- **RedisMultiProcessCollector**: Aggregates metrics across processes using Redis
+- **PrometheusMaster**: Extended Arbiter class with signal handling and metrics
+- **PrometheusMixin**: Reusable mixin for adding metrics to any worker type
+- **Automatic Lifecycle Management**: Smart cleanup and resource management
+
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Gunicorn team for the excellent WSGI server
 - Prometheus team for the monitoring ecosystem
+- Redis team for the high-performance storage backend
 
 ---
 

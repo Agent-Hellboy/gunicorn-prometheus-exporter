@@ -6,12 +6,21 @@ This directory contains the complete documentation for the Gunicorn Prometheus E
 
 - **[index.md](index.md)** - Main landing page
 - **[installation.md](installation.md)** - Installation guide
-- **[configuration.md](configuration.md)** - Configuration reference
-- **[metrics.md](metrics.md)** - Metrics documentation
-- **[api-reference.md](api-reference.md)** - API reference
 - **[troubleshooting.md](troubleshooting.md)** - Troubleshooting guide
 - **[contributing.md](contributing.md)** - Contributing guide
-- **[examples/](examples/)** - Framework-specific examples
+- **[development.md](development.md)** - Development setup guide
+
+## Components
+
+- **[components/metrics/](components/metrics/)** - Metrics collection and monitoring
+- **[components/backend/](components/backend/)** - Storage and data management
+- **[components/config/](components/config/)** - Configuration management
+- **[components/hooks/](components/hooks/)** - Gunicorn hooks and lifecycle management
+- **[components/plugin/](components/plugin/)** - Prometheus-enabled worker classes
+
+## Examples
+
+- **[examples/](examples/)** - Configuration examples and framework integration
 
 ## Framework Examples
 
