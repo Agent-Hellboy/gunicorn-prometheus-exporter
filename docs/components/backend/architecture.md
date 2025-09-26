@@ -4,6 +4,86 @@
 
 The Gunicorn Prometheus Exporter implements a complete **Redis-based storage backend** that extends the Prometheus Python client to support distributed metrics storage. This implementation follows Prometheus multiprocess specifications while providing enhanced scalability and separation of concerns.
 
+## System Architecture Flow
+
+```mermaid
+flowchart TD
+    A[Gunicorn Application] --> B[Prometheus Worker]
+    B --> C[Redis Storage Backend]
+    C --> D[Redis Server]
+
+    E[Prometheus Scraper] --> F[Metrics Endpoint]
+    F --> G[RedisMultiProcessCollector]
+    G --> H[Redis Storage Backend]
+    H --> D
+
+    I[Configuration] --> J[Redis Enabled?]
+    J -->|Yes| C
+    J -->|No| K[File Storage Fallback]
+    K --> L[MultiProcessCollector]
+    L --> M[File System]
+
+    style A fill:#e1f5fe
+    style C fill:#f3e5f5
+    style D fill:#ffebee
+    style G fill:#e8f5e8
+    style K fill:#fff3e0
+```
+
+## Prometheus Specification Implementation
+
+### Multiprocess Protocol Compliance
+
+Our implementation fully complies with the Prometheus multiprocess specification:
+
+```mermaid
+flowchart LR
+    A[Prometheus Client] --> B[Value Class]
+    B --> C[Storage Backend]
+    C --> D[Redis Storage]
+
+    E[Collector] --> F[Read All Values]
+    F --> G[Aggregate by Mode]
+    G --> H[Return Metrics]
+
+    I[Multiprocess Modes] --> J[all]
+    I --> K[liveall]
+    I --> L[max]
+    I --> M[min]
+    I --> N[sum]
+    I --> O[mostrecent]
+
+    style A fill:#e1f5fe
+    style D fill:#f3e5f5
+    style I fill:#e8f5e8
+```
+
+### Value Class Replacement Flow
+
+```mermaid
+sequenceDiagram
+    participant PC as Prometheus Client
+    participant RV as RedisValue
+    participant RSD as RedisStorageDict
+    participant R as Redis Server
+
+    PC->>RV: Create metric value
+    RV->>RSD: Store value
+    RSD->>R: Write to Redis
+    R-->>RSD: Confirm write
+    RSD-->>RV: Return success
+    RV-->>PC: Value created
+
+    Note over PC,R: RedisValue replaces MmapedValue
+
+    PC->>RV: Increment value
+    RV->>RSD: Update value
+    RSD->>R: Atomic increment
+    R-->>RSD: New value
+    RSD-->>RV: Updated value
+    RV-->>PC: Increment complete
+```
+
 ## Architecture Components
 
 ### Core Components
@@ -116,6 +196,31 @@ We use a structured key format that embeds process information and multiprocess 
 gunicorn:{metric_type}_{mode}:{pid}:{data_type}:{hash}
 ```
 
+### Key Generation Flow
+
+```mermaid
+flowchart TD
+    A[Metric Creation] --> B[Extract Components]
+    B --> C[Metric Name]
+    B --> D[Labels]
+    B --> E[Help Text]
+
+    C --> F[Generate Hash]
+    D --> F
+    E --> F
+
+    F --> G[Create Redis Key]
+    G --> H[gunicorn:type_mode:pid:data:hash]
+
+    I[Process ID] --> G
+    J[Metric Type] --> G
+    K[Multiprocess Mode] --> G
+
+    style A fill:#e1f5fe
+    style F fill:#f3e5f5
+    style H fill:#e8f5e8
+```
+
 ### Key Components
 
 - **`gunicorn`**: Fixed prefix for all keys
@@ -185,6 +290,34 @@ HSET gunicorn:gauge_all:12345:meta:abc123def456
 
 Our implementation correctly handles all Prometheus multiprocess modes:
 
+```mermaid
+flowchart TD
+    A[Multiprocess Mode] --> B[all]
+    A --> C[liveall]
+    A --> D[live]
+    A --> E[max]
+    A --> F[min]
+    A --> G[sum]
+    A --> H[mostrecent]
+
+    B --> I[All processes including dead]
+    C --> J[Filter live processes]
+    D --> K[Default live processes]
+    E --> L[Redis MAX operation]
+    F --> M[Redis MIN operation]
+    G --> N[Redis SUM operation]
+    H --> O[Timestamp-based selection]
+
+    style A fill:#e1f5fe
+    style I fill:#f3e5f5
+    style J fill:#e8f5e8
+    style K fill:#e8f5e8
+    style L fill:#fff3e0
+    style M fill:#fff3e0
+    style N fill:#fff3e0
+    style O fill:#fff3e0
+```
+
 | Mode | Description | Implementation |
 |------|-------------|----------------|
 | `all` | All processes (including dead ones) | Stores all metric instances with PID labels |
@@ -214,6 +347,31 @@ All metric labels and metadata are preserved:
 - **Metric Names**: Maintained for proper identification
 
 ## Performance Optimizations
+
+### Performance Optimization Flow
+
+```mermaid
+flowchart TD
+    A[Metrics Collection] --> B[Batch Operations]
+    B --> C[Redis Pipeline]
+    C --> D[Execute Batch]
+    D --> E[Process Results]
+
+    F[Key Iteration] --> G[Streaming Collection]
+    G --> H[Scan Iter in Batches]
+    H --> I[Process 100 Keys at Once]
+    I --> J[Memory Efficient]
+
+    K[Read Operations] --> L[Lock-Free Reads]
+    L --> M[Non-blocking Scan]
+    M --> N[Per-Key Locking]
+    N --> O[High Concurrency]
+
+    style A fill:#e1f5fe
+    style C fill:#f3e5f5
+    style G fill:#e8f5e8
+    style L fill:#fff3e0
+```
 
 ### Batch Operations
 
@@ -380,6 +538,34 @@ def _get_multiprocess_mode_from_metadata(self, key: str, metric_type: str) -> st
 
 ### Error Recovery Strategies
 
+#### Error Recovery Flow
+
+```mermaid
+flowchart TD
+    A[Redis Operation] --> B{Success?}
+    B -->|Yes| C[Return Result]
+    B -->|No| D[Error Handling]
+
+    D --> E[Retry Logic]
+    E --> F{Max Retries?}
+    F -->|No| G[Exponential Backoff]
+    G --> A
+    F -->|Yes| H[Fallback Strategy]
+
+    H --> I[File Storage]
+    H --> J[Graceful Degradation]
+    H --> K[Resource Cleanup]
+
+    I --> L[MultiProcessCollector]
+    J --> M[Disable Redis Features]
+    K --> N[Close Connections]
+
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style H fill:#fff3e0
+    style L fill:#e8f5e8
+```
+
 #### 1. **Automatic Fallback to File Storage**
 
 When Redis is unavailable, the system automatically falls back to file-based storage:
@@ -429,6 +615,34 @@ def _cleanup(self) -> None:
 ```
 
 ## Integration Points
+
+### Integration Flow
+
+```mermaid
+flowchart TD
+    A[Gunicorn Application] --> B[Prometheus Worker]
+    B --> C[Redis Storage Manager]
+    C --> D[Redis Value Class]
+    D --> E[Redis Storage Dict]
+    E --> F[Redis Server]
+
+    G[Prometheus Scraper] --> H[Metrics Endpoint]
+    H --> I[Redis MultiProcess Collector]
+    I --> J[Read from Redis]
+    J --> F
+
+    K[Configuration] --> L[Redis Enabled?]
+    L -->|Yes| C
+    L -->|No| M[File Storage]
+    M --> N[MultiProcess Collector]
+    N --> O[File System]
+
+    style A fill:#e1f5fe
+    style C fill:#f3e5f5
+    style F fill:#ffebee
+    style I fill:#e8f5e8
+    style M fill:#fff3e0
+```
 
 ### Prometheus Client Integration
 
