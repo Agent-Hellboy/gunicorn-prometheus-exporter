@@ -220,7 +220,7 @@ def redis_ttl_seconds(self) -> int:
 - `PROMETHEUS_SSL_CLIENT_CAPATH` - Client CA path
 - `PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED` - Require client auth
 
-## 🔧 Environment Variables Reference
+## Environment Variables Reference
 
 ### Required Variables
 
@@ -496,7 +496,7 @@ errorlog = "-"
 loglevel = "debug"
 ```
 
-## 🔧 Worker Type Configurations
+## Worker Type Configurations
 
 ### Sync Worker
 
@@ -581,7 +581,7 @@ worker_connections = 1000
 
 **Best for:** Async applications, high concurrency.
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Hooks Architecture
 
@@ -793,7 +793,7 @@ The post_fork hook automatically updates these environment variables based on CL
 # Sets: GUNICORN_WORKER_CLASS=gunicorn_prometheus_exporter.PrometheusWorker
 ```
 
-### 🔍 Debugging Hooks
+### Debugging Hooks
 
 #### **Enable Debug Logging**
 

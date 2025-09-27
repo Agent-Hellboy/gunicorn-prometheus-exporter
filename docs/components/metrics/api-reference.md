@@ -219,6 +219,6 @@ def record_error(worker, method, endpoint, error_type, error_message):
 
 ## Related Documentation
 
-- [Metrics Guide](../metrics.md) - Detailed metrics documentation
+- [Metrics Guide](index.md) - Detailed metrics documentation
 - [Worker Types](worker-types.md) - Supported worker types
-- [Configuration Guide](../configuration.md) - Configuration options
+- [Configuration Guide](../config/configuration.md) - Configuration options

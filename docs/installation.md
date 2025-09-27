@@ -1,8 +1,10 @@
 # Installation Guide
 
-Complete installation guide for the Gunicorn Prometheus Exporter with all options and environment variables.
+This guide provides comprehensive installation instructions for the Gunicorn Prometheus Exporter, including all configuration options and environment variables.
 
 ## Installation Options
+
+The following sections describe different installation methods and their respective features.
 
 ### Basic Installation
 
@@ -12,7 +14,7 @@ Install the core package with sync and thread worker support:
 pip install gunicorn-prometheus-exporter
 ```
 
-**Includes:**
+*Includes:*
 
 - Sync worker (`PrometheusWorker`)
 - Thread worker (`PrometheusThreadWorker`)
@@ -23,13 +25,14 @@ pip install gunicorn-prometheus-exporter
 
 Install with support for async worker types:
 
-````bash
+```bash
 # Install all async workers
 pip install gunicorn-prometheus-exporter[async]
 
 # Or install specific worker types
 pip install gunicorn-prometheus-exporter[eventlet]  # Eventlet workers
 pip install gunicorn-prometheus-exporter[gevent]    # Gevent workers
+```
 
 ### Redis Integration
 
@@ -37,9 +40,9 @@ Install with Redis storage capabilities:
 
 ```bash
 pip install gunicorn-prometheus-exporter[redis]
-````
+```
 
-**Includes:**
+*Includes:*
 
 - All basic features
 - Redis storage (no files created)
@@ -54,7 +57,7 @@ Install with development dependencies:
 pip install gunicorn-prometheus-exporter[dev]
 ```
 
-**Includes:**
+*Includes:*
 
 - All basic features
 - Testing dependencies (pytest, coverage)
@@ -69,7 +72,7 @@ Install with all features and dependencies:
 pip install gunicorn-prometheus-exporter[all]
 ```
 
-**Includes:**
+*Includes:*
 
 - All async worker types
 - Redis integration
@@ -90,13 +93,17 @@ pip install -e ".[dev]"
 pip install -e ".[async,redis]"
 ```
 
-## 🔧 Environment Variables
+## Environment Variables
+
+This section documents all environment variables used by the Gunicorn Prometheus Exporter.
 
 ### Required Environment Variables
 
+The following environment variables must be configured for proper operation.
+
 #### `PROMETHEUS_MULTIPROC_DIR`
 
-**Description:** Directory for storing multiprocess Prometheus metrics files.
+*Description:* Directory for storing multiprocess Prometheus metrics files.
 
 **Type:** String (path)
 
@@ -123,7 +130,7 @@ os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
 
 #### `PROMETHEUS_METRICS_PORT`
 
-**Description:** Port number for the Prometheus metrics HTTP server.
+*Description:* Port number for the Prometheus metrics HTTP server.
 
 **Type:** Integer
 
@@ -152,7 +159,7 @@ os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
 
 #### `PROMETHEUS_BIND_ADDRESS`
 
-**Description:** Bind address for the Prometheus metrics HTTP server.
+*Description:* Bind address for the Prometheus metrics HTTP server.
 
 **Type:** String (IP address)
 
@@ -179,7 +186,7 @@ os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
 
 #### `GUNICORN_WORKERS`
 
-**Description:** Number of Gunicorn workers for metrics calculation.
+*Description:* Number of Gunicorn workers for metrics calculation.
 
 **Type:** Integer
 
@@ -208,9 +215,11 @@ os.environ.setdefault("GUNICORN_WORKERS", "4")
 
 ### Optional Environment Variables
 
+These environment variables provide additional configuration options.
+
 #### `GUNICORN_KEEPALIVE`
 
-**Description:** Keep-alive connection timeout in seconds.
+*Description:* Keep-alive connection timeout in seconds.
 
 **Type:** Integer
 
@@ -233,7 +242,7 @@ os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
 
 #### `CLEANUP_DB_FILES`
 
-**Description:** Whether to clean up old multiprocess files.
+*Description:* Whether to clean up old multiprocess files.
 
 **Type:** Boolean
 
@@ -256,11 +265,15 @@ os.environ.setdefault("CLEANUP_DB_FILES", "true")
 
 ### Redis Environment Variables
 
-#### Redis Storage Variables (No Files Created)
+This section covers Redis-specific configuration options for distributed metrics storage.
+
+#### Redis Storage Variables
+
+The following variables configure Redis-based metrics storage (eliminates file system dependencies).
 
 #### `REDIS_ENABLED`
 
-**Description:** Enable Redis storage (replaces file storage).
+*Description:* Enable Redis storage (replaces file storage).
 
 **Type:** Boolean
 
@@ -281,9 +294,13 @@ import os
 os.environ.setdefault("REDIS_ENABLED", "true")
 ```
 
-## 📦 Package Dependencies
+## Package Dependencies
+
+This section lists all required and optional dependencies for the Gunicorn Prometheus Exporter.
 
 ### Core Dependencies
+
+The following packages are required for basic functionality.
 
 | Package             | Version    | Purpose                       |
 | ------------------- | ---------- | ----------------------------- |
@@ -293,7 +310,11 @@ os.environ.setdefault("REDIS_ENABLED", "true")
 
 ### Optional Dependencies
 
+The following packages provide additional functionality and are installed with specific extras.
+
 #### Async Worker Dependencies
+
+These packages enable support for asynchronous worker types.
 
 | Package    | Version    | Worker Type                                                 |
 | ---------- | ---------- | ----------------------------------------------------------- |
@@ -302,11 +323,15 @@ os.environ.setdefault("REDIS_ENABLED", "true")
 
 #### Redis Dependencies
 
+This package enables Redis-based metrics storage.
+
 | Package | Version   | Purpose      |
 | ------- | --------- | ------------ |
 | `redis` | `>=4.0.0` | Redis client |
 
 #### Development Dependencies
+
+These packages are required for development, testing, and documentation.
 
 | Package           | Version   | Purpose                |
 | ----------------- | --------- | ---------------------- |
@@ -317,9 +342,13 @@ os.environ.setdefault("REDIS_ENABLED", "true")
 | `mkdocs`          | `>=1.4.0` | Documentation          |
 | `mkdocs-material` | `>=9.0.0` | Documentation theme    |
 
-## 🔧 Configuration Examples
+## Configuration Examples
+
+This section provides practical configuration examples for different deployment scenarios.
 
 ### Basic Configuration
+
+A minimal configuration for development and testing environments.
 
 ```python
 # gunicorn_basic.conf.py
@@ -335,6 +364,8 @@ os.environ.setdefault("GUNICORN_WORKERS", "2")
 ```
 
 ### Async Worker Configuration
+
+Configuration for applications using asynchronous worker types.
 
 ```python
 # gunicorn_async.conf.py
@@ -352,6 +383,8 @@ os.environ.setdefault("GUNICORN_KEEPALIVE", "5")
 ```
 
 ### Redis Storage Configuration
+
+Configuration for Redis-based metrics storage (recommended for production).
 
 ```python
 # gunicorn_redis_storage.conf.py
@@ -373,6 +406,8 @@ os.environ.setdefault("REDIS_PASSWORD", "")
 ```
 
 ### Production Configuration
+
+A comprehensive configuration optimized for production environments.
 
 ```python
 # gunicorn_production.conf.py
@@ -402,9 +437,13 @@ os.environ.setdefault("REDIS_PASSWORD", "production_password")
 os.environ.setdefault("REDIS_KEY_PREFIX", "prod_gunicorn_metrics")
 ```
 
-## 🧪 Installation Verification
+## Installation Verification
+
+This section provides methods to verify that the installation was successful.
 
 ### Check Installation
+
+Verify that the package and its components are properly installed.
 
 ```bash
 # Verify package installation
@@ -417,6 +456,8 @@ python -c "from gunicorn_prometheus_exporter import PrometheusThreadWorker; prin
 
 ### Test Async Workers
 
+Verify that asynchronous worker dependencies are available.
+
 ```bash
 # Test eventlet worker
 python -c "import eventlet; print('Eventlet available')" 2>/dev/null && echo "Eventlet worker ready" || echo "Install eventlet: pip install gunicorn-prometheus-exporter[eventlet]"
@@ -427,18 +468,24 @@ python -c "import gevent; print('Gevent available')" 2>/dev/null && echo "Gevent
 
 ### Test Redis Integration
 
+Verify that Redis integration is properly configured.
+
 ```bash
 # Test Redis connection
 python -c "import redis; print('Redis available')" 2>/dev/null && echo "Redis integration ready" || echo "Install Redis: pip install gunicorn-prometheus-exporter[redis]"
 ```
 
-## 🔍 Troubleshooting Installation
+## Troubleshooting Installation
+
+This section addresses common problems encountered during installation.
 
 ### Common Installation Issues
 
+The following issues are frequently encountered and their solutions are provided below.
+
 #### Missing Dependencies
 
-**Error:** `ModuleNotFoundError: No module named 'eventlet'`
+*Error:* `ModuleNotFoundError: No module named 'eventlet'`
 
 **Solution:**
 
@@ -449,7 +496,7 @@ pip install gunicorn-prometheus-exporter[eventlet]
 
 #### Version Conflicts
 
-**Error:** `ImportError: cannot import name 'X' from 'Y'`
+*Error:* `ImportError: cannot import name 'X' from 'Y'`
 
 **Solution:**
 
@@ -463,9 +510,11 @@ pip install gunicorn-prometheus-exporter==0.1.3
 
 ### Environment Variable Issues
 
+Problems related to environment variable configuration.
+
 #### Variables Not Set
 
-**Error:** `ValueError: Environment variable X must be set`
+*Error:* `ValueError: Environment variable X must be set`
 
 **Solution:**
 
@@ -479,7 +528,7 @@ export GUNICORN_WORKERS="2"
 
 #### Invalid Values
 
-**Error:** `ValueError: Invalid port number`
+*Error:* `ValueError: Invalid port number`
 
 **Solution:**
 
@@ -489,9 +538,9 @@ export PROMETHEUS_METRICS_PORT="9090"  # Valid
 export PROMETHEUS_METRICS_PORT="99999"  # Invalid
 ```
 
-## 📚 Next Steps
+## Next Steps
 
-After installation:
+After successful installation, proceed with the following configuration steps:
 
 1. **Configure Gunicorn**: Set up your `gunicorn.conf.py` file
 2. **Set Environment Variables**: Configure required environment variables
@@ -499,6 +548,6 @@ After installation:
 4. **Configure Prometheus**: Set up Prometheus to scrape metrics
 5. **Monitor Application**: Start monitoring your Gunicorn application
 
-For detailed configuration examples, see the [Configuration Guide](configuration.md).
+For detailed configuration examples, see the [Configuration Guide](components/config/configuration.md).
 
 For troubleshooting, see the [Troubleshooting Guide](troubleshooting.md).

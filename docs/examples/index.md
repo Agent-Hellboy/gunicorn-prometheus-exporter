@@ -104,6 +104,6 @@ See [Deployment Guide](../examples/deployment-guide.md) for Docker and Kubernete
 
 ## Related Documentation
 
-- [Configuration Guide](../configuration.md) - Configuration options
+- [Configuration Guide](../config/configuration.md) - Configuration options
 - [Metrics Component](../metrics/) - Metrics collection
 - [Backend Component](../backend/) - Storage backends

@@ -72,7 +72,7 @@ worker_connections = 1000
 gunicorn -c gunicorn.conf.py app:app
 ```
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Production Flask Setup
 
@@ -271,7 +271,7 @@ scrape_configs:
     scrape_interval: 5s
 ```
 
-## 🔍 Monitoring Flask-Specific Metrics
+## Monitoring Flask-Specific Metrics
 
 ### Custom Flask Metrics (Optional)
 
@@ -368,7 +368,7 @@ def after_request(response):
     return response
 ```
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Flask Issues
 
@@ -468,7 +468,7 @@ flask run --host=0.0.0.0 --port=8000
 ## 🔗 Related Documentation
 
 - [Installation Guide](../installation.md)
-- [Configuration Reference](../configuration.md)
-- [Metrics Documentation](../metrics.md)
+- [Configuration Reference](../config/configuration.md)
+- [Metrics Documentation](../metrics/index.md)
 - [Django Integration](django-integration.md)
 - [FastAPI Integration](fastapi-integration.md)

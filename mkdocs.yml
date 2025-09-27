@@ -102,8 +102,8 @@ nav:
   - Home: index.md
   - Getting Started:
       - Installation: installation.md
-      - Configuration: configuration.md
-      - Metrics: metrics.md
+      - Configuration: components/config/configuration.md
+      - Metrics: components/metrics/index.md
   - Examples:
       - Django Integration: examples/django-integration.md
       - FastAPI Integration: examples/fastapi-integration.md
@@ -112,6 +112,10 @@ nav:
       - Custom WSGI App: examples/custom-wsgi-app.md
       - Deployment Guide: examples/deployment-guide.md
   - Reference:
-      - API Reference: api-reference.md
+      - Backend API: components/backend/api-reference.md
+      - Config API: components/config/api-reference.md
+      - Hooks API: components/hooks/api-reference.md
+      - Metrics API: components/metrics/api-reference.md
+      - Plugin API: components/plugin/api-reference.md
       - Troubleshooting: troubleshooting.md
   - Contributing: contributing.md

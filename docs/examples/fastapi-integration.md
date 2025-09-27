@@ -69,7 +69,7 @@ worker_connections = 1000
 gunicorn -c gunicorn.conf.py main:app
 ```
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Production FastAPI Setup
 
@@ -241,7 +241,7 @@ scrape_configs:
     scrape_interval: 5s
 ```
 
-## 🔍 Monitoring FastAPI-Specific Metrics
+## Monitoring FastAPI-Specific Metrics
 
 ### Custom FastAPI Metrics (Optional)
 
@@ -301,7 +301,7 @@ async def add_metrics(request: Request, call_next):
     return await metrics_middleware(request, call_next)
 ```
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common FastAPI Issues
 
@@ -383,7 +383,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ## 🔗 Related Documentation
 
 - [Installation Guide](../installation.md)
-- [Configuration Reference](../configuration.md)
-- [Metrics Documentation](../metrics.md)
+- [Configuration Reference](../config/configuration.md)
+- [Metrics Documentation](../metrics/index.md)
 - [Django Integration](django-integration.md)
 - [Flask Integration](flask-integration.md)

@@ -63,7 +63,7 @@ preload_app = True
 gunicorn -c gunicorn.conf.py myproject.wsgi:application
 ```
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Production Django Setup
 
@@ -229,7 +229,7 @@ scrape_configs:
     scrape_interval: 5s
 ```
 
-## 🔍 Monitoring Django-Specific Metrics
+## Monitoring Django-Specific Metrics
 
 ### Custom Django Metrics (Optional)
 
@@ -284,7 +284,7 @@ MIDDLEWARE = [
 ]
 ```
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Django Issues
 
@@ -356,7 +356,7 @@ ALLOWED_HOSTS = ['*']
 ## 🔗 Related Documentation
 
 - [Installation Guide](../installation.md)
-- [Configuration Reference](../configuration.md)
-- [Metrics Documentation](../metrics.md)
+- [Configuration Reference](../config/configuration.md)
+- [Metrics Documentation](../metrics/index.md)
 - [FastAPI Integration](fastapi-integration.md)
 - [Flask Integration](flask-integration.md)

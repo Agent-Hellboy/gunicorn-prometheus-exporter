@@ -236,6 +236,6 @@ For detailed API documentation, see the [API Reference](api-reference.md#redis-b
 
 ## Related Documentation
 
-- [Backend Architecture](backend-architecture.md) - System architecture details
-- [Configuration Guide](configuration.md) - Complete configuration options
-- [Troubleshooting Guide](troubleshooting.md) - Common issues and solutions
+- [Backend Architecture](architecture.md) - System architecture details
+- [Configuration Guide](../config/configuration.md) - Complete configuration options
+- [Troubleshooting Guide](../../troubleshooting.md) - Common issues and solutions

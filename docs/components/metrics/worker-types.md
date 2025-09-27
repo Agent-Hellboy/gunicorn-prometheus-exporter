@@ -171,7 +171,7 @@ All worker types provide the same comprehensive metrics:
 - Worker state management
 - Master process monitoring
 
-For detailed metrics information, see the [Metrics Guide](metrics.md).
+For detailed metrics information, see the [Metrics Guide](index.md).
 
 ## Troubleshooting
 
@@ -181,4 +181,4 @@ For detailed metrics information, see the [Metrics Guide](metrics.md).
 2. **Performance Issues**: Choose the right worker type for your workload
 3. **Memory Issues**: Monitor memory usage and adjust worker count
 
-For more troubleshooting information, see the [Troubleshooting Guide](troubleshooting.md).
+For more troubleshooting information, see the [Troubleshooting Guide](../../troubleshooting.md).

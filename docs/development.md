@@ -366,5 +366,9 @@ ruff check --fix src/gunicorn_prometheus_exporter/plugin.py
 ## Related Documentation
 
 - [Contributing Guide](contributing.md) - How to contribute
-- [API Reference](api-reference.md) - API documentation
+- [Backend API](components/backend/api-reference.md) - Backend API documentation
+- [Config API](components/config/api-reference.md) - Configuration API documentation
+- [Hooks API](components/hooks/api-reference.md) - Hooks API documentation
+- [Metrics API](components/metrics/api-reference.md) - Metrics API documentation
+- [Plugin API](components/plugin/api-reference.md) - Plugin API documentation
 - [Troubleshooting Guide](troubleshooting.md) - Common issues

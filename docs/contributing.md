@@ -173,7 +173,7 @@ docs: update installation guide with Docker examples
 test: add comprehensive test coverage for metrics module
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Running Tests
 
@@ -231,7 +231,7 @@ The project uses tox for testing. Key environments:
 - `format`: Code formatting with Ruff
 - `docs`: Documentation building
 
-## 📚 Documentation
+## Documentation
 
 ### Documentation Standards
 
@@ -253,7 +253,7 @@ mkdocs build
 mkdocs serve
 ```
 
-## 🐛 Bug Reports
+## Bug Reports
 
 ### Before Reporting a Bug
 
@@ -412,7 +412,7 @@ We follow [Semantic Versioning](https://semver.org/):
 - **GitHub Discussions**: For general questions and discussions
 - **Pull Requests**: For code contributions
 
-## 📞 Getting Help
+## Getting Help
 
 ### Questions and Support
 

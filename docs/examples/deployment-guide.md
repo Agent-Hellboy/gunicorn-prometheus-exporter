@@ -406,5 +406,5 @@ Stay tuned for updates in the [Deployment Guide](deployment-guide.md)!
 ## Related Documentation
 
 - [Django Integration](django-integration.md)
-- [Configuration Reference](../configuration.md)
+- [Configuration Reference](../config/configuration.md)
 - [Troubleshooting Guide](../troubleshooting.md)

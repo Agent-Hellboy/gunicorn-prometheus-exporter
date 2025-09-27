@@ -94,7 +94,7 @@ worker_connections = 1000
 gunicorn -c gunicorn.conf.py app:application
 ```
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Production WSGI Setup
 
@@ -371,7 +371,7 @@ scrape_configs:
     scrape_interval: 5s
 ```
 
-## 🔍 Monitoring Custom WSGI Metrics
+## Monitoring Custom WSGI Metrics
 
 ### Custom Application Metrics (Optional)
 
@@ -441,7 +441,7 @@ from metrics import MetricsMiddleware
 application = MetricsMiddleware(ErrorHandlingMiddleware(LoggingMiddleware(app)))
 ```
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common WSGI Issues
 
@@ -563,8 +563,8 @@ if __name__ == '__main__':
 ## 🔗 Related Documentation
 
 - [Installation Guide](../installation.md)
-- [Configuration Reference](../configuration.md)
-- [Metrics Documentation](../metrics.md)
+- [Configuration Reference](../config/configuration.md)
+- [Metrics Documentation](../metrics/index.md)
 - [Django Integration](django-integration.md)
 - [FastAPI Integration](fastapi-integration.md)
 - [Flask Integration](flask-integration.md)

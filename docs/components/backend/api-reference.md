@@ -504,5 +504,5 @@ def get_redis_collector():
 ## Related Documentation
 
 - [Redis Backend](redis-backend.md) - Complete Redis storage implementation
-- [Backend Architecture](../backend-architecture.md) - System architecture details
-- [Configuration Guide](../configuration.md) - Configuration options
+- [Backend Architecture](architecture.md) - System architecture details
+- [Configuration Guide](../config/configuration.md) - Configuration options

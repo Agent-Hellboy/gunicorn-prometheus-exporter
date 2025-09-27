@@ -421,7 +421,7 @@ os.environ.setdefault("PROMETHEUS_DEBUG", "true")
 ## Related Documentation
 
 - [Installation Guide](installation.md) - Installation instructions
-- [Configuration Guide](configuration.md) - Complete configuration options
-- [Worker Types](worker-types.md) - Supported worker types
-- [Redis Backend](redis-backend.md) - Redis storage configuration
+- [Configuration Guide](../config/configuration.md) - Complete configuration options
+- [Worker Types](../metrics/worker-types.md) - Supported worker types
+- [Redis Backend](../backend/redis-backend.md) - Redis storage configuration
 - [Troubleshooting Guide](troubleshooting.md) - Common issues and solutions

@@ -79,7 +79,7 @@ worker_connections = 1000
 gunicorn -c gunicorn.conf.py app:main
 ```
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Production Pyramid Setup
 
@@ -275,7 +275,7 @@ scrape_configs:
     scrape_interval: 5s
 ```
 
-## 🔍 Monitoring Pyramid-Specific Metrics
+## Monitoring Pyramid-Specific Metrics
 
 ### Custom Pyramid Metrics (Optional)
 
@@ -381,7 +381,7 @@ def receive_after_cursor_execute(conn, cursor, statement, parameters, context, e
         db_query_duration.labels(route_name=route_name).observe(duration)
 ```
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Pyramid Issues
 
@@ -463,8 +463,8 @@ pserve development.ini --reload
 ## 🔗 Related Documentation
 
 - [Installation Guide](../installation.md)
-- [Configuration Reference](../configuration.md)
-- [Metrics Documentation](../metrics.md)
+- [Configuration Reference](../config/configuration.md)
+- [Metrics Documentation](../metrics/index.md)
 - [Django Integration](django-integration.md)
 - [FastAPI Integration](fastapi-integration.md)
 - [Flask Integration](flask-integration.md)

@@ -1,18 +1,20 @@
 # Troubleshooting Guide
 
-Common issues and solutions for the Gunicorn Prometheus Exporter.
+This document provides comprehensive solutions for common issues encountered when using the Gunicorn Prometheus Exporter.
 
-## 🚨 Common Issues
+## Common Issues
+
+This section addresses the most frequently encountered problems and their solutions.
 
 ### Port Already in Use
 
-**Error:**
+*Error:*
 
 ```
 OSError: [Errno 98] Address already in use
 ```
 
-**Solution:**
+*Solution:*
 
 1. Change the metrics port in your configuration:
 
@@ -34,13 +36,13 @@ kill -9 <PID>
 
 ### Permission Denied
 
-**Error:**
+*Error:*
 
 ```
 PermissionError: [Errno 13] Permission denied
 ```
 
-**Solution:**
+*Solution:*
 
 1. Check multiprocess directory permissions:
 
@@ -60,13 +62,13 @@ os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/var/tmp/prometheus_multiproc
 
 ### Import Errors for Async Workers
 
-**Error:**
+*Error:*
 
 ```
 ModuleNotFoundError: No module named 'eventlet'
 ```
 
-**Solution:**
+*Solution:*
 
 1. Install the required dependencies:
 
@@ -90,9 +92,9 @@ python -c "import eventlet; print('eventlet available')"
 
 ### Metrics Not Updating
 
-**Issue:** Metrics endpoint shows stale or no data.
+*Issue:* Metrics endpoint shows stale or no data.
 
-**Solutions:**
+*Solutions:*
 
 1. **Check environment variables:**
 
@@ -123,13 +125,13 @@ gunicorn -c gunicorn.conf.py app:app
 
 ### Worker Type Errors
 
-**Error:**
+*Error:*
 
 ```
 TypeError: 'NoneType' object is not callable
 ```
 
-**Solution:**
+*Solution:*
 
 1. Verify worker class is correctly specified:
 
@@ -152,17 +154,19 @@ python -c "import gevent"
 
 ```
 
-## 🔧 Configuration Issues
+## Configuration Issues
+
+This section covers problems related to environment variables, Redis configuration, and other setup issues.
 
 ### Environment Variables Not Set
 
-**Error:**
+*Error:*
 
 ```
 ValueError: Environment variable PROMETHEUS_METRICS_PORT must be set in production
 ```
 
-**Solution:**
+*Solution:*
 
 1. Set environment variables in your configuration:
 
@@ -186,13 +190,13 @@ export GUNICORN_WORKERS="2"
 
 ### Redis Configuration Issues
 
-**Error:**
+*Error:*
 
 ```
 ConnectionError: Error connecting to Redis
 ```
 
-**Solution:**
+*Solution:*
 
 1. Check Redis server is running:
 
@@ -217,7 +221,9 @@ os.environ.setdefault("REDIS_DB", "0")
 redis-cli -h localhost -p 6379 ping
 ```
 
-## 🐛 Debug Mode
+## Debug Mode
+
+This section provides guidance on enabling debug logging and diagnostic tools for troubleshooting.
 
 ### Enable Debug Logging
 
@@ -250,7 +256,9 @@ curl http://0.0.0.0:9090/metrics | grep gunicorn_worker
 curl http://0.0.0.0:9090/metrics | grep -i error
 ```
 
-## 🔍 Diagnostic Commands
+## Diagnostic Commands
+
+This section provides command-line tools and techniques for diagnosing system issues.
 
 ### Check Process Status
 
@@ -292,17 +300,19 @@ gunicorn --config example/gunicorn_gevent_async.conf.py example/async_app:app
 
 ```
 
-## 🚨 Async Worker Issues
+## Async Worker Issues
+
+This section addresses specific problems related to asynchronous worker types (Eventlet and Gevent).
 
 ### Eventlet Worker Problems
 
-**Common Issues:**
+*Common Issues:*
 
 1. **Import errors**: Install `eventlet` package
 2. **WSGI compatibility**: Use async-compatible application
 3. **Worker connections**: Set appropriate `worker_connections`
 
-**Solution:**
+*Solution:*
 
 ```python
 # In gunicorn.conf.py
@@ -315,13 +325,13 @@ app = "example.async_app:app"
 
 ### Gevent Worker Problems
 
-**Common Issues:**
+*Common Issues:*
 
 1. **Import errors**: Install `gevent` package
 2. **Monkey patching**: May conflict with other libraries
 3. **Worker connections**: Set appropriate `worker_connections`
 
-**Solution:**
+*Solution:*
 
 ```python
 # In gunicorn.conf.py
@@ -333,7 +343,7 @@ app = "example.async_app:app"
 ```
 
 
-**Alternative Solution:**
+*Alternative Solution:*
 
 ```python
 # In gunicorn.conf.py - Use EventletWorker instead
@@ -343,16 +353,18 @@ worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
 app = "example.async_app:app"
 ```
 
-## 🔧 Performance Issues
+## Performance Issues
+
+This section covers performance-related problems and optimization strategies.
 
 ### High Memory Usage
 
-**Symptoms:**
+*Symptoms:*
 
 - Memory usage increases over time
 - Workers restart frequently
 
-**Solutions:**
+*Solutions:*
 
 1. **Reduce worker count:**
 
@@ -378,12 +390,12 @@ curl http://0.0.0.0:9090/metrics | grep gunicorn_worker_memory_bytes
 
 ### High CPU Usage
 
-**Symptoms:**
+*Symptoms:*
 
 - CPU usage spikes during requests
 - Slow response times
 
-**Solutions:**
+*Solutions:*
 
 1. **Use appropriate worker type:**
 
@@ -404,12 +416,12 @@ curl http://0.0.0.0:9090/metrics | grep gunicorn_worker_cpu_percent
 
 ### Slow Metrics Collection
 
-**Symptoms:**
+*Symptoms:*
 
 - Metrics endpoint responds slowly
 - High latency in metric updates
 
-**Solutions:**
+*Solutions:*
 
 1. **Reduce metric collection frequency:**
 
@@ -463,7 +475,9 @@ cp -r /tmp/prometheus_multiproc /backup/prometheus_multiproc_$(date +%Y%m%d_%H%M
 cp -r /backup/prometheus_multiproc_latest/* /tmp/prometheus_multiproc/
 ```
 
-## 📞 Getting Help
+## Getting Help
+
+This section provides information on obtaining additional support and reporting issues.
 
 ### Debug Information
 
@@ -508,9 +522,9 @@ curl http://0.0.0.0:9090/metrics
 ### Support Channels
 
 - **GitHub Issues**: Report bugs and feature requests
-- **Documentation**: Check the [API Reference](api-reference.md)
+- **Documentation**: Check the [Backend API](components/backend/api-reference.md), [Config API](components/config/api-reference.md), [Hooks API](components/hooks/api-reference.md), [Metrics API](components/metrics/api-reference.md), or [Plugin API](components/plugin/api-reference.md)
 - **Examples**: See the `example/` directory for working configurations
 
 ---
 
-**For more help, see the [Installation Guide](installation.md) and [Configuration Reference](configuration.md).**
+*For more help, see the [Installation Guide](installation.md) and [Configuration Reference](components/config/configuration.md).*
