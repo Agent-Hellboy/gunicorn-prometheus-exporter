@@ -87,6 +87,31 @@ body:
         Paste your logs here
         ```
 
+  - type: checkboxes
+    id: components
+    attributes:
+      label: Components
+      description: Which components are affected by this bug?
+      options:
+        - label: Hooks
+          required: false
+        - label: Plugin
+          required: false
+        - label: Metrics
+          required: false
+        - label: Master Process
+          required: false
+        - label: Redis Backend
+          required: false
+        - label: Configuration Manager
+          required: false
+        - label: Utils
+          required: false
+        - label: Multiple Components
+          required: false
+        - label: Not Applicable
+          required: false
+
   - type: textarea
     id: additional-context
     attributes:
