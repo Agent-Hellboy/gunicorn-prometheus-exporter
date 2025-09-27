@@ -42,6 +42,9 @@ extra:
       link: https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter
     - icon: fontawesome/brands/x-twitter
       link: https://x.com/_agent_hellboy
+  mermaid:
+    version: 10.4.0
+    theme: default
 
 extra_css:
   - stylesheets/extra.css
@@ -50,8 +53,8 @@ extra_javascript:
   - javascripts/mathjax.js
   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
-  - https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js
-  - javascripts/mermaid.js
+  - https://unpkg.com/mermaid@10.4.0/dist/mermaid.min.js
+  - javascripts/mermaid-init.js
 
 markdown_extensions:
   - abbr
@@ -86,7 +89,6 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-          format: pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
       combine_header_slug: true
