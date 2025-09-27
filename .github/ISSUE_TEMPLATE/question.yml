@@ -1,0 +1,120 @@
+name: Question / Support
+description: Ask a question or get help with setup/usage
+title: "[QUESTION] "
+labels: ["question", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reaching out! This template is for questions about usage, setup, or general help with gunicorn-prometheus-exporter.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know?
+      placeholder: Describe your question...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: question-category
+    attributes:
+      label: Question Category
+      description: What type of question is this?
+      options:
+        - Installation & Setup
+        - Configuration
+        - Metrics & Monitoring
+        - Redis Integration
+        - Worker Types
+        - Performance Issues
+        - Documentation
+        - General Usage
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: components
+    attributes:
+      label: Components
+      description: Which components is your question about?
+      options:
+        - label: Hooks
+          required: false
+        - label: Plugin
+          required: false
+        - label: Metrics
+          required: false
+        - label: Master Process
+          required: false
+        - label: Redis Backend
+          required: false
+        - label: Configuration Manager
+          required: false
+        - label: Utils
+          required: false
+        - label: Multiple Components
+          required: false
+        - label: Not Applicable
+          required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Please provide your environment details
+      placeholder: |
+        - OS: [e.g., Ubuntu 20.04, macOS 12.0, Windows 10]
+        - Python version: [e.g., 3.9.7]
+        - Gunicorn version: [e.g., 20.1.0]
+        - gunicorn-prometheus-exporter version: [e.g., 0.1.5]
+        - Worker type: [e.g., sync, threads, eventlet, gevent]
+        - Redis version: [e.g., 6.2.7] (if using Redis backend)
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-setup
+    attributes:
+      label: Current Setup
+      description: Describe your current configuration or setup
+      placeholder: |
+        ```python
+        # Your current gunicorn configuration
+        bind = "0.0.0.0:8000"
+        workers = 4
+        worker_class = "sync"
+        # ... other settings
+        ```
+
+  - type: textarea
+    id: what-tried
+    attributes:
+      label: What Have You Tried?
+      description: Describe what you've already attempted to solve this
+      placeholder: |
+        - I tried...
+        - I looked at...
+        - I checked...
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about your question here
+      placeholder: Any additional information that might be helpful...
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues and documentation
+          required: true
+        - label: I have provided all the requested information
+          required: true
+        - label: This is a question, not a bug report
+          required: true
