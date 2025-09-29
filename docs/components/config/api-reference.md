@@ -114,9 +114,11 @@ def cleanup_config() -> None:
 
 ```python
 # Import the config manager functions
+
 from gunicorn_prometheus_exporter.config import get_config, initialize_config
 
 # Initialize configuration (typically done once at startup)
+
 initialize_config(
     PROMETHEUS_METRICS_PORT="9091",
     PROMETHEUS_BIND_ADDRESS="0.0.0.0",

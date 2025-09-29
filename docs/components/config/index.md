@@ -38,9 +38,11 @@ We chose the **ConfigManager pattern** for the configuration component because:
 
 ```python
 # ConfigManager with lifecycle management
+
 from gunicorn_prometheus_exporter.config import get_config, initialize_config
 
 # Initialize configuration with validation
+
 initialize_config(
     PROMETHEUS_METRICS_PORT="9091",
     PROMETHEUS_BIND_ADDRESS="0.0.0.0",

@@ -208,6 +208,7 @@ The actual aggregation logic is implemented in `RedisMultiProcessCollector._accu
 Configuration is driven by the `ExporterConfig` singleton and environment variables. See [Configuration Guide](../config/configuration.md) for complete details.
 
 **Key Configuration Properties:**
+
 - `config.redis_enabled` - Enable/disable Redis storage
 - `config.redis_host` - Redis server host
 - `config.redis_port` - Redis server port
@@ -222,6 +223,7 @@ Configuration is driven by the `ExporterConfig` singleton and environment variab
 from gunicorn_prometheus_exporter.config import config
 
 # Check if Redis is enabled
+
 if config.redis_enabled:
     print(f"Redis host: {config.redis_host}:{config.redis_port}")
     print(f"Key prefix: {config.redis_key_prefix}")
@@ -310,6 +312,7 @@ The Redis backend uses the standard Redis Python client with built-in connection
 
 ```python
 # Redis client configuration with performance optimizations
+
 redis.from_url(
     redis_url,
     decode_responses=False,
@@ -363,6 +366,7 @@ The backend uses conditional imports in `backend/core/__init__.py` to handle Red
 
 ```python
 # Conditional import of Redis collector
+
 try:
     from .collector import RedisMultiProcessCollector
     REDIS_COLLECTOR_AVAILABLE = True

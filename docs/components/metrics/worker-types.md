@@ -40,6 +40,7 @@ The default synchronous worker type, suitable for CPU-bound applications.
 
 ```python
 # gunicorn.conf.py
+
 bind = "0.0.0.0:8000"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
@@ -59,6 +60,7 @@ Uses threads to handle multiple requests concurrently within a single process.
 
 ```python
 # gunicorn.conf.py
+
 bind = "0.0.0.0:8000"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusThreadWorker"
@@ -85,6 +87,7 @@ pip install gunicorn-prometheus-exporter[eventlet]
 
 ```python
 # gunicorn.conf.py
+
 bind = "0.0.0.0:8000"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusEventletWorker"
@@ -111,6 +114,7 @@ pip install gunicorn-prometheus-exporter[gevent]
 
 ```python
 # gunicorn.conf.py
+
 bind = "0.0.0.0:8000"
 workers = 2
 worker_class = "gunicorn_prometheus_exporter.PrometheusGeventWorker"

@@ -20,6 +20,7 @@ OSError: [Errno 98] Address already in use
 
 ```python
 # In gunicorn.conf.py
+
 import os
 os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")  # Use different port
 ```
@@ -28,9 +29,11 @@ os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")  # Use different port
 
 ```bash
 # Find the process
+
 lsof -i :9090
 
 # Kill the process
+
 kill -9 <PID>
 ```
 
@@ -48,6 +51,7 @@ PermissionError: [Errno 13] Permission denied
 
 ```bash
 # Create directory with proper permissions
+
 mkdir -p /tmp/prometheus_multiproc
 chmod 755 /tmp/prometheus_multiproc
 ```
@@ -56,7 +60,9 @@ chmod 755 /tmp/prometheus_multiproc
 
 ```python
 # In gunicorn.conf.py
+
 import os
+
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/var/tmp/prometheus_multiproc")
 ```
 
@@ -172,6 +178,7 @@ ValueError: Environment variable PROMETHEUS_METRICS_PORT must be set in producti
 
 ```python
 # In gunicorn.conf.py
+
 import os
 os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
 os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9090")
@@ -208,6 +215,7 @@ redis-cli ping
 
 ```python
 # In gunicorn.conf.py
+
 import os
 os.environ.setdefault("REDIS_ENABLED", "true")
 os.environ.setdefault("REDIS_HOST", "localhost")
@@ -377,6 +385,7 @@ workers = 2  # Reduce from default
 
 ```python
 # In gunicorn.conf.py
+
 import os
 os.environ.setdefault("CLEANUP_DB_FILES", "true")
 ```

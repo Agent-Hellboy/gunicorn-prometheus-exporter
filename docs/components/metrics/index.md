@@ -61,6 +61,7 @@ class BaseMetric(metaclass=MetricMeta):
         return cls._metric.labels(**labels).set(value)
 
 # Usage - automatic registration
+
 class WorkerRequests(BaseMetric, metric_type=Counter):
     name = "gunicorn_worker_requests_total"
     documentation = "Total number of requests handled by this worker"

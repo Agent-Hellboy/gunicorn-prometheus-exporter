@@ -62,6 +62,7 @@ We provide a convenient script for documentation development:
 
 ```bash
 # Install dependencies and serve locally
+
 ./scripts/docs.sh all
 
 # Or use individual commands

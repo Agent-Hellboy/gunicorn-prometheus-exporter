@@ -11,6 +11,7 @@ The Gunicorn Prometheus Exporter provides enterprise-grade monitoring capabiliti
 This is a comprehensive Prometheus exporter that implements several innovative features:
 
 ### *Redis-Based Storage Innovation*
+
 Unlike traditional file-based multiprocess metrics, the system implements a *Redis-backed storage system* that:
 
 - Eliminates file system bottlenecks and race conditions
@@ -19,6 +20,7 @@ Unlike traditional file-based multiprocess metrics, the system implements a *Red
 - Offers better performance and scalability for high-traffic applications
 
 ### *Advanced Signal Handling Architecture*
+
 The system addresses the complex challenge of capturing Gunicorn master process signals through:
 
 - *Patching the Arbiter class* to intercept all signal handling
@@ -27,6 +29,7 @@ The system addresses the complex challenge of capturing Gunicorn master process 
 - Maintaining full compatibility with standard Gunicorn usage
 
 ### *Prometheus Spec Implementation*
+
 The implementation provides comprehensive metrics collection capabilities:
 
 - *Full Prometheus multiprocess protocol* compliance
