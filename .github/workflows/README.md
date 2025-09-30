@@ -4,7 +4,28 @@ This directory contains GitHub Actions workflows for automated CI/CD processes.
 
 ## Workflows
 
-### 1. **Docker Release** (`.github/workflows/docker-release.yml`)
+### 1. **Docker Test** (`.github/workflows/docker-test.yml`)
+
+**Trigger**: On pushes to main/develop branches and pull requests
+
+**Purpose**: Test Docker images and sidecar functionality on every push
+
+**Features**:
+- Builds and tests sidecar and sample app images
+- Tests Docker Compose setup
+- Tests sidecar functionality with and without Redis
+- Validates Kubernetes manifests
+- Tests all entrypoint modes
+- Tests Kubernetes sidecar deployment with kind cluster
+- Runs comprehensive integration tests
+- Does NOT push to Docker Hub (testing only)
+
+**Usage**:
+- Automatically runs on every push to main/develop
+- Tests Docker images on pull requests
+- Validates that sidecar works correctly
+
+### 2. **Docker Release** (`.github/workflows/docker-build.yml`)
 
 **Trigger**: When a new release is published or a version tag is pushed
 
@@ -16,6 +37,7 @@ This directory contains GitHub Actions workflows for automated CI/CD processes.
 - Extracts version from Git tags
 - Updates release notes with Docker image information
 - Pushes to Docker Hub with proper tagging
+- Only runs on releases and version tags (not on every push)
 
 **Required Secrets**:
 - `DOCKER_USERNAME`: Docker Hub username
@@ -25,28 +47,6 @@ This directory contains GitHub Actions workflows for automated CI/CD processes.
 1. Create a new release on GitHub
 2. The workflow automatically builds and pushes Docker images
 3. Release notes are updated with Docker image information
-
-### 2. **Docker Build** (`.github/workflows/docker-build.yml`)
-
-**Trigger**: On pushes to main/develop branches and pull requests
-
-**Purpose**: Build and test Docker images for development and continuous integration
-
-**Features**:
-- Builds Docker images for development branches
-- Tests images on pull requests (without pushing)
-- Pushes images to Docker Hub for main branch
-- Supports multi-architecture builds
-- Uses GitHub Actions cache for faster builds
-
-**Required Secrets**:
-- `DOCKER_USERNAME`: Docker Hub username
-- `DOCKER_PASSWORD`: Docker Hub password or access token
-
-**Usage**:
-- Automatically runs on every push to main/develop
-- Tests Docker images on pull requests
-- Pushes images to Docker Hub for main branch
 
 ## Setup Instructions
 
@@ -68,12 +68,13 @@ DOCKER_PASSWORD=your-dockerhub-password-or-token
 
 ### 3. **Test the Workflows**
 
-#### Test Development Workflow:
+#### Test Docker Images (Every Push):
 ```bash
 # Push to main branch
 git push origin main
 
-# Check GitHub Actions tab for build status
+# Check GitHub Actions tab for test results
+# This will test Docker images without pushing to Docker Hub
 ```
 
 #### Test Release Workflow:
@@ -88,6 +89,27 @@ git push origin v0.1.8
 ```
 
 ## Workflow Details
+
+### Docker Test Workflow
+
+```yaml
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+```
+
+**What it does**:
+1. Triggers on every push to main/develop branches
+2. Triggers on pull requests to main branch
+3. Builds sidecar and sample app images (testing only)
+4. Tests Docker Compose setup
+5. Tests sidecar functionality with and without Redis
+6. Validates Kubernetes manifests
+7. Tests all entrypoint modes
+8. Tests Kubernetes sidecar deployment with kind cluster
+9. Does NOT push to Docker Hub
 
 ### Docker Release Workflow
 
@@ -114,28 +136,6 @@ on:
 - `your-username/gunicorn-prometheus-exporter-app:0.1.8`
 - `your-username/gunicorn-prometheus-exporter-app:latest`
 
-### Docker Build Workflow
-
-```yaml
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-```
-
-**What it does**:
-1. Triggers on pushes to main/develop branches
-2. Triggers on pull requests to main branch
-3. Builds Docker images for testing
-4. Pushes images to Docker Hub (except for PRs)
-5. Tests images on pull requests
-
-**Generated Images**:
-- `your-username/gunicorn-prometheus-exporter:main`
-- `your-username/gunicorn-prometheus-exporter:latest` (main branch only)
-- `your-username/gunicorn-prometheus-exporter-app:main`
-- `your-username/gunicorn-prometheus-exporter-app:latest` (main branch only)
 
 ## Troubleshooting
 

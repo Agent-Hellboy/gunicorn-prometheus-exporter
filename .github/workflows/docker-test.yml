@@ -1,0 +1,247 @@
+name: Test Docker Images
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build sidecar image locally
+        run: |
+          echo "Building sidecar image locally..."
+          docker build -t gunicorn-prometheus-exporter:test .
+          echo "✅ Sidecar image built successfully"
+
+      - name: Build sample app image locally
+        run: |
+          echo "Building sample app image locally..."
+          docker build -f docker/Dockerfile.app -t gunicorn-app:test .
+          echo "✅ Sample app image built successfully"
+
+      - name: Test sidecar image
+        run: |
+          echo "Testing sidecar image..."
+          # Test sidecar help command
+          docker run --rm gunicorn-prometheus-exporter:test --help
+
+          # Test sidecar health check
+          docker run --rm gunicorn-prometheus-exporter:test health
+
+          echo "✅ Sidecar image test passed!"
+
+      - name: Test sample app image
+        run: |
+          echo "Testing sample app image..."
+          # Test app help command
+          docker run --rm gunicorn-app:test --help
+
+          echo "✅ Sample app image test passed!"
+
+      - name: Test Docker Compose
+        run: |
+          echo "Testing Docker Compose setup..."
+
+          # Start services in background
+          docker-compose up -d --build
+
+          # Wait for services to be ready
+          sleep 30
+
+          # Test application health
+          curl -f http://localhost:8000/health || exit 1
+
+          # Test metrics endpoint
+          curl -f http://localhost:9091/metrics || exit 1
+
+          # Test Prometheus
+          curl -f http://localhost:9090/-/healthy || exit 1
+
+          # Test Grafana
+          curl -f http://localhost:3000/api/health || exit 1
+
+          # Stop services
+          docker-compose down
+
+          echo "✅ Docker Compose test passed!"
+
+      - name: Test sidecar functionality
+        run: |
+          echo "Testing sidecar functionality..."
+
+          # Create a temporary directory for multiprocess files
+          mkdir -p /tmp/test_prometheus_multiproc
+
+          # Start sidecar in background
+          docker run -d \
+            --name test-sidecar \
+            -p 9091:9091 \
+            -v /tmp/test_prometheus_multiproc:/tmp/prometheus_multiproc \
+            gunicorn-prometheus-exporter:test
+
+          # Wait for sidecar to start
+          sleep 10
+
+          # Test metrics endpoint
+          curl -f http://localhost:9091/metrics || exit 1
+
+          # Test health check
+          curl -f http://localhost:9091/metrics | grep -q "gunicorn_sidecar" || exit 1
+
+          # Cleanup
+          docker stop test-sidecar
+          docker rm test-sidecar
+          rm -rf /tmp/test_prometheus_multiproc
+
+          echo "✅ Sidecar functionality test passed!"
+
+      - name: Test with Redis
+        run: |
+          echo "Testing sidecar with Redis..."
+
+          # Start Redis
+          docker run -d --name test-redis -p 6379:6379 redis:7-alpine
+
+          # Wait for Redis to start
+          sleep 5
+
+          # Start sidecar with Redis enabled
+          docker run -d \
+            --name test-sidecar-redis \
+            -p 9092:9091 \
+            --link test-redis:redis \
+            -e REDIS_ENABLED=true \
+            -e REDIS_HOST=redis \
+            -e REDIS_PORT=6379 \
+            gunicorn-prometheus-exporter:test
+
+          # Wait for sidecar to start
+          sleep 10
+
+          # Test metrics endpoint
+          curl -f http://localhost:9092/metrics || exit 1
+
+          # Cleanup
+          docker stop test-sidecar-redis test-redis
+          docker rm test-sidecar-redis test-redis
+
+          echo "✅ Redis integration test passed!"
+
+      - name: Test Kubernetes manifests
+        run: |
+          echo "Testing Kubernetes manifests..."
+
+          # Validate YAML files
+          for file in k8s/*.yaml; do
+            echo "Validating $file..."
+            # Basic YAML syntax check
+            python3 -c "import yaml; yaml.safe_load(open('$file'))" || exit 1
+          done
+
+          echo "✅ Kubernetes manifests validation passed!"
+
+      - name: Test entrypoint modes
+        run: |
+          echo "Testing entrypoint modes..."
+
+          # Test sidecar mode
+          docker run --rm gunicorn-prometheus-exporter:test sidecar --help || exit 1
+
+          # Test standalone mode
+          docker run --rm gunicorn-prometheus-exporter:test standalone --help || exit 1
+
+          # Test health mode
+          docker run --rm gunicorn-prometheus-exporter:test health || exit 1
+
+          echo "✅ Entrypoint modes test passed!"
+
+      - name: Test Kubernetes sidecar deployment
+        run: |
+          echo "Testing Kubernetes sidecar deployment..."
+
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+          # Install kind (Kubernetes in Docker)
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+          # Create a kind cluster
+          kind create cluster --name test-cluster --wait 300s
+
+          # Load our Docker images into the kind cluster
+          kind load docker-image gunicorn-prometheus-exporter:test --name test-cluster
+          kind load docker-image gunicorn-app:test --name test-cluster
+
+          # Update image references in Kubernetes manifests
+          sed -i "s|your-registry/gunicorn-app:latest|gunicorn-app:test|g" k8s/sidecar-deployment.yaml
+          sed -i "s|your-registry/gunicorn-prometheus-exporter:latest|gunicorn-prometheus-exporter:test|g" k8s/sidecar-deployment.yaml
+
+          # Deploy Redis first
+          kubectl apply -f k8s/redis-deployment.yaml
+          kubectl apply -f k8s/redis-service.yaml
+          kubectl apply -f k8s/redis-pvc.yaml
+          kubectl apply -f k8s/redis-secret.yaml
+
+          # Wait for Redis to be ready
+          kubectl wait --for=condition=ready pod -l app=redis --timeout=300s
+
+          # Deploy the sidecar application
+          kubectl apply -f k8s/sidecar-deployment.yaml
+          kubectl apply -f k8s/gunicorn-app-service.yaml
+          kubectl apply -f k8s/gunicorn-metrics-service.yaml
+
+          # Wait for the deployment to be ready
+          kubectl wait --for=condition=ready pod -l app=gunicorn-app --timeout=300s
+
+          # Test the application
+          kubectl port-forward service/gunicorn-app-service 8000:8000 &
+          kubectl port-forward service/gunicorn-metrics-service 9091:9091 &
+
+          # Wait for port forwarding to be ready
+          sleep 10
+
+          # Test application health
+          curl -f http://localhost:8000/health || exit 1
+
+          # Test metrics endpoint
+          curl -f http://localhost:9091/metrics || exit 1
+
+          # Check if sidecar metrics are present
+          curl -f http://localhost:9091/metrics | grep -q "gunicorn_sidecar" || exit 1
+
+          # Check if worker metrics are present
+          curl -f http://localhost:9091/metrics | grep -q "gunicorn_worker" || exit 1
+
+          # Cleanup
+          pkill -f "kubectl port-forward" || true
+          kind delete cluster --name test-cluster
+
+          echo "✅ Kubernetes sidecar deployment test passed!"
+
+      - name: Summary
+        run: |
+          echo "🎉 All Docker tests passed!"
+          echo "✅ Sidecar image builds successfully"
+          echo "✅ Sample app image builds successfully"
+          echo "✅ Docker Compose setup works"
+          echo "✅ Sidecar functionality works"
+          echo "✅ Redis integration works"
+          echo "✅ Kubernetes manifests are valid"
+          echo "✅ Entrypoint modes work correctly"
+          echo "✅ Kubernetes sidecar deployment works"
