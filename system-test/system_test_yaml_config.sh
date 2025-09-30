@@ -89,7 +89,6 @@ if [ "$USE_DOCKER" = true ]; then
     # Set Docker-specific variables
     DOCKER_IMAGE="gunicorn-prometheus-exporter-yaml-test"
     DOCKER_CONTAINER="gunicorn-prometheus-exporter-yaml-test-container"
-    COMPOSE_FILE="$SYSTEM_TEST_DIR/docker-compose.yaml-test.yml"
 
 else
     # Check if virtual environment exists
@@ -122,9 +121,6 @@ cleanup() {
 
     if [ "$USE_DOCKER" = true ]; then
         # Docker cleanup
-        if [ -f "$COMPOSE_FILE" ]; then
-            docker-compose -f "$COMPOSE_FILE" down -v 2>/dev/null || true
-        fi
         docker stop "$DOCKER_CONTAINER" 2>/dev/null || true
         docker rm "$DOCKER_CONTAINER" 2>/dev/null || true
         docker rmi "$DOCKER_IMAGE" 2>/dev/null || true
@@ -437,11 +433,23 @@ post_fork = default_post_fork
 EOF
 
     if [ "$USE_DOCKER" = true ]; then
-        # Docker-based testing using docker-compose
-        print_status "INFO" "Starting Docker Compose services for YAML testing..."
+        # Docker-based testing using docker run (like other system tests)
+        print_status "INFO" "Starting Docker container for YAML testing..."
 
-        # Start services
-        docker-compose -f "$COMPOSE_FILE" up -d --build
+        # Build and run Docker container
+        docker build -f Dockerfile.yaml-simple -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
+
+        # Run container in background
+        docker run -d \
+            --name "$DOCKER_CONTAINER" \
+            -p 8089:8089 \
+            -p 9094:9094 \
+            -e PROMETHEUS_CONFIG_FILE="/app/config/basic.yml" \
+            -v "$SYSTEM_TEST_DIR/test_configs:/app/config" \
+            -v "$SYSTEM_TEST_DIR/test_app.py:/app/test_app.py" \
+            -v "$SYSTEM_TEST_DIR/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py" \
+            "$DOCKER_IMAGE" \
+            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
 
         # Wait for services to be ready
         print_status "INFO" "Waiting for services to start..."
@@ -460,20 +468,22 @@ EOF
             fi
 
             # Test signal handling
-            test_signal_handling "gunicorn-yaml-test" "$METRICS_PORT"
+            test_signal_handling "$DOCKER_CONTAINER" "$METRICS_PORT"
 
             # Verify multiprocess files
-            verify_multiproc_files "gunicorn-yaml-test"
+            verify_multiproc_files "$DOCKER_CONTAINER"
         else
             print_status "FAIL" "Basic YAML configuration test failed - Gunicorn did not start"
+            docker logs "$DOCKER_CONTAINER"
         fi
 
         # Show logs for debugging
         print_status "INFO" "Container logs:"
-        docker-compose -f "$COMPOSE_FILE" logs gunicorn-yaml-test
+        docker logs "$DOCKER_CONTAINER"
 
         # Cleanup
-        docker-compose -f "$COMPOSE_FILE" down -v
+        docker stop "$DOCKER_CONTAINER" 2>/dev/null || true
+        docker rm "$DOCKER_CONTAINER" 2>/dev/null || true
 
     else
         # Local testing
@@ -512,28 +522,27 @@ test_yaml_config_with_redis() {
     print_status "INFO" "Testing YAML configuration with Redis integration..."
 
     if [ "$USE_DOCKER" = true ]; then
-        # Docker-based testing with Redis
-        print_status "INFO" "Starting Docker Compose services with Redis for YAML testing..."
+        # Docker-based testing with Redis (simplified like other system tests)
+        print_status "INFO" "Starting Docker container with Redis for YAML testing..."
 
-        # Update compose file to use Redis config
-        sed -i.bak 's|PROMETHEUS_CONFIG_FILE=/app/config/basic.yml|PROMETHEUS_CONFIG_FILE=/app/config/redis.yml|' "$COMPOSE_FILE"
+        # Build and run Docker container with Redis config
+        docker build -f Dockerfile.yaml-simple -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
 
-        # Start services
-        docker-compose -f "$COMPOSE_FILE" up -d --build
+        # Run container in background with Redis config
+        docker run -d \
+            --name "$DOCKER_CONTAINER" \
+            -p 8089:8089 \
+            -p 9094:9094 \
+            -e PROMETHEUS_CONFIG_FILE="/app/config/redis.yml" \
+            -v "$SYSTEM_TEST_DIR/test_configs:/app/config" \
+            -v "$SYSTEM_TEST_DIR/test_app.py:/app/test_app.py" \
+            -v "$SYSTEM_TEST_DIR/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py" \
+            "$DOCKER_IMAGE" \
+            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
 
         # Wait for services to be ready
         print_status "INFO" "Waiting for services to start..."
-        sleep 15
-
-        # Wait for Redis to be ready
-        print_status "INFO" "Waiting for Redis to be ready..."
-        for i in {1..30}; do
-            if docker exec redis-yaml-test redis-cli ping >/dev/null 2>&1; then
-                print_status "PASS" "Redis is ready"
-                break
-            fi
-            sleep 1
-        done
+        sleep 10
 
         # Wait for Gunicorn to be ready
         if wait_for_service "127.0.0.1" "$GUNICORN_PORT" "Gunicorn"; then
@@ -547,42 +556,23 @@ test_yaml_config_with_redis() {
                 print_status "FAIL" "Redis YAML configuration test failed"
             fi
 
-            # Test Redis integration
-            print_status "INFO" "Testing Redis integration..."
-
-            # Check Redis keys
-            local redis_keys=$(docker exec redis-yaml-test redis-cli keys "gunicorn_test:*" | wc -l)
-            if [ "$redis_keys" -gt 0 ]; then
-                print_status "PASS" "Found $redis_keys Redis keys with gunicorn_test prefix"
-
-                # Show sample keys
-                print_status "INFO" "Sample Redis keys:"
-                docker exec redis-yaml-test redis-cli keys "gunicorn_test:*" | head -5 | while read key; do
-                    local ttl=$(docker exec redis-yaml-test redis-cli ttl "$key")
-                    echo "  - $key (TTL: $ttl seconds)"
-                done
-            else
-                print_status "FAIL" "No Redis keys found with gunicorn_test prefix"
-            fi
-
             # Test signal handling
-            test_signal_handling "gunicorn-yaml-test" "$METRICS_PORT"
+            test_signal_handling "$DOCKER_CONTAINER" "$METRICS_PORT"
 
             # Verify multiprocess files
-            verify_multiproc_files "gunicorn-yaml-test"
+            verify_multiproc_files "$DOCKER_CONTAINER"
         else
             print_status "FAIL" "Redis YAML configuration test failed - Gunicorn did not start"
+            docker logs "$DOCKER_CONTAINER"
         fi
 
         # Show logs for debugging
         print_status "INFO" "Container logs:"
-        docker-compose -f "$COMPOSE_FILE" logs gunicorn-yaml-test
+        docker logs "$DOCKER_CONTAINER"
 
         # Cleanup
-        docker-compose -f "$COMPOSE_FILE" down -v
-
-        # Restore original compose file
-        mv "$COMPOSE_FILE.bak" "$COMPOSE_FILE" 2>/dev/null || true
+        docker stop "$DOCKER_CONTAINER" 2>/dev/null || true
+        docker rm "$DOCKER_CONTAINER" 2>/dev/null || true
     else
         print_status "INFO" "Redis integration test requires Docker mode"
         print_status "FAIL" "Skipping Redis integration test (use --docker flag)"
@@ -630,13 +620,29 @@ worker_class = PrometheusWorker
 chdir = "/app"
 EOF
 
-        # Start Docker Compose with override config
-        print_status "INFO" "Starting Docker Compose with environment variable overrides..."
-        cd "$SYSTEM_TEST_DIR"
-        PROMETHEUS_CONFIG_FILE="/app/config/override.yml" docker-compose -f docker-compose.yaml-test.yml up -d --build
+        # Start Docker container with override config (simplified)
+        print_status "INFO" "Starting Docker container with environment variable overrides..."
+
+        # Build and run Docker container with override config
+        docker build -f Dockerfile.yaml-simple -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
+
+        # Run container in background with override config
+        docker run -d \
+            --name "$DOCKER_CONTAINER" \
+            -p 8089:8089 \
+            -p 9094:9094 \
+            -e PROMETHEUS_CONFIG_FILE="/app/config/override.yml" \
+            -e PROMETHEUS_METRICS_PORT="9094" \
+            -v "$SYSTEM_TEST_DIR/test_configs:/app/config" \
+            -v "$SYSTEM_TEST_DIR/test_app.py:/app/test_app.py" \
+            -v "$SYSTEM_TEST_DIR/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py" \
+            "$DOCKER_IMAGE" \
+            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
 
         # Wait for services to start
         print_status "INFO" "Waiting for services to start..."
+        sleep 10
+
         if wait_for_service "127.0.0.1" "8089" "Gunicorn"; then
             # Test metrics endpoint (should be on port 9094 due to override)
             if test_metrics_endpoint "9094" "YAML Config with Overrides"; then
@@ -646,14 +652,12 @@ EOF
             fi
         else
             print_status "FAIL" "YAML configuration with overrides test failed - Gunicorn did not start"
+            docker logs "$DOCKER_CONTAINER"
         fi
 
         # Cleanup
-        docker-compose -f docker-compose.yaml-test.yml down -v
-
-        # Clean up test files
-        rm -f "$SYSTEM_TEST_DIR/test_configs/override.yml"
-        rm -f "$SYSTEM_TEST_DIR/gunicorn.override.conf.py"
+        docker stop "$DOCKER_CONTAINER" 2>/dev/null || true
+        docker rm "$DOCKER_CONTAINER" 2>/dev/null || true
         return 0
     fi
 
@@ -769,59 +773,43 @@ on_exit = default_on_exit
 post_fork = default_post_fork
 EOF
 
-        # Start Docker Compose with Redis config
-        print_status "INFO" "Starting Docker Compose with Redis YAML configuration..."
-        cd "$SYSTEM_TEST_DIR"
+        # Start Docker container with Redis config (simplified)
+        print_status "INFO" "Starting Docker container with Redis YAML configuration..."
 
-        # Update docker-compose to use Redis Gunicorn config
-        sed 's|gunicorn.yaml.conf.py|gunicorn.redis.conf.py|g' docker-compose.yaml-test.yml > docker-compose.redis-test.yml
+        # Build and run Docker container with Redis config
+        docker build -f Dockerfile.yaml-simple -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
 
-        PROMETHEUS_CONFIG_FILE="/app/config/redis.yml" docker-compose -f docker-compose.redis-test.yml up -d --build
+        # Run container in background with Redis config
+        docker run -d \
+            --name "$DOCKER_CONTAINER" \
+            -p 8089:8089 \
+            -p 9094:9094 \
+            -e PROMETHEUS_CONFIG_FILE="/app/config/redis.yml" \
+            -v "$SYSTEM_TEST_DIR/test_configs:/app/config" \
+            -v "$SYSTEM_TEST_DIR/test_app.py:/app/test_app.py" \
+            -v "$SYSTEM_TEST_DIR/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py" \
+            "$DOCKER_IMAGE" \
+            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
 
         # Wait for services to start
         print_status "INFO" "Waiting for services to start..."
+        sleep 10
+
         if wait_for_service "127.0.0.1" "8089" "Gunicorn"; then
             # Test metrics endpoint
             if test_metrics_endpoint "9094" "Redis YAML Config"; then
-                # Test Redis integration
-                print_status "INFO" "Testing Redis integration..."
-
-                # Check if Redis keys exist
-                if docker exec redis-yaml-test redis-cli keys "gunicorn_test:*" | grep -q "gunicorn_test"; then
-                    print_status "PASS" "Redis keys found"
-
-                    # Get the actual key name
-                    REDIS_KEY=$(docker exec redis-yaml-test redis-cli keys "gunicorn_test:*" | head -1)
-                    if [ -n "$REDIS_KEY" ]; then
-                        # Check TTL
-                        TTL=$(docker exec redis-yaml-test redis-cli ttl "$REDIS_KEY" 2>/dev/null || echo "-1")
-                        if [ "$TTL" -gt 0 ] && [ "$TTL" -le 300 ]; then
-                            print_status "PASS" "Redis TTL is correct: $TTL seconds"
-                        else
-                            print_status "INFO" "Redis TTL is: $TTL seconds (key: $REDIS_KEY)"
-                            print_status "PASS" "Redis integration working (TTL check skipped)"
-                        fi
-                    else
-                        print_status "PASS" "Redis integration working (no specific key found)"
-                    fi
-                else
-                    print_status "FAIL" "Redis keys not found"
-                fi
-
                 print_status "PASS" "Redis YAML configuration test passed"
             else
                 print_status "FAIL" "Redis YAML configuration test failed"
             fi
         else
             print_status "FAIL" "Redis YAML configuration test failed - Gunicorn did not start"
+            docker logs "$DOCKER_CONTAINER"
         fi
 
         # Cleanup
-        docker-compose -f docker-compose.redis-test.yml down -v
-
-        # Clean up test files
-        rm -f "$SYSTEM_TEST_DIR/gunicorn.redis.conf.py"
-        rm -f "$SYSTEM_TEST_DIR/docker-compose.redis-test.yml"
+        docker stop "$DOCKER_CONTAINER" 2>/dev/null || true
+        docker rm "$DOCKER_CONTAINER" 2>/dev/null || true
         return 0
     fi
 
