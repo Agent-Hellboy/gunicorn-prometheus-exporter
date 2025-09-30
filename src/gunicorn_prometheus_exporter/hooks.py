@@ -510,3 +510,29 @@ def _setup_redis_storage_if_enabled(logger: logging.Logger) -> None:
             )
     except Exception as e:
         logger.error("Failed to setup Redis storage: %s", e)
+
+
+def load_yaml_config(config_file_path: str) -> None:
+    """Load configuration from YAML file and apply to environment variables.
+
+    This is the main public API for loading YAML configuration files.
+    It should be called before any other configuration or hook functions.
+
+    Args:
+        config_file_path: Path to the YAML configuration file
+
+    Raises:
+        FileNotFoundError: If the configuration file doesn't exist
+        yaml.YAMLError: If the YAML file is invalid
+        ValueError: If the configuration structure is invalid
+
+    Example:
+        >>> from gunicorn_prometheus_exporter.hooks import load_yaml_config
+        >>> load_yaml_config("config.yml")
+        >>> # Now use other hooks or initialize config
+        >>> from gunicorn_prometheus_exporter.config import initialize_config
+        >>> initialize_config()
+    """
+    from .config.loader import load_yaml_config as _load_yaml_config
+
+    _load_yaml_config(config_file_path)

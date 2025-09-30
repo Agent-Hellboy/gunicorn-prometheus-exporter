@@ -1,6 +1,6 @@
 # Configuration API Reference
 
-This document provides detailed API reference for the configuration component using the **ConfigManager pattern** with lifecycle management.
+This document provides detailed API reference for the configuration component using the **ConfigManager pattern** with lifecycle management and YAML configuration support.
 
 ## Core Classes
 
@@ -88,6 +88,52 @@ class ConfigManager:
         # Implementation details...
 ```
 
+### YAML Configuration Classes
+
+#### YamlConfigLoader
+
+Handles YAML configuration file loading, validation, and conversion to environment variables.
+
+```python
+class YamlConfigLoader:
+    """Loads and validates YAML configuration files."""
+
+    def __init__(self):
+        """Initialize the YAML configuration loader."""
+
+    def load_config(self, config_file_path: str) -> dict:
+        """Load YAML configuration from file.
+
+        Args:
+            config_file_path: Path to the YAML configuration file
+
+        Returns:
+            dict: Parsed and validated configuration
+
+        Raises:
+            FileNotFoundError: If the configuration file doesn't exist
+            yaml.YAMLError: If the YAML file is invalid
+            ValueError: If the configuration validation fails
+        """
+
+    def validate_config(self, config: dict) -> None:
+        """Validate configuration structure and values.
+
+        Args:
+            config: Configuration dictionary to validate
+
+        Raises:
+            ValueError: If validation fails
+        """
+
+    def convert_to_environment_variables(self, config: dict) -> None:
+        """Convert YAML configuration to environment variables.
+
+        Args:
+            config: Configuration dictionary to convert
+        """
+```
+
 ### Global Configuration Functions
 
 The configuration system provides global functions for easy access:
@@ -108,17 +154,30 @@ def get_config() -> ExporterConfig:
 def cleanup_config() -> None:
     """Clean up the global configuration."""
     # Cleans up global ConfigManager
+
+def load_yaml_config(config_file_path: str) -> None:
+    """Load YAML configuration file and apply settings.
+
+    Args:
+        config_file_path: Path to the YAML configuration file
+
+    Raises:
+        FileNotFoundError: If the configuration file doesn't exist
+        yaml.YAMLError: If the YAML file is invalid
+        ValueError: If the configuration validation fails
+    """
 ```
 
 **Usage:**
 
 ```python
 # Import the config manager functions
+from gunicorn_prometheus_exporter.config import get_config, initialize_config, load_yaml_config
 
-from gunicorn_prometheus_exporter.config import get_config, initialize_config
+# Method 1: YAML Configuration (Recommended)
+load_yaml_config("gunicorn-prometheus-exporter.yml")
 
-# Initialize configuration (typically done once at startup)
-
+# Method 2: Environment Variables
 initialize_config(
     PROMETHEUS_METRICS_PORT="9091",
     PROMETHEUS_BIND_ADDRESS="0.0.0.0",
@@ -205,9 +264,44 @@ def validate(self) -> bool:
 
 ## Configuration Sources
 
+### YAML Configuration Files
+
+Primary configuration source for structured, readable configuration:
+
+```yaml
+# gunicorn-prometheus-exporter.yml
+exporter:
+  prometheus:
+    metrics_port: 9091
+    bind_address: "0.0.0.0"
+    multiproc_dir: "/tmp/prometheus_multiproc"
+  gunicorn:
+    workers: 2
+    timeout: 30
+    keepalive: 2
+  redis:
+    enabled: false
+    host: "localhost"
+    port: 6379
+    db: 0
+  ssl:
+    enabled: false
+  cleanup:
+    db_files: true
+```
+
+**YAML Configuration Loading:**
+
+```python
+from gunicorn_prometheus_exporter import load_yaml_config
+
+# Load YAML configuration
+load_yaml_config("gunicorn-prometheus-exporter.yml")
+```
+
 ### Environment Variables
 
-Primary configuration source - environment variables are read lazily through properties:
+Traditional configuration source - environment variables are read lazily through properties:
 
 ```python
 # Environment variable names (constants)
@@ -372,13 +466,15 @@ port = config.prometheus_metrics_port
 
 ### Configuration Management
 
-1. **Use Environment Variables**: Primary configuration method
-2. **Initialize Early**: Call `initialize_config()` at application startup
-3. **Lazy Loading**: Properties read environment variables on access
-4. **Validation**: Clear error messages for missing or invalid configuration
-5. **Type Safety**: Automatic type conversion with validation
-6. **CLI Integration**: Gunicorn CLI options update environment variables
-7. **Cleanup**: Call `cleanup_config()` when shutting down
+1. **Use YAML Configuration**: Primary configuration method for structured settings
+2. **Environment Variable Override**: YAML configs can be overridden by environment variables
+3. **Initialize Early**: Call `load_yaml_config()` or `initialize_config()` at application startup
+4. **Lazy Loading**: Properties read environment variables on access
+5. **Validation**: Clear error messages for missing or invalid configuration
+6. **Type Safety**: Automatic type conversion with validation
+7. **CLI Integration**: Gunicorn CLI options update environment variables
+8. **Backward Compatibility**: Full compatibility with existing environment variable configuration
+9. **Cleanup**: Call `cleanup_config()` when shutting down
 
 ### Security Considerations
 

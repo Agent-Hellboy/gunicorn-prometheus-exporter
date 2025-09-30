@@ -1,6 +1,6 @@
 # Makefile for Gunicorn Prometheus Exporter
 
-.PHONY: help install test quick-test system-test ci-test force-test docker-test docker-build basic-test basic-quick-test docker-basic-test docker-basic-build clean lint format
+.PHONY: help install test quick-test system-test ci-test force-test docker-test docker-build basic-test basic-quick-test docker-basic-test docker-basic-build yaml-test yaml-quick-test docker-yaml-test docker-yaml-build clean lint format
 
 # Default target
 help:
@@ -17,6 +17,10 @@ help:
 	@echo "  docker-build      - Build Docker image for Redis system test"
 	@echo "  docker-basic-test - Run basic file-based system test in Docker"
 	@echo "  docker-basic-build - Build Docker image for basic system test"
+	@echo "  yaml-test         - Run YAML configuration system test"
+	@echo "  yaml-quick-test   - Run quick YAML configuration system test"
+	@echo "  docker-yaml-test  - Run YAML configuration system test in Docker"
+	@echo "  docker-yaml-build - Build Docker image for YAML system test"
 	@echo "  clean             - Clean up test artifacts"
 	@echo "  lint              - Run linting"
 	@echo "  format            - Format code"
@@ -61,15 +65,27 @@ basic-quick-test:
 	@echo "Running quick basic file-based system test..."
 	./system_test_basic.sh --quick
 
+# YAML configuration system test
+yaml-test:
+	@echo "Running YAML configuration system test..."
+	./system_test_yaml_config.sh
+
+# Quick YAML configuration system test
+yaml-quick-test:
+	@echo "Running quick YAML configuration system test..."
+	./system_test_yaml_config.sh --quick
+
 # Clean up test artifacts
 clean:
 	rm -f *.log
 	pkill -f "gunicorn.*redis_integration" || true
 	pkill -f "gunicorn.*basic" || true
+	pkill -f "gunicorn.*yaml" || true
 	pkill -f "redis-server" || true
 	rm -rf /tmp/prometheus_multiproc || true
 	docker rmi gunicorn-prometheus-exporter-test 2>/dev/null || true
 	docker rmi gunicorn-prometheus-exporter-basic-test 2>/dev/null || true
+	docker rmi gunicorn-prometheus-exporter-yaml-test 2>/dev/null || true
 
 # Run linting
 lint:
@@ -109,6 +125,16 @@ docker-basic-test: docker-basic-build
 		-p 8088:8088 \
 		-p 9093:9093 \
 		gunicorn-prometheus-exporter-basic-test
+
+# Docker-based YAML system test (works on Mac/Windows/Linux)
+docker-yaml-build:
+	@echo "Building Docker image for YAML system test..."
+	docker build -f Dockerfile.yaml-simple -t gunicorn-prometheus-exporter-yaml-test ..
+
+docker-yaml-test: docker-yaml-build
+	@echo "Running YAML configuration system test in Docker container..."
+	@echo "This works consistently on Mac, Windows, and Linux!"
+	./system_test_yaml_config.sh --docker
 
 # Development setup
 dev-setup: install

@@ -84,6 +84,7 @@ from .config import (
     initialize_config,
     get_config,
     cleanup_config,
+    load_yaml_config,
 )
 from .master import PrometheusMaster
 from .metrics import registry
@@ -175,6 +176,7 @@ __all__ = [
     "initialize_config",
     "get_config",
     "cleanup_config",
+    "load_yaml_config",
     "RedisStorageManager",
     "get_redis_storage_manager",
     "setup_redis_metrics",

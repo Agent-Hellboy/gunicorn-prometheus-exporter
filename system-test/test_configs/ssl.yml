@@ -1,0 +1,20 @@
+exporter:
+  prometheus:
+    metrics_port: 9094
+    bind_address: "0.0.0.0"
+    multiproc_dir: "/tmp/prometheus_multiproc"
+    ssl:
+      enabled: false # Disabled for testing
+      certfile: null
+      keyfile: null
+      client_cafile: null
+      client_capath: null
+      client_auth_required: false
+  gunicorn:
+    workers: 1
+    timeout: 30
+    keepalive: 2
+  redis:
+    enabled: false
+  cleanup:
+    db_files: true

@@ -1,0 +1,41 @@
+# SSL-enabled Gunicorn Prometheus Exporter Configuration
+# This configuration enables SSL/TLS for the Prometheus metrics server.
+# Perfect for production deployments requiring secure metrics endpoints.
+
+exporter:
+  prometheus:
+    metrics_port: 9093
+    bind_address: "0.0.0.0"
+    multiproc_dir: "/tmp/prometheus_multiproc"
+    ssl:
+      enabled: true
+      certfile: "/path/to/cert.pem"
+      keyfile: "/path/to/key.pem"
+      client_cafile: "/path/to/ca.pem"
+      client_capath: "/path/to/ca/directory"
+      client_auth_required: true
+
+  gunicorn:
+    workers: 4
+    timeout: 300
+    keepalive: 2
+
+  redis:
+    enabled: false
+    host: "127.0.0.1"
+    port: 6379
+    db: 0
+    password: null
+    key_prefix: "gunicorn"
+    ttl_seconds: 300
+    ttl_disabled: false
+
+  cleanup:
+    db_files: true
+# SSL Configuration Notes:
+# - enabled: Set to true to enable SSL/TLS
+# - certfile: Path to SSL certificate file
+# - keyfile: Path to SSL private key file
+# - client_cafile: Path to client CA certificate file (optional)
+# - client_capath: Path to directory containing client CA certificates (optional)
+# - client_auth_required: Set to true to require client certificate authentication

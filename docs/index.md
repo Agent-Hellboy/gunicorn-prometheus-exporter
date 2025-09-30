@@ -1,10 +1,10 @@
 # Gunicorn Prometheus Exporter
 
-A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities, featuring innovative Redis-based storage and advanced signal handling.
+A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities, featuring innovative Redis-based storage, YAML configuration support, and advanced signal handling.
 
 ## Overview
 
-The Gunicorn Prometheus Exporter provides enterprise-grade monitoring capabilities for Gunicorn applications, offering both traditional file-based and modern Redis-based metrics storage solutions.
+The Gunicorn Prometheus Exporter provides enterprise-grade monitoring capabilities for Gunicorn applications, offering both traditional file-based and modern Redis-based metrics storage solutions, with flexible YAML-based configuration management.
 
 ## Why This Exporter is Different
 
@@ -37,6 +37,16 @@ The implementation provides comprehensive metrics collection capabilities:
 - *RedisMultiProcessCollector* that aggregates metrics across processes
 - *Automatic metric registration* with proper cleanup and lifecycle management
 
+### *YAML Configuration Support*
+
+The system provides flexible YAML-based configuration management that:
+
+- *Structured Configuration* - Clean, readable YAML files for all settings
+- *Environment Variable Override* - YAML configs can be overridden by environment variables
+- *Validation and Error Handling* - Comprehensive validation with clear error messages
+- *Multiple Configuration Sources* - Support for basic, Redis, SSL, and production configurations
+- *Backward Compatibility* - Full compatibility with existing environment variable configuration
+
 ### *Production-Ready Features*
 
 - *Zero-configuration* metrics server with automatic port binding
@@ -50,10 +60,11 @@ The implementation provides comprehensive metrics collection capabilities:
 ### *Core Innovations*
 
 1. *Redis Storage Backend*: Complete replacement of file-based multiprocess metrics with Redis
-2. *Arbiter Patching*: Deep integration with Gunicorn's core architecture for signal capture
-3. *PrometheusMixin*: Reusable mixin that adds metrics to any Gunicorn worker type
-4. *Automatic Lifecycle Management*: Smart cleanup and resource management
-5. *Multi-Worker Support*: Sync, Thread, Eventlet, and Gevent workers with metrics
+2. *YAML Configuration System*: Flexible, structured configuration management with validation
+3. *Arbiter Patching*: Deep integration with Gunicorn's core architecture for signal capture
+4. *PrometheusMixin*: Reusable mixin that adds metrics to any Gunicorn worker type
+5. *Automatic Lifecycle Management*: Smart cleanup and resource management
+6. *Multi-Worker Support*: Sync, Thread, Eventlet, and Gevent workers with metrics
 
 ### *Architecture Benefits*
 
@@ -116,6 +127,7 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 #### [Configuration Component](components/config/)
 - [Configuration Overview](components/config/index.md) - Configuration management
 - [Configuration Guide](components/config/configuration.md) - Complete configuration documentation
+- [YAML Configuration Guide](components/config/yaml-configuration.md) - YAML-based configuration guide
 - [API Reference](components/config/api-reference.md) - Configuration API documentation
 
 #### [Hooks Component](components/hooks/)
@@ -147,6 +159,7 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 ## Key Benefits
 
 - **Redis-based storage** eliminates file system bottlenecks and race conditions
+- **YAML configuration** provides structured, readable configuration management
 - **Universal worker support** for sync, thread, eventlet, and gevent workers
 - **Zero-configuration** setup with sensible defaults
 - **Production-ready** with automatic fallback and cleanup

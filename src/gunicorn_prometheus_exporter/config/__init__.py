@@ -1,5 +1,6 @@
 """Configuration package for Gunicorn Prometheus Exporter."""
 
+from .loader import load_yaml_config
 from .manager import (
     ConfigManager,
     ConfigState,
@@ -19,4 +20,5 @@ __all__ = [
     "initialize_config",
     "get_config",
     "cleanup_config",
+    "load_yaml_config",
 ]

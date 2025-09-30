@@ -1,0 +1,43 @@
+# Redis-enabled Gunicorn Prometheus Exporter Configuration
+# This configuration uses Redis for storing Prometheus metrics instead of files.
+# Perfect for distributed deployments where multiple processes need to share metrics.
+
+exporter:
+  prometheus:
+    metrics_port: 9093
+    bind_address: "127.0.0.1"
+    multiproc_dir: "/tmp/prometheus_multiproc" # Fallback directory
+    ssl:
+      enabled: false
+      certfile: null
+      keyfile: null
+      client_cafile: null
+      client_capath: null
+      client_auth_required: false
+
+  gunicorn:
+    workers: 2
+    timeout: 300
+    keepalive: 2
+
+  redis:
+    enabled: true
+    host: "127.0.0.1"
+    port: 6379
+    db: 0
+    password: null
+    key_prefix: "gunicorn"
+    ttl_seconds: 300
+    ttl_disabled: false
+
+  cleanup:
+    db_files: true
+# Redis TTL Configuration:
+# - ttl_seconds: How long metrics persist in Redis (default: 300 seconds)
+# - ttl_disabled: Set to true to disable TTL (metrics persist indefinitely)
+#
+# TTL Benefits:
+# - Prevents Redis memory from growing indefinitely
+# - Allows metrics to persist across worker restarts
+# - Covers multiple Prometheus scrape cycles
+# - Automatic cleanup of dead process metrics

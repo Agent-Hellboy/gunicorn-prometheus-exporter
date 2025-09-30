@@ -80,3 +80,33 @@ jobs:
           path: |
             *.log
           retention-days: 7
+
+  system-test-yaml:
+    runs-on: ubuntu-latest
+    name: YAML Configuration System Test (Ubuntu)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v3
+
+      - name: Run YAML Configuration Docker system test
+        run: |
+          cd system-test
+          chmod +x system_test_yaml_config.sh
+          # Build Docker image for YAML configuration test
+          docker build -f Dockerfile.yaml-simple -t gunicorn-prometheus-exporter-yaml-test ..
+          # Run YAML configuration tests
+          ./system_test_yaml_config.sh --docker --quick
+        timeout-minutes: 15
+
+      - name: Upload YAML test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yaml-test-logs-ubuntu
+          path: |
+            *.log
+          retention-days: 7
