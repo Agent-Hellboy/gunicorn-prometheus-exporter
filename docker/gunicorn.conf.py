@@ -26,10 +26,7 @@ from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
 # Basic Gunicorn settings
 bind = "0.0.0.0:8000"
 workers = int(os.getenv("GUNICORN_WORKERS", 2))
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 worker_connections = 1000
-max_requests = 1000
-max_requests_jitter = 100
 timeout = 30
 keepalive = 2
 
@@ -62,7 +59,7 @@ certfile = None
 
 # Worker process settings
 worker_tmp_dir = "/dev/shm"  # nosec B108
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+worker_class = "sync"  # Use sync worker for simple Flask app
 
 # Graceful timeout
 graceful_timeout = 30

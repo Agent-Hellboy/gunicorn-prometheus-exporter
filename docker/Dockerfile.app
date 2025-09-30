@@ -19,14 +19,15 @@ RUN pip install --no-cache-dir "gunicorn-prometheus-exporter[all]"
 # Copy application code
 COPY docker/app.py .
 COPY docker/gunicorn.conf.py .
+COPY docker/gunicorn-prometheus-exporter-basic.yml .
 
 # Create non-root user
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 RUN chown -R appuser:appuser /app
 
-# Create multiprocess directory
+# Create multiprocess directory with proper permissions
 RUN mkdir -p /tmp/prometheus_multiproc && \
-    chown -R appuser:appuser /tmp/prometheus_multiproc
+    chmod 777 /tmp/prometheus_multiproc
 
 # Switch to non-root user
 USER appuser

@@ -2,9 +2,7 @@ name: Test Docker Images
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
   test:
@@ -59,22 +57,22 @@ jobs:
           # Check if container is still running
           if ! docker ps | grep -q test-app; then
             echo "❌ App container stopped unexpectedly"
-            docker logs test-app
+            docker logs test-app 2>&1 || echo "No logs available"
             exit 1
           fi
 
           # Test if the app is responding
           echo "Testing app health endpoint..."
-          curl -f http://localhost:8000/health || {
+          if ! curl -f --max-time 10 http://localhost:8000/health; then
             echo "❌ Health check failed"
-            docker logs test-app
-            docker stop test-app
+            docker logs test-app 2>&1 || echo "No logs available"
+            docker stop test-app || true
             exit 1
-          }
+          fi
 
           # Cleanup
-          docker stop test-app
-          docker rm test-app
+          docker stop test-app || true
+          docker rm test-app || true
 
           echo "✅ Sample app image test passed!"
 

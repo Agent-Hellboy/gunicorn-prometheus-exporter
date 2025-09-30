@@ -1,0 +1,34 @@
+# Basic Gunicorn Prometheus Exporter Configuration
+# This configuration uses standard file-based multiprocess storage for Prometheus metrics.
+# Perfect for simple deployments without Redis requirements.
+
+exporter:
+  prometheus:
+    metrics_port: 9093
+    bind_address: "127.0.0.1"
+    multiproc_dir: "/tmp/prometheus_multiproc"
+    ssl:
+      enabled: false
+      certfile: null
+      keyfile: null
+      client_cafile: null
+      client_capath: null
+      client_auth_required: false
+
+  gunicorn:
+    workers: 2
+    timeout: 300
+    keepalive: 2
+
+  redis:
+    enabled: false
+    host: "127.0.0.1"
+    port: 6379
+    db: 0
+    password: null
+    key_prefix: "gunicorn"
+    ttl_seconds: 300
+    ttl_disabled: false
+
+  cleanup:
+    db_files: true
