@@ -114,12 +114,12 @@ jobs:
           echo "Validating critical gunicorn metrics..."
 
           # Check for request count metrics (CRITICAL - must have actual values)
-          request_metrics=$(echo "$metrics_response" | grep "gunicorn_requests_total" || echo "")
+          request_metrics=$(echo "$metrics_response" | grep "gunicorn_worker_requests_total" || echo "")
           if [ -n "$request_metrics" ]; then
-            echo "✅ gunicorn_requests_total metric found"
+            echo "✅ gunicorn_worker_requests_total metric found"
             # Extract actual request count values
-            request_counts=$(echo "$request_metrics" | grep -o '[0-9]\+' | sort -n | tail -1 || echo "0")
-            if [ "$request_counts" -gt 0 ] 2>/dev/null; then
+            request_counts=$(echo "$request_metrics" | grep -o '[0-9]\+\.[0-9]\+' | sort -n | tail -1 || echo "0")
+            if [ "$request_counts" != "0" ] && [ -n "$request_counts" ]; then
               echo "✅ Request metrics collected: $request_counts total requests"
             else
               echo "❌ Request metrics found but count is 0 - no requests were tracked!"
@@ -128,16 +128,16 @@ jobs:
               exit 1
             fi
           else
-            echo "❌ gunicorn_requests_total metric missing - requests are not being tracked!"
+            echo "❌ gunicorn_worker_requests_total metric missing - requests are not being tracked!"
             docker logs test-app 2>&1 || echo "No logs available"
             docker stop test-app || true
             exit 1
           fi
 
           # Check for request duration metrics (CRITICAL)
-          duration_metrics=$(echo "$metrics_response" | grep "gunicorn_request_duration_seconds" || echo "")
+          duration_metrics=$(echo "$metrics_response" | grep "gunicorn_worker_request_duration_seconds" || echo "")
           if [ -n "$duration_metrics" ]; then
-            echo "✅ gunicorn_request_duration_seconds metric found"
+            echo "✅ gunicorn_worker_request_duration_seconds metric found"
             # Check if duration metrics have actual values
             duration_count=$(echo "$duration_metrics" | wc -l)
             if [ "$duration_count" -gt 1 ]; then
@@ -146,21 +146,21 @@ jobs:
               echo "⚠️  Duration metrics found but only $duration_count data point"
             fi
           else
-            echo "❌ gunicorn_request_duration_seconds metric missing - request timing not tracked!"
+            echo "❌ gunicorn_worker_request_duration_seconds metric missing - request timing not tracked!"
             docker logs test-app 2>&1 || echo "No logs available"
             docker stop test-app || true
             exit 1
           fi
 
           # Check for worker metrics (CRITICAL)
-          worker_metrics=$(echo "$metrics_response" | grep "gunicorn_workers" || echo "")
+          worker_metrics=$(echo "$metrics_response" | grep "gunicorn_worker_state" || echo "")
           if [ -n "$worker_metrics" ]; then
-            echo "✅ gunicorn_workers metric found"
+            echo "✅ gunicorn_worker_state metric found"
             # Extract worker count
-            worker_count=$(echo "$worker_metrics" | grep -o '[0-9]\+' | head -1 || echo "0")
-            echo "✅ Worker metrics: $worker_count workers"
+            worker_count=$(echo "$worker_metrics" | wc -l)
+            echo "✅ Worker state metrics: $worker_count data points"
           else
-            echo "❌ gunicorn_workers metric missing - worker status not tracked!"
+            echo "❌ gunicorn_worker_state metric missing - worker status not tracked!"
             docker logs test-app 2>&1 || echo "No logs available"
             docker stop test-app || true
             exit 1
@@ -185,14 +185,14 @@ jobs:
           fi
 
           # Summary of metrics validation - require minimum critical metrics
-          total_metrics=$(echo "$metrics_response" | grep "^gunicorn_" | wc -l)
-          echo "📊 Total gunicorn metrics found: $total_metrics"
+          total_metrics=$(echo "$metrics_response" | grep "^gunicorn_worker_" | wc -l)
+          echo "📊 Total gunicorn_worker metrics found: $total_metrics"
 
-          # Require at least the 3 critical metrics (requests, duration, workers)
-          if [ "$total_metrics" -ge 3 ]; then
-            echo "✅ Critical metrics validation passed - found $total_metrics core metrics"
+          # Require at least 10 worker metrics (we typically have 30-40)
+          if [ "$total_metrics" -ge 10 ]; then
+            echo "✅ Critical metrics validation passed - found $total_metrics worker metrics"
           else
-            echo "❌ Critical metrics validation failed - only found $total_metrics metrics (need 3+)"
+            echo "❌ Critical metrics validation failed - only found $total_metrics metrics (need 10+)"
             docker logs test-app 2>&1 || echo "No logs available"
             docker stop test-app || true
             exit 1
