@@ -45,7 +45,7 @@ class YamlConfigLoader:
             with open(config_path, "r", encoding="utf-8") as file:
                 config_data = yaml.safe_load(file)
         except yaml.YAMLError as e:
-            raise yaml.YAMLError(f"Invalid YAML in configuration file: {e}")
+            raise yaml.YAMLError(f"Invalid YAML in configuration file: {e}") from e
 
         if not isinstance(config_data, dict):
             raise ValueError(
@@ -149,10 +149,15 @@ class YamlConfigLoader:
         self, prometheus_config: Dict[str, Any], env_vars: Dict[str, str]
     ) -> None:
         """Convert prometheus configuration to environment variables."""
-        env_vars["PROMETHEUS_METRICS_PORT"] = str(prometheus_config["metrics_port"])
-        env_vars["PROMETHEUS_BIND_ADDRESS"] = str(prometheus_config["bind_address"])
+        if prometheus_config["metrics_port"] is not None:
+            env_vars["PROMETHEUS_METRICS_PORT"] = str(prometheus_config["metrics_port"])
+        if prometheus_config["bind_address"] is not None:
+            env_vars["PROMETHEUS_BIND_ADDRESS"] = str(prometheus_config["bind_address"])
 
-        if "multiproc_dir" in prometheus_config:
+        if (
+            "multiproc_dir" in prometheus_config
+            and prometheus_config["multiproc_dir"] is not None
+        ):
             env_vars["PROMETHEUS_MULTIPROC_DIR"] = str(
                 prometheus_config["multiproc_dir"]
             )
@@ -176,10 +181,13 @@ class YamlConfigLoader:
         }
 
         for ssl_key, env_key in ssl_mappings.items():
-            if ssl_key in ssl_config and ssl_config[ssl_key]:
+            if ssl_key in ssl_config and ssl_config[ssl_key] is not None:
                 env_vars[env_key] = str(ssl_config[ssl_key])
 
-        if "client_auth_required" in ssl_config:
+        if (
+            "client_auth_required" in ssl_config
+            and ssl_config["client_auth_required"] is not None
+        ):
             env_vars["PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED"] = str(
                 ssl_config["client_auth_required"]
             ).lower()
@@ -195,7 +203,10 @@ class YamlConfigLoader:
         }
 
         for gunicorn_key, env_key in gunicorn_mappings.items():
-            if gunicorn_key in gunicorn_config:
+            if (
+                gunicorn_key in gunicorn_config
+                and gunicorn_config[gunicorn_key] is not None
+            ):
                 env_vars[env_key] = str(gunicorn_config[gunicorn_key])
 
     def _convert_redis_config(
@@ -220,15 +231,15 @@ class YamlConfigLoader:
         }
 
         for redis_key, env_key in redis_mappings.items():
-            if redis_key in redis_config:
+            if redis_key in redis_config and redis_config[redis_key] is not None:
                 env_vars[env_key] = str(redis_config[redis_key])
 
-        # Handle password separately (only if not empty)
-        if "password" in redis_config and redis_config["password"]:
+        # Handle password separately (only if not empty and not None)
+        if "password" in redis_config and redis_config["password"] is not None:
             env_vars["REDIS_PASSWORD"] = str(redis_config["password"])
 
         # Handle ttl_disabled separately (convert to lowercase)
-        if "ttl_disabled" in redis_config:
+        if "ttl_disabled" in redis_config and redis_config["ttl_disabled"] is not None:
             env_vars["REDIS_TTL_DISABLED"] = str(redis_config["ttl_disabled"]).lower()
 
     def _convert_cleanup_config(
@@ -239,7 +250,7 @@ class YamlConfigLoader:
             return
 
         cleanup_config = exporter_config["cleanup"]
-        if "db_files" in cleanup_config:
+        if "db_files" in cleanup_config and cleanup_config["db_files"] is not None:
             env_vars["CLEANUP_DB_FILES"] = str(cleanup_config["db_files"]).lower()
 
     def load_and_apply_config(self, config_file_path: str) -> None:

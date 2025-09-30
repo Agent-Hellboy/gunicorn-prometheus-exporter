@@ -8,7 +8,6 @@ set -e
 # Parse command line arguments
 USE_DOCKER=false
 QUICK_MODE=false
-FORCE_MODE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -20,15 +19,10 @@ while [[ $# -gt 0 ]]; do
             QUICK_MODE=true
             shift
             ;;
-        --force)
-            FORCE_MODE=true
-            shift
-            ;;
         --help)
-            echo "Usage: $0 [--docker] [--quick] [--force]"
+            echo "Usage: $0 [--docker] [--quick]"
             echo "  --docker: Use Docker for testing"
             echo "  --quick: Run quick tests only"
-            echo "  --force: Force cleanup and continue"
             exit 0
             ;;
         *)
@@ -67,7 +61,6 @@ print_status() {
 # Test configuration
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$TEST_DIR/.." && pwd)"
-EXAMPLE_DIR="$PROJECT_ROOT/example"
 SYSTEM_TEST_DIR="$PROJECT_ROOT/system-test"
 
 # Setup environment based on mode
@@ -321,6 +314,11 @@ test_signal_handling() {
     local container_name=$1
     local metrics_port=$2
 
+    if [ "$USE_DOCKER" != true ]; then
+        print_status "INFO" "Skipping signal handling test (Docker-only)"
+        return 0
+    fi
+
     print_status "INFO" "Testing signal handling..."
 
     # Test different signals
@@ -517,9 +515,9 @@ EOF
     rm -f "$SYSTEM_TEST_DIR/test_basic_gunicorn.conf.py"
 }
 
-# Function to test YAML configuration with Redis integration
-test_yaml_config_with_redis() {
-    print_status "INFO" "Testing YAML configuration with Redis integration..."
+# Function to test YAML configuration with Redis integration (Docker only)
+test_yaml_config_with_redis_docker() {
+    print_status "INFO" "Testing YAML configuration with Redis integration (Docker)..."
 
     if [ "$USE_DOCKER" = true ]; then
         # Docker-based testing with Redis (simplified like other system tests)
@@ -1026,6 +1024,7 @@ main() {
         print_status "INFO" "Running full test suite..."
         test_basic_yaml_config
         test_yaml_config_with_overrides
+        test_yaml_config_with_redis_docker
         test_yaml_config_with_redis
         test_invalid_yaml_config
     fi

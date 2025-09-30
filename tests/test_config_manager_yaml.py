@@ -412,7 +412,7 @@ class TestConfigManagerYaml:
                         "host": "redis-cluster.internal",
                         "port": 6379,
                         "db": 0,
-                        "password": "secure-redis-password",
+                        "password": "REPLACE_WITH_YOUR_REDIS_PASSWORD",
                         "key_prefix": "gunicorn:prod",
                         "ttl_seconds": 600,
                         "ttl_disabled": False,
@@ -440,7 +440,7 @@ class TestConfigManagerYaml:
             assert os.environ["REDIS_HOST"] == "redis-cluster.internal"
             assert os.environ["REDIS_PORT"] == "6379"
             assert os.environ["REDIS_DB"] == "0"
-            assert os.environ["REDIS_PASSWORD"] == "secure-redis-password"
+            assert os.environ["REDIS_PASSWORD"] == "REPLACE_WITH_YOUR_REDIS_PASSWORD"
             assert os.environ["REDIS_KEY_PREFIX"] == "gunicorn:prod"
             assert os.environ["REDIS_TTL_SECONDS"] == "600"
             assert os.environ["REDIS_TTL_DISABLED"] == "false"

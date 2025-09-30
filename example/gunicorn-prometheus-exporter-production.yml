@@ -24,7 +24,7 @@ exporter:
     host: "redis-cluster.internal"
     port: 6379
     db: 0
-    password: "secure-redis-password"
+    password: "REPLACE_WITH_YOUR_REDIS_PASSWORD"
     key_prefix: "gunicorn:prod"
     ttl_seconds: 600
     ttl_disabled: false
