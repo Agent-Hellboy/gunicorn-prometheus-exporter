@@ -8,10 +8,9 @@ import os
 from gunicorn_prometheus_exporter import load_yaml_config
 
 
-# Load YAML configuration if available
+# Load YAML configuration
 yaml_config_path = os.getenv("YAML_CONFIG_PATH", "gunicorn-prometheus-exporter.yml")
-if os.path.exists(yaml_config_path):
-    load_yaml_config(yaml_config_path)
+load_yaml_config(yaml_config_path)
 
 # Import hooks after loading YAML config
 from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
@@ -26,6 +25,7 @@ from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
 # Basic Gunicorn settings
 bind = "0.0.0.0:8000"
 workers = int(os.getenv("GUNICORN_WORKERS", 2))
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 worker_connections = 1000
 timeout = 30
 keepalive = 2
@@ -38,7 +38,7 @@ loglevel = "info"
 # Process naming
 proc_name = "gunicorn-prometheus-exporter-app"
 
-# Use pre-built hooks
+# Use Prometheus exporter hooks
 when_ready = default_when_ready
 on_starting = default_on_starting
 worker_int = default_worker_int
@@ -59,7 +59,6 @@ certfile = None
 
 # Worker process settings
 worker_tmp_dir = "/dev/shm"  # nosec B108
-worker_class = "sync"  # Use sync worker for simple Flask app
 
 # Graceful timeout
 graceful_timeout = 30

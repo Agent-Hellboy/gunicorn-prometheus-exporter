@@ -21,23 +21,16 @@ COPY docker/app.py .
 COPY docker/gunicorn.conf.py .
 COPY docker/gunicorn-prometheus-exporter-basic.yml .
 
-# Create non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-RUN chown -R appuser:appuser /app
-
 # Create multiprocess directory with proper permissions
 RUN mkdir -p /tmp/prometheus_multiproc && \
     chmod 777 /tmp/prometheus_multiproc
 
-# Switch to non-root user
-USER appuser
-
-# Expose port
-EXPOSE 8000
+# Expose ports
+EXPOSE 8000 9093
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Start the application
+# Start the application with Prometheus exporter
 CMD ["gunicorn", "--config", "gunicorn.conf.py", "app:app"]

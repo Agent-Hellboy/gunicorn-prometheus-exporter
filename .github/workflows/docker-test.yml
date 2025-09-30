@@ -2,7 +2,10 @@ name: Test Docker Images
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -48,11 +51,14 @@ jobs:
         run: |
           echo "Testing sample app image..."
           # Test app by running it briefly and checking if it starts
-          docker run --rm -d --name test-app -p 8000:8000 gunicorn-app:test
+          timeout 30 docker run --rm -d --name test-app -p 8000:8000 -p 9093:9093 gunicorn-app:test || {
+            echo "❌ Failed to start container"
+            exit 1
+          }
 
-          # Wait longer for Gunicorn to start
+          # Wait for app to start
           echo "Waiting for app to start..."
-          sleep 15
+          sleep 10
 
           # Check if container is still running
           if ! docker ps | grep -q test-app; then
@@ -61,10 +67,19 @@ jobs:
             exit 1
           fi
 
-          # Test if the app is responding
-          echo "Testing app health endpoint..."
-          if ! curl -f --max-time 10 http://localhost:8000/health; then
-            echo "❌ Health check failed"
+          # Test if the app is responding to basic requests
+          echo "Testing app response..."
+          if ! curl -f --max-time 10 http://localhost:8000/; then
+            echo "❌ App not responding"
+            docker logs test-app 2>&1 || echo "No logs available"
+            docker stop test-app || true
+            exit 1
+          fi
+
+          # Test Prometheus metrics endpoint (should be available on port 9093 based on YAML config)
+          echo "Testing Prometheus metrics endpoint..."
+          if ! curl -f --max-time 10 http://localhost:9093/metrics; then
+            echo "❌ Prometheus metrics not available"
             docker logs test-app 2>&1 || echo "No logs available"
             docker stop test-app || true
             exit 1
