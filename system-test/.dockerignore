@@ -9,8 +9,8 @@ docs/
 
 # Tests
 tests/
-test_*.py
 *_test.py
+!system-test/test_app.py
 
 # Development
 .tox/
