@@ -1,0 +1,20 @@
+exporter:
+  prometheus:
+    metrics_port: 9094
+    bind_address: "0.0.0.0"
+    multiproc_dir: "/tmp/prometheus_multiproc"
+  gunicorn:
+    workers: 1
+    timeout: 30
+    keepalive: 2
+  redis:
+    enabled: true
+    host: "redis"
+    port: 6379
+    db: 0
+    password: null
+    key_prefix: "gunicorn_test"
+    ttl_seconds: 300
+    ttl_disabled: false
+  cleanup:
+    db_files: true

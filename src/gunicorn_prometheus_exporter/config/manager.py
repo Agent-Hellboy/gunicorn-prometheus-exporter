@@ -52,8 +52,13 @@ class ConfigManager:
         """Get list of validation errors."""
         return self._validation_errors.copy()
 
-    def initialize(self, **kwargs) -> None:
-        """Initialize configuration with proper lifecycle management."""
+    def initialize(self, config_file: Optional[str] = None, **kwargs) -> None:
+        """Initialize configuration with proper lifecycle management.
+
+        Args:
+            config_file: Optional path to YAML configuration file
+            **kwargs: Environment variable overrides
+        """
         with self._lock:
             if self._state == ConfigState.INITIALIZED:
                 raise RuntimeError("Configuration already initialized")
@@ -65,7 +70,14 @@ class ConfigManager:
                 self._state = ConfigState.INITIALIZING
                 logger.info("Initializing configuration...")
 
-                # Set environment variables if provided
+                # Load YAML configuration first if provided
+                if config_file:
+                    from .loader import load_yaml_config
+
+                    load_yaml_config(config_file)
+                    logger.info("YAML configuration loaded from: %s", config_file)
+
+                # Set environment variables if provided (these override YAML values)
                 for key, value in kwargs.items():
                     if value is None:
                         continue
@@ -363,10 +375,15 @@ def get_config_manager() -> ConfigManager:
         return _config_manager
 
 
-def initialize_config(**kwargs) -> None:
-    """Initialize the global configuration."""
+def initialize_config(config_file: Optional[str] = None, **kwargs) -> None:
+    """Initialize the global configuration.
+
+    Args:
+        config_file: Optional path to YAML configuration file
+        **kwargs: Environment variable overrides
+    """
     manager = get_config_manager()
-    manager.initialize(**kwargs)
+    manager.initialize(config_file=config_file, **kwargs)
 
 
 def get_config() -> ExporterConfig:

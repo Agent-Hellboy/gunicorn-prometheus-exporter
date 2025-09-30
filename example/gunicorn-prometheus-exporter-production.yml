@@ -1,0 +1,39 @@
+# Production Gunicorn Prometheus Exporter Configuration
+# This configuration is optimized for production deployments with Redis and SSL.
+
+exporter:
+  prometheus:
+    metrics_port: 9093
+    bind_address: "0.0.0.0"
+    multiproc_dir: "/var/lib/prometheus/gunicorn"
+    ssl:
+      enabled: true
+      certfile: "/etc/ssl/certs/gunicorn-prometheus.crt"
+      keyfile: "/etc/ssl/private/gunicorn-prometheus.key"
+      client_cafile: "/etc/ssl/certs/ca-bundle.crt"
+      client_capath: "/etc/ssl/certs"
+      client_auth_required: false
+
+  gunicorn:
+    workers: 8
+    timeout: 300
+    keepalive: 5
+
+  redis:
+    enabled: true
+    host: "redis-cluster.internal"
+    port: 6379
+    db: 0
+    password: "secure-redis-password"
+    key_prefix: "gunicorn:prod"
+    ttl_seconds: 600
+    ttl_disabled: false
+
+  cleanup:
+    db_files: true
+# Production Configuration Notes:
+# - Use secure file paths for SSL certificates
+# - Configure Redis cluster for high availability
+# - Set appropriate TTL for metrics retention
+# - Use production-grade worker count
+# - Enable SSL for secure metrics endpoint
