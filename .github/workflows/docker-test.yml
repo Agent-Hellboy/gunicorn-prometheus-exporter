@@ -85,12 +85,58 @@ jobs:
             exit 1
           fi
 
-          # Test Prometheus metrics endpoint (basic connectivity test)
-          echo "Testing Prometheus metrics endpoint connectivity..."
-          if curl -f --max-time 10 http://localhost:9093/metrics 2>/dev/null | head -5 | grep -q "gunicorn"; then
-            echo "✅ Prometheus metrics available"
+          # Generate requests and test metrics collection
+          echo "Generating test requests..."
+          for i in {1..5}; do
+            curl -s http://localhost:8000/ || echo "Request $i failed"
+            curl -s http://localhost:8000/health || echo "Health request $i failed"
+            sleep 1
+          done
+
+          # Test Prometheus metrics collection (comprehensive check)
+          echo "Testing Prometheus metrics collection..."
+          local metrics_response
+          metrics_response=$(curl -f --max-time 10 http://localhost:9093/metrics 2>/dev/null)
+
+          if [ -z "$metrics_response" ]; then
+            echo "❌ No metrics response from Prometheus endpoint"
+            docker logs test-app 2>&1 || echo "No logs available"
+            docker stop test-app || true
+            exit 1
+          fi
+
+          # Check for key gunicorn metrics
+          echo "Checking for gunicorn metrics..."
+
+          # Check for request count metrics
+          if echo "$metrics_response" | grep -q "gunicorn_requests_total"; then
+            echo "✅ gunicorn_requests_total metric found"
           else
-            echo "⚠️  Prometheus metrics not fully available yet, but container is running"
+            echo "❌ gunicorn_requests_total metric missing"
+          fi
+
+          # Check for request duration metrics
+          if echo "$metrics_response" | grep -q "gunicorn_request_duration_seconds"; then
+            echo "✅ gunicorn_request_duration_seconds metric found"
+          else
+            echo "❌ gunicorn_request_duration_seconds metric missing"
+          fi
+
+          # Check for worker metrics
+          if echo "$metrics_response" | grep -q "gunicorn_workers"; then
+            echo "✅ gunicorn_workers metric found"
+          else
+            echo "❌ gunicorn_workers metric missing"
+          fi
+
+          # Check for request count > 0 (proves metrics are being collected)
+          local request_count
+          request_count=$(echo "$metrics_response" | grep "gunicorn_requests_total" | grep -o '[0-9]\+' | head -1 || echo "0")
+
+          if [ "$request_count" -gt 0 ]; then
+            echo "✅ Metrics collection verified - found $request_count requests"
+          else
+            echo "⚠️  Metrics collection may not be working properly - request count: $request_count"
           fi
 
           # Cleanup
@@ -103,8 +149,8 @@ jobs:
         run: |
           echo "Testing Docker Compose setup..."
 
-          # Start services in background
-          docker-compose up -d --build
+          # Start services in background (use docker compose for newer versions)
+          docker compose up -d --build
 
           # Wait for services to be ready
           sleep 30
@@ -122,7 +168,7 @@ jobs:
           curl -f http://localhost:3000/api/health || exit 1
 
           # Stop services
-          docker-compose down
+          docker compose down
 
           echo "✅ Docker Compose test passed!"
 
