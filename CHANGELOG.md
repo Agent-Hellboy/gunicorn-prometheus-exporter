@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.7] - 2025-09-30
+
+### Added
+
+- **YAML Configuration Support**: Complete YAML-based configuration system for structured, readable configuration management
+  - **YamlConfigLoader**: New class for loading, validating, and converting YAML configuration files
+  - **load_yaml_config()**: Public API function for easy YAML configuration loading in Gunicorn config files
+  - **Environment Variable Override**: YAML configuration values can be overridden by environment variables
+  - **Comprehensive Validation**: Clear error messages for missing or invalid YAML configuration
+  - **Backward Compatibility**: Full compatibility with existing environment variable configuration
+- **YAML Configuration Examples**: Complete set of example YAML configurations for different use cases
+  - **Basic Configuration**: Simple setup for development and testing
+  - **Redis Configuration**: Production setup with Redis storage backend
+  - **SSL Configuration**: Secure setup with SSL/TLS encryption
+  - **Production Configuration**: Comprehensive production-ready configuration
+- **Enhanced Documentation**: Complete documentation suite for YAML configuration
+  - **YAML Configuration Guide**: Comprehensive guide covering structure, examples, and best practices
+  - **API Reference Updates**: Updated hooks and configuration API references with YAML support
+  - **Setup Guide Updates**: Added YAML configuration as recommended option
+  - **Migration Guide**: Step-by-step migration from environment variables to YAML
+- **System Testing Enhancements**: Docker-based system tests for YAML configuration validation
+  - **YAML System Tests**: Complete end-to-end testing of YAML configuration loading
+  - **Docker Integration**: Docker-based testing for consistent environment validation
+  - **CI/CD Integration**: GitHub Actions workflow for automated YAML configuration testing
+  - **Comprehensive Validation**: Testing of all YAML configuration scenarios and error handling
+
+### Changed
+
+- **Configuration Architecture**: Enhanced ConfigManager to support YAML configuration loading with environment variable override
+- **Documentation Structure**: Updated all documentation to prioritize YAML configuration while maintaining environment variable support
+- **Setup Process**: YAML configuration now recommended as primary configuration method
+- **API Surface**: Added new public API functions for YAML configuration loading
+
+### Fixed
+
+- **Docker System Tests**: Fixed Docker vs local configuration path consistency issues
+- **Gunicorn Bind Address**: Fixed Gunicorn bind address for Docker compatibility (0.0.0.0 instead of 127.0.0.1)
+- **Environment Variable Handling**: Fixed VENV_DIR printing when undefined in Docker mode
+- **Configuration Validation**: Enhanced validation with clear error messages for YAML configuration
+
+### Technical Details
+
+- **YAML Structure**: Hierarchical configuration structure with exporter.prometheus, exporter.gunicorn, exporter.redis, exporter.ssl, and exporter.cleanup sections
+- **Configuration Loading**: YAML configuration is loaded first, then environment variables can override specific values
+- **Validation System**: Comprehensive validation of YAML structure, required fields, and value types
+- **Error Handling**: Clear, actionable error messages for configuration issues
+- **Dependency Management**: Added PyYAML>=6.0.0 as a core dependency for YAML parsing
+
 ## [0.1.6] - 2025-09-27
 
 ### Added

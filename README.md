@@ -6,7 +6,7 @@
 [![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://agent-hellboy.github.io/gunicorn-prometheus-exporter)
 [![PyPI Downloads](https://static.pepy.tech/badge/gunicorn-prometheus-exporter)](https://pepy.tech/projects/gunicorn-prometheus-exporter)
 
-A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities, featuring innovative Redis-based storage and advanced signal handling. This Gunicorn worker plugin exports Prometheus metrics to monitor worker performance, including memory usage, CPU usage, request durations, and error tracking (trying to replace <https://docs.gunicorn.org/en/stable/instrumentation.html> with extra info). It also aims to replace request-level tracking, such as the number of requests made to a particular endpoint, for any framework (e.g., Flask, Django, and others) that conforms to the WSGI specification.
+A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities, featuring innovative Redis-based storage, YAML configuration support, and advanced signal handling. This Gunicorn worker plugin exports Prometheus metrics to monitor worker performance, including memory usage, CPU usage, request durations, and error tracking (trying to replace <https://docs.gunicorn.org/en/stable/instrumentation.html> with extra info). It also aims to replace request-level tracking, such as the number of requests made to a particular endpoint, for any framework (e.g., Flask, Django, and others) that conforms to the WSGI specification.
 
 ## WSGI Protocol Limitations & Error Handling
 
@@ -96,6 +96,7 @@ The Prometheus specification's protocol-based design allows for:
 - **Master Process Intelligence**: Signal tracking, restart analytics
 - **Multiprocess Support**: Full Prometheus multiprocess compatibility
 - **Redis Storage**: Store metrics directly in Redis (no files created)
+- **YAML Configuration**: Structured, readable configuration management with environment variable override
 - **Protocol-Based Design**: Leverages Prometheus specification's brilliant protocol architecture
 - **Zero Configuration**: Works out-of-the-box with minimal setup
 - **Production Ready**: Retry logic, error handling, health monitoring
@@ -134,6 +135,60 @@ pip install gunicorn-prometheus-exporter[all]
 ```
 
 ### Basic Usage
+
+#### Option A: YAML Configuration (Recommended)
+
+Create a YAML configuration file (`gunicorn-prometheus-exporter.yml`):
+
+```yaml
+exporter:
+  prometheus:
+    metrics_port: 9091
+    bind_address: "0.0.0.0"
+    multiproc_dir: "/tmp/prometheus_multiproc"
+  gunicorn:
+    workers: 2
+    timeout: 30
+    keepalive: 2
+  redis:
+    enabled: false
+  ssl:
+    enabled: false
+  cleanup:
+    db_files: true
+```
+
+Create a Gunicorn config file (`gunicorn.conf.py`):
+
+```python
+from gunicorn_prometheus_exporter import load_yaml_config
+
+# Load YAML configuration
+load_yaml_config("gunicorn-prometheus-exporter.yml")
+
+# Import hooks after loading YAML config
+from gunicorn_prometheus_exporter.hooks import (
+    default_when_ready,
+    default_on_starting,
+    default_worker_int,
+    default_on_exit,
+    default_post_fork,
+)
+
+# Gunicorn settings
+bind = "0.0.0.0:8000"
+workers = 2
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+
+# Use pre-built hooks
+when_ready = default_when_ready
+on_starting = default_on_starting
+worker_int = default_worker_int
+on_exit = default_on_exit
+post_fork = default_post_fork
+```
+
+#### Option B: Environment Variables
 
 Create a Gunicorn config file (`gunicorn.conf.py`):
 
@@ -250,11 +305,12 @@ curl http://YOUR_BIND_ADDRESS:9091/metrics
 
 ## Documentation
 
-📖 **Complete documentation is available at: [https://agent-hellboy.github.io/gunicorn-prometheus-exporter](https://agent-hellboy.github.io/gunicorn-prometheus-exporter)**
+**Complete documentation is available at: [https://agent-hellboy.github.io/gunicorn-prometheus-exporter](https://agent-hellboy.github.io/gunicorn-prometheus-exporter)**
 
 The documentation includes:
 
 - Installation and configuration guides
+- YAML configuration guide with examples
 - Complete metrics reference
 - Framework-specific examples (Django, FastAPI, Flask, Pyramid)
 - API reference and troubleshooting
@@ -447,7 +503,49 @@ All async workers require their respective dependencies:
 
 ## Configuration
 
+### YAML Configuration (Recommended)
+
+Create a YAML configuration file for structured, readable configuration:
+
+```yaml
+# gunicorn-prometheus-exporter.yml
+exporter:
+  prometheus:
+    metrics_port: 9091
+    bind_address: "0.0.0.0"
+    multiproc_dir: "/tmp/prometheus_multiproc"
+  gunicorn:
+    workers: 2
+    timeout: 30
+    keepalive: 2
+  redis:
+    enabled: false
+    host: "localhost"
+    port: 6379
+    db: 0
+    password: ""
+    key_prefix: "gunicorn"
+    ttl_seconds: 300
+  ssl:
+    enabled: false
+    certfile: ""
+    keyfile: ""
+  cleanup:
+    db_files: true
+```
+
+Load YAML configuration in your Gunicorn config:
+
+```python
+from gunicorn_prometheus_exporter import load_yaml_config
+
+# Load YAML configuration
+load_yaml_config("gunicorn-prometheus-exporter.yml")
+```
+
 ### Environment Variables
+
+Environment variables can override YAML configuration values:
 
 | Variable                   | Default                  | Description                                               |
 | -------------------------- | ------------------------ | --------------------------------------------------------- |

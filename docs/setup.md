@@ -16,7 +16,61 @@ This guide will help you get the Gunicorn Prometheus Exporter up and running qui
 pip install gunicorn-prometheus-exporter
 ```
 
-### 2. Create Gunicorn Configuration
+### 2. Create Configuration
+
+#### Option A: YAML Configuration (Recommended)
+
+Create `gunicorn-prometheus-exporter.yml`:
+
+```yaml
+exporter:
+  prometheus:
+    metrics_port: 9091
+    bind_address: "0.0.0.0"
+    multiproc_dir: "/tmp/prometheus_multiproc"
+  gunicorn:
+    workers: 2
+    timeout: 30
+    keepalive: 2
+  redis:
+    enabled: false
+  ssl:
+    enabled: false
+  cleanup:
+    db_files: true
+```
+
+Create `gunicorn.conf.py`:
+
+```python
+from gunicorn_prometheus_exporter import load_yaml_config
+
+# Load YAML configuration
+load_yaml_config("gunicorn-prometheus-exporter.yml")
+
+# Import hooks after loading YAML config
+from gunicorn_prometheus_exporter.hooks import (
+    default_when_ready,
+    default_on_starting,
+    default_worker_int,
+    default_on_exit,
+    default_post_fork,
+)
+
+# Gunicorn settings
+bind = "0.0.0.0:8000"
+workers = 2
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+
+# Use pre-built hooks
+when_ready = default_when_ready
+on_starting = default_on_starting
+worker_int = default_worker_int
+on_exit = default_on_exit
+post_fork = default_post_fork
+```
+
+#### Option B: Environment Variables
 
 Create `gunicorn.conf.py`:
 

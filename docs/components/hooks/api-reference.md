@@ -87,6 +87,78 @@ class ProcessManager:
 - `cleanup_processes()` - Clean up child processes on exit
 - `_terminate_child(child)` - Terminate a child process with timeout
 
+## Configuration Functions
+
+### YAML Configuration Loading
+
+#### `load_yaml_config(config_file_path: str)`
+
+Loads and applies YAML configuration for the Gunicorn Prometheus Exporter.
+
+```python
+def load_yaml_config(config_file_path: str) -> None:
+    """Load YAML configuration file and apply settings.
+
+    Args:
+        config_file_path: Path to the YAML configuration file
+
+    Raises:
+        FileNotFoundError: If the configuration file doesn't exist
+        yaml.YAMLError: If the YAML file is invalid
+        ValueError: If the configuration validation fails
+    """
+```
+
+**What it does:**
+
+- Loads YAML configuration from the specified file path
+- Validates the configuration structure and values
+- Converts YAML settings to environment variables
+- Applies the configuration to the global ConfigManager
+- Provides clear error messages for invalid configurations
+
+**Usage:**
+
+```python
+from gunicorn_prometheus_exporter import load_yaml_config
+
+# Load YAML configuration
+load_yaml_config("gunicorn-prometheus-exporter.yml")
+```
+
+**YAML Configuration Structure:**
+
+```yaml
+exporter:
+  prometheus:
+    metrics_port: 9091
+    bind_address: "0.0.0.0"
+    multiproc_dir: "/tmp/prometheus_multiproc"
+  gunicorn:
+    workers: 2
+    timeout: 30
+    keepalive: 2
+  redis:
+    enabled: false
+    host: "localhost"
+    port: 6379
+    db: 0
+  ssl:
+    enabled: false
+  cleanup:
+    db_files: true
+```
+
+**Environment Variable Override:**
+
+YAML configuration values can be overridden by environment variables:
+
+```bash
+# Override YAML settings with environment variables
+export PROMETHEUS_METRICS_PORT="9092"
+export REDIS_ENABLED="true"
+```
+
 ## Hook Functions
 
 ### Default Hooks

@@ -1,7 +1,7 @@
 [project]
 name = "gunicorn-prometheus-exporter"
-version = "0.1.6"
-description = "A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with innovative Redis-based storage, advanced signal handling, and support for all worker types (sync, thread, eventlet, gevent)"
+version = "0.1.7"
+description = "A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with innovative Redis-based storage, YAML configuration support, advanced signal handling, and support for all worker types (sync, thread, eventlet, gevent)"
 readme = "README.md"
 authors = [
     {name = "Prince Roshan", email = "princekrroshan01@gmail.com"}

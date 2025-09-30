@@ -408,7 +408,7 @@ import os
 from gunicorn_prometheus_exporter.hooks import load_yaml_config
 
 # Load YAML configuration
-load_yaml_config("$SYSTEM_TEST_DIR/test_basic_config.yml")
+load_yaml_config("test_basic_config.yml")
 
 from gunicorn_prometheus_exporter.hooks import (
     default_on_exit,
@@ -418,8 +418,8 @@ from gunicorn_prometheus_exporter.hooks import (
     default_worker_int,
 )
 
-# Gunicorn settings
-bind = "127.0.0.1:$GUNICORN_PORT"
+# Gunicorn settings - use 0.0.0.0 for Docker compatibility
+bind = "0.0.0.0:$GUNICORN_PORT"
 workers = 1
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 timeout = 30
@@ -439,17 +439,17 @@ EOF
         # Build and run Docker container
         docker build -f Dockerfile.yaml-simple -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
 
-        # Run container in background
+        # Run container in background with the same config as local mode
         docker run -d \
             --name "$DOCKER_CONTAINER" \
             -p 8089:8089 \
             -p 9094:9094 \
-            -e PROMETHEUS_CONFIG_FILE="/app/config/basic.yml" \
-            -v "$SYSTEM_TEST_DIR/test_configs:/app/config" \
+            -e PROMETHEUS_CONFIG_FILE="/app/test_basic_config.yml" \
+            -v "$SYSTEM_TEST_DIR/test_basic_config.yml:/app/test_basic_config.yml" \
             -v "$SYSTEM_TEST_DIR/test_app.py:/app/test_app.py" \
-            -v "$SYSTEM_TEST_DIR/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py" \
+            -v "$SYSTEM_TEST_DIR/test_basic_gunicorn.conf.py:/app/test_basic_gunicorn.conf.py" \
             "$DOCKER_IMAGE" \
-            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
+            gunicorn --config /app/test_basic_gunicorn.conf.py test_app:app
 
         # Wait for services to be ready
         print_status "INFO" "Waiting for services to start..."
@@ -1008,7 +1008,9 @@ main() {
     print_status "INFO" "Starting YAML configuration system tests..."
     print_status "INFO" "Project root: $PROJECT_ROOT"
     print_status "INFO" "System test dir: $SYSTEM_TEST_DIR"
-    print_status "INFO" "Virtual environment: $VENV_DIR"
+    if [ "$USE_DOCKER" != true ] && [ -n "$VENV_DIR" ]; then
+        print_status "INFO" "Virtual environment: $VENV_DIR"
+    fi
 
     # Ensure we're in the right directory
     cd "$SYSTEM_TEST_DIR"
