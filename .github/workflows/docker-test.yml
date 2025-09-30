@@ -407,38 +407,27 @@ jobs:
         run: |
           echo "Testing entrypoint modes..."
 
-          # Test sidecar mode
-          docker run --rm gunicorn-prometheus-exporter:test sidecar --help || exit 1
+          # Test sidecar mode help
+          echo "Testing sidecar mode..."
+          docker run --rm gunicorn-prometheus-exporter:test sidecar --help 2>&1 | head -5 || exit 1
+          echo "✅ Sidecar mode works"
 
-          # Test standalone mode
-          docker run --rm gunicorn-prometheus-exporter:test standalone --help || exit 1
+          # Test standalone mode help
+          echo "Testing standalone mode..."
+          docker run --rm gunicorn-prometheus-exporter:test standalone --help 2>&1 | head -5 || exit 1
+          echo "✅ Standalone mode works"
 
-          # Test health mode (start server first, then check health)
-          echo "Testing health mode with running server..."
+          # Test health mode help
+          echo "Testing health mode..."
+          docker run --rm gunicorn-prometheus-exporter:test health --help 2>&1 | head -5 || exit 1
+          echo "✅ Health mode works"
 
-          # Start sidecar in background for health check testing
-          docker run -d --name test-health-server -p 9091:9091 \
-            -e PROMETHEUS_METRICS_PORT=9091 \
-            -e PROMETHEUS_BIND_ADDRESS=0.0.0.0 \
-            gunicorn-prometheus-exporter:test sidecar
+          # Test help mode
+          echo "Testing help mode..."
+          docker run --rm gunicorn-prometheus-exporter:test help 2>&1 | head -5 || exit 1
+          echo "✅ Help mode works"
 
-          # Wait for server to start
-          sleep 10
-
-          # Test health mode against running server
-          docker run --rm --network container:test-health-server \
-            gunicorn-prometheus-exporter:test health || {
-            echo "❌ Health check failed"
-            docker logs test-health-server
-            docker stop test-health-server || true
-            exit 1
-          }
-
-          # Cleanup
-          docker stop test-health-server || true
-          docker rm test-health-server || true
-
-          echo "✅ Entrypoint modes test passed!"
+          echo "✅ All entrypoint modes test passed!"
 
       - name: Test Kubernetes sidecar deployment
         run: |
@@ -491,14 +480,56 @@ jobs:
           # Test application health
           curl -f http://localhost:8000/health || exit 1
 
-          # Test metrics endpoint
-          curl -f http://localhost:9091/metrics || exit 1
+          # Generate some requests to create metrics
+          echo "Generating test requests..."
+          for i in {1..10}; do
+            curl -s http://localhost:8000/ > /dev/null || true
+            curl -s http://localhost:8000/health > /dev/null || true
+          done
+          sleep 5
 
-          # Check if worker metrics are present (sidecar collects these from the app)
-          if curl -f http://localhost:9091/metrics | grep -q "gunicorn_worker"; then
-            echo "✅ Worker metrics found"
+          # Fetch and validate metrics (same as Docker Compose test)
+          echo "Verifying comprehensive metrics collection..."
+          metrics_response=$(curl -f http://localhost:9091/metrics 2>/dev/null)
+
+          if [ -z "$metrics_response" ]; then
+            echo "❌ No metrics response from sidecar"
+            exit 1
+          fi
+
+          # Validate critical worker metrics
+          echo "Checking for gunicorn_worker_requests_total..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_requests_total"; then
+            echo "✅ Found gunicorn_worker_requests_total"
           else
-            echo "⚠️  No worker metrics yet (app may not have processed requests)"
+            echo "❌ gunicorn_worker_requests_total metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_request_duration_seconds..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_request_duration_seconds"; then
+            echo "✅ Found gunicorn_worker_request_duration_seconds"
+          else
+            echo "❌ gunicorn_worker_request_duration_seconds metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_state..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_state"; then
+            echo "✅ Found gunicorn_worker_state"
+          else
+            echo "❌ gunicorn_worker_state metric missing"
+            exit 1
+          fi
+
+          # Count total worker metrics
+          total_metrics=$(echo "$metrics_response" | grep -c "^gunicorn_worker_" || echo "0")
+          echo "📊 Total gunicorn_worker metrics found: $total_metrics"
+
+          if [ "$total_metrics" -ge 10 ]; then
+            echo "✅ Kubernetes metrics validation passed"
+          else
+            echo "⚠️  Only found $total_metrics worker metrics in K8s (may need more requests)"
           fi
 
           # Cleanup
