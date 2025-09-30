@@ -51,7 +51,9 @@ jobs:
         run: |
           echo "Testing sample app image..."
           # Test app by running it briefly and checking if it starts
-          timeout 30 docker run --rm -d --name test-app -p 8000:8000 -p 9093:9093 gunicorn-app:test || {
+          timeout 30 docker run --rm -d --name test-app -p 8000:8000 -p 9093:9093 \
+            -e PROMETHEUS_BIND_ADDRESS=0.0.0.0 \
+            gunicorn-app:test || {
             echo "❌ Failed to start container"
             exit 1
           }
