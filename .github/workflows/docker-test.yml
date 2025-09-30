@@ -266,11 +266,14 @@ jobs:
           # Wait for sidecar to start
           sleep 10
 
-          # Test metrics endpoint
-          curl -f http://localhost:9091/metrics || exit 1
-
-          # Test health check
-          curl -f http://localhost:9091/metrics | grep -q "gunicorn_sidecar" || exit 1
+          # Test metrics endpoint (should respond even with no metrics)
+          if curl -f http://localhost:9091/metrics; then
+            echo "✅ Sidecar metrics endpoint responding"
+          else
+            echo "❌ Sidecar metrics endpoint not responding"
+            docker logs test-sidecar
+            exit 1
+          fi
 
           # Cleanup
           docker stop test-sidecar

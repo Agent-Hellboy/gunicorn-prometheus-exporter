@@ -36,6 +36,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     curl \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
