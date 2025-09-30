@@ -5,7 +5,7 @@
 exporter:
   prometheus:
     metrics_port: 9093
-    bind_address: "127.0.0.1"
+    bind_address: "0.0.0.0"
     multiproc_dir: "/tmp/prometheus_multiproc"
     ssl:
       enabled: false

@@ -9,7 +9,9 @@ from gunicorn_prometheus_exporter import load_yaml_config
 
 
 # Load YAML configuration
-yaml_config_path = os.getenv("YAML_CONFIG_PATH", "gunicorn-prometheus-exporter.yml")
+yaml_config_path = os.getenv(
+    "YAML_CONFIG_PATH", "gunicorn-prometheus-exporter-basic.yml"
+)
 load_yaml_config(yaml_config_path)
 
 # Import hooks after loading YAML config
