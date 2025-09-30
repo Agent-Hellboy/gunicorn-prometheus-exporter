@@ -17,6 +17,7 @@ WORKDIR /app
 COPY src/ ./src/
 COPY pyproject.toml ./
 COPY README.md ./
+COPY LICENSE ./
 
 # Install the package
 RUN pip install --no-cache-dir --upgrade pip && \
