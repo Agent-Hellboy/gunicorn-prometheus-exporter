@@ -274,9 +274,16 @@ class MetricsServerManager:
         """Start HTTP server (default)."""
         from prometheus_client.exposition import start_http_server
 
-        # Start HTTP server (default) without addr to preserve test expectations
-        start_http_server(port, registry=registry)
-        self.logger.debug("HTTP metrics server started successfully on :%s", port)
+        # Get the bind address from configuration
+        bind_address = get_config().prometheus_bind_address
+
+        # Start HTTP server with explicit bind address for Docker compatibility
+        start_http_server(port, addr=bind_address, registry=registry)
+        self.logger.debug(
+            "HTTP metrics server started successfully on %s:%s",
+            bind_address,
+            port,
+        )
 
 
 class ProcessManager:
