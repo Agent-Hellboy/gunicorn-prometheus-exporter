@@ -2,8 +2,9 @@ name: Test Docker Images
 
 on:
   push:
+    branches: [main]
   pull_request:
-    branches: ["**"]
+    branches: [main]
 
 jobs:
   test:
@@ -50,9 +51,28 @@ jobs:
           echo "Testing sample app image..."
           # Test app by running it briefly and checking if it starts
           docker run --rm -d --name test-app -p 8000:8000 gunicorn-app:test
-          sleep 5
+
+          # Wait longer for Gunicorn to start
+          echo "Waiting for app to start..."
+          sleep 15
+
+          # Check if container is still running
+          if ! docker ps | grep -q test-app; then
+            echo "❌ App container stopped unexpectedly"
+            docker logs test-app
+            exit 1
+          fi
+
           # Test if the app is responding
-          curl -f http://localhost:8000/health || exit 1
+          echo "Testing app health endpoint..."
+          curl -f http://localhost:8000/health || {
+            echo "❌ Health check failed"
+            docker logs test-app
+            docker stop test-app
+            exit 1
+          }
+
+          # Cleanup
           docker stop test-app
           docker rm test-app
 
