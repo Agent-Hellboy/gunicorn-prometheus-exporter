@@ -24,6 +24,14 @@ spec:
         # Main application container
         - name: app
           image: your-registry/gunicorn-app:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8000
               name: http
@@ -73,6 +81,14 @@ spec:
         # Prometheus exporter sidecar
         - name: prometheus-exporter
           image: your-registry/gunicorn-prometheus-exporter:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 9091
               name: metrics

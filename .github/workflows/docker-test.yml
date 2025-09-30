@@ -270,8 +270,11 @@ jobs:
         run: |
           echo "Testing sidecar with Redis..."
 
+          # Create a network for the test
+          docker network create test-network
+
           # Start Redis
-          docker run -d --name test-redis -p 6379:6379 redis:7-alpine
+          docker run -d --name test-redis --network test-network -p 6379:6379 redis:7-alpine
 
           # Wait for Redis to start
           sleep 5
@@ -279,10 +282,10 @@ jobs:
           # Start sidecar with Redis enabled
           docker run -d \
             --name test-sidecar-redis \
+            --network test-network \
             -p 9092:9091 \
-            --link test-redis:redis \
             -e REDIS_ENABLED=true \
-            -e REDIS_HOST=redis \
+            -e REDIS_HOST=test-redis \
             -e REDIS_PORT=6379 \
             gunicorn-prometheus-exporter:test
 
@@ -295,6 +298,7 @@ jobs:
           # Cleanup
           docker stop test-sidecar-redis test-redis
           docker rm test-sidecar-redis test-redis
+          docker network rm test-network
 
           echo "✅ Redis integration test passed!"
 
