@@ -48,8 +48,13 @@ jobs:
       - name: Test sample app image
         run: |
           echo "Testing sample app image..."
-          # Test app help command
-          docker run --rm gunicorn-app:test --help
+          # Test app by running it briefly and checking if it starts
+          docker run --rm -d --name test-app -p 8000:8000 gunicorn-app:test
+          sleep 5
+          # Test if the app is responding
+          curl -f http://localhost:8000/health || exit 1
+          docker stop test-app
+          docker rm test-app
 
           echo "✅ Sample app image test passed!"
 
