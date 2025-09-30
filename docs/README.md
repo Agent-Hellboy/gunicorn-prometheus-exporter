@@ -1,34 +1,40 @@
-# Documentation
+# Gunicorn Prometheus Exporter Documentation
 
-This directory contains the complete documentation for the Gunicorn Prometheus Exporter.
+Welcome to the Gunicorn Prometheus Exporter documentation. This comprehensive guide will help you monitor your Gunicorn applications with Prometheus metrics.
 
-## Structure
+## Quick Start
 
-- **[index.md](index.md)** - Main landing page
-- **[installation.md](installation.md)** - Installation guide
-- **[troubleshooting.md](troubleshooting.md)** - Troubleshooting guide
-- **[contributing.md](contributing.md)** - Contributing guide
-- **[development.md](development.md)** - Development setup guide
+1. **[Installation](installation.md)** - Install the package
+2. **[Setup Guide](setup.md)** - Get started quickly
+3. **[Examples](examples/)** - Framework-specific examples
+4. **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
 
-## Components
+## Key Features
 
-- **[components/metrics/](components/metrics/)** - Metrics collection and monitoring
-- **[components/backend/](components/backend/)** - Storage and data management
-- **[components/config/](components/config/)** - Configuration management
-- **[components/hooks/](components/hooks/)** - Gunicorn hooks and lifecycle management
-- **[components/plugin/](components/plugin/)** - Prometheus-enabled worker classes
+- **Redis-based storage** - Eliminates file system bottlenecks
+- **Multiple worker support** - Sync, Thread, Eventlet, and Gevent workers
+- **Zero-configuration** - Works out of the box with sensible defaults
+- **Production-ready** - Handles high-traffic scenarios with automatic cleanup
+- **Comprehensive metrics** - Request rates, response times, resource usage, and more
 
-## Examples
+## Documentation Structure
 
-- **[examples/](examples/)** - Configuration examples and framework integration
+### Core Guides
+- **[Installation Guide](installation.md)** - Package installation
+- **[Setup Guide](setup.md)** - Quick setup and configuration
+- **[Troubleshooting Guide](troubleshooting.md)** - Common issues and solutions
 
-## Framework Examples
+### Components
+- **[Metrics](components/metrics/)** - Metrics collection and monitoring
+- **[Backend](components/backend/)** - Storage and data management
+- **[Configuration](components/config/)** - Configuration management
+- **[Hooks](components/hooks/)** - Gunicorn lifecycle management
+- **[Plugin](components/plugin/)** - Worker classes
 
-- **[Django Integration](examples/django-integration.md)** - Django setup guide
-- **[FastAPI Integration](examples/fastapi-integration.md)** - FastAPI setup guide
-- **[Flask Integration](examples/flask-integration.md)** - Flask setup guide
-- **[Pyramid Integration](examples/pyramid-integration.md)** - Pyramid setup guide
-- **[Custom WSGI App](examples/custom-wsgi-app.md)** - Custom WSGI app guide
+### Examples
+- **[Configuration Examples](examples/examples.md)** - Advanced configurations
+- **[Framework Integration](examples/)** - Django, FastAPI, Flask, Pyramid
+- **[Deployment Guide](examples/deployment-guide.md)** - Docker, Kubernetes
 
 ## Building Documentation
 

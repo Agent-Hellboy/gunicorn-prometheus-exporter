@@ -43,56 +43,31 @@ The examples component includes:
 
 - [Examples Guide](examples.md) - Comprehensive configuration examples
 
-## Quick Start Examples
+## Quick Start
 
-### Basic Configuration
+For basic setup, see the [Setup Guide](../setup.md).
 
-```python
-# gunicorn_basic.conf.py
-bind = "0.0.0.0:8000"
-workers = 2
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-
-import os
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
-os.environ.setdefault("GUNICORN_WORKERS", "2")
-```
-
-### Redis Configuration
-
-```python
-# gunicorn_redis.conf.py
-bind = "0.0.0.0:8000"
-workers = 2
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-
-import os
-os.environ.setdefault("REDIS_ENABLED", "true")
-os.environ.setdefault("REDIS_HOST", "localhost")
-os.environ.setdefault("REDIS_PORT", "6379")
-```
+For comprehensive configuration examples, see the [Configuration Examples](examples.md).
 
 ## Framework Integration
 
 ### Django
 
-See [Django Integration](../examples/django-integration.md) for Django-specific examples.
+See [Django Integration](django-integration.md) for Django-specific examples.
 
 ### FastAPI
 
-See [FastAPI Integration](../examples/fastapi-integration.md) for FastAPI-specific examples.
+See [FastAPI Integration](fastapi-integration.md) for FastAPI-specific examples.
 
 ### Flask
 
-See [Flask Integration](../examples/flask-integration.md) for Flask-specific examples.
+See [Flask Integration](flask-integration.md) for Flask-specific examples.
 
 ## Deployment Examples
 
 ### Docker
 
-See [Deployment Guide](../examples/deployment-guide.md) for Docker and Kubernetes examples.
+See [Deployment Guide](deployment-guide.md) for Docker and Kubernetes examples.
 
 ## Best Practices
 
@@ -104,6 +79,7 @@ See [Deployment Guide](../examples/deployment-guide.md) for Docker and Kubernete
 
 ## Related Documentation
 
-- [Configuration Guide](../config/configuration.md) - Configuration options
-- [Metrics Component](../metrics/) - Metrics collection
-- [Backend Component](../backend/) - Storage backends
+- [Setup Guide](../setup.md) - Basic setup and configuration
+- [Configuration Guide](../components/config/configuration.md) - Configuration options
+- [Metrics Component](../components/metrics/) - Metrics collection
+- [Backend Component](../components/backend/) - Storage backends

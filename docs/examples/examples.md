@@ -1,23 +1,10 @@
 # Configuration Examples
 
-This page provides comprehensive configuration examples for different scenarios and use cases.
+This page provides advanced configuration examples for different scenarios and use cases.
 
-## Basic Configuration
+> **Note**: For basic setup, see the [Setup Guide](../setup.md).
 
-### Simple Setup
-
-```python
-# gunicorn_basic.conf.py
-bind = "0.0.0.0:8000"
-workers = 2
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-
-import os
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "0.0.0.0")
-os.environ.setdefault("GUNICORN_WORKERS", "2")
-```
+## Advanced Configuration
 
 ### Production Configuration
 
@@ -420,8 +407,8 @@ os.environ.setdefault("PROMETHEUS_DEBUG", "true")
 
 ## Related Documentation
 
-- [Installation Guide](installation.md) - Installation instructions
-- [Configuration Guide](../config/configuration.md) - Complete configuration options
-- [Worker Types](../metrics/worker-types.md) - Supported worker types
-- [Redis Backend](../backend/redis-backend.md) - Redis storage configuration
-- [Troubleshooting Guide](troubleshooting.md) - Common issues and solutions
+- [Setup Guide](../setup.md) - Basic setup and configuration
+- [Configuration Guide](../components/config/configuration.md) - Complete configuration options
+- [Worker Types](../components/metrics/worker-types.md) - Supported worker types
+- [Redis Backend](../components/backend/redis-backend.md) - Redis storage configuration
+- [Troubleshooting Guide](../troubleshooting.md) - Common issues and solutions

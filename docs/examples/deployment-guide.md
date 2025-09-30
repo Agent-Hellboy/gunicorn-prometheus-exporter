@@ -1,95 +1,8 @@
 # Deployment Guide
 
-This guide covers deploying Gunicorn Prometheus Exporter in various environments.
+This guide covers deploying Gunicorn Prometheus Exporter in production environments.
 
-## Understanding the Three URLs
-
-When deploying with Gunicorn Prometheus Exporter, you'll work with three distinct URLs:
-
-| Service              | URL                             | Purpose                                                       |
-| -------------------- | ------------------------------- | ------------------------------------------------------------- |
-| **Prometheus UI**    | `http://localhost:9090`         | Prometheus web interface for querying and visualizing metrics |
-| **Your Application** | `http://localhost:8200`         | Your actual web application (Gunicorn server)                 |
-| **Metrics Endpoint** | `http://127.0.0.1:9091/metrics` | Raw metrics data for Prometheus to scrape                     |
-
-### Basic Configuration
-
-```bash
-# Basic metrics server configuration
-export PROMETHEUS_METRICS_PORT="9091"        # Port for metrics endpoint
-export PROMETHEUS_BIND_ADDRESS="127.0.0.1"   # Bind address for metrics server
-export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"  # Metrics storage directory
-export GUNICORN_WORKERS="2"                  # Number of workers
-```
-
-## Quick Start
-
-### 1. Create Gunicorn Configuration
-
-Create `gunicorn.conf.py`:
-
-```python
-import os
-
-# Environment variables (must be set before imports)
-os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc")
-os.environ.setdefault("PROMETHEUS_METRICS_PORT", "9091")
-os.environ.setdefault("PROMETHEUS_BIND_ADDRESS", "127.0.0.1")
-os.environ.setdefault("GUNICORN_WORKERS", "2")
-
-from gunicorn_prometheus_exporter.hooks import (
-    default_on_exit,
-    default_on_starting,
-    default_post_fork,
-    default_when_ready,
-    default_worker_int,
-)
-
-# Gunicorn settings
-bind = "0.0.0.0:8200"
-workers = 2
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-timeout = 300
-
-# Use pre-built hooks
-when_ready = default_when_ready
-on_starting = default_on_starting
-worker_int = default_worker_int
-on_exit = default_on_exit
-post_fork = default_post_fork
-```
-
-### 2. Start Services
-
-```bash
-# Start Prometheus
-prometheus --config.file=prometheus.yml --storage.tsdb.path=./prometheus-data
-
-# Start your application
-gunicorn --config gunicorn.conf.py app:app
-```
-
-### 3. Access Services
-
-- **Application**: http://localhost:8200
-- **Metrics Endpoint**: http://127.0.0.1:9091/metrics
-- **Prometheus UI**: http://localhost:9090
-
-### 4. Prometheus Configuration
-
-Create `prometheus.yml`:
-
-```yaml
-global:
-  scrape_interval: 15s
-
-scrape_configs:
-  - job_name: "gunicorn-app"
-    static_configs:
-      - targets: ["127.0.0.1:9091"]
-    metrics_path: /metrics
-    scrape_interval: 5s
-```
+> **Note**: For basic setup, see the [Setup Guide](../setup.md).
 
 ## Docker Deployment
 
@@ -355,8 +268,6 @@ resources:
 
 ## Monitoring Queries
 
-### Key Prometheus Queries
-
 ```promql
 # Request rate
 rate(gunicorn_worker_requests_total[5m])
@@ -369,42 +280,10 @@ gunicorn_worker_cpu_percent
 
 # Error rate
 rate(gunicorn_worker_failed_requests_total[5m])
-
-# Worker uptime
-gunicorn_worker_uptime_seconds
 ```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Connection Refused on Metrics Port:**
-   - Check if metrics server is running: `curl http://localhost:9091/metrics`
-   - Verify bind address configuration (`PROMETHEUS_BIND_ADDRESS`)
-
-2. **Prometheus Not Scraping:**
-   - Check Prometheus targets: `curl http://localhost:9090/api/v1/targets`
-   - Verify network connectivity
-
-3. **Port Conflicts:**
-   - Default metrics port is 9091 (not 9090)
-   - Change `PROMETHEUS_METRICS_PORT` if needed
-
-## Future Deployment Options
-
-I'm actively testing and will add support for:
-
-- **Helm Charts** - Kubernetes package management
-- **Terraform** - Infrastructure as Code
-- **Ansible** - Configuration management
-- **AWS ECS/Fargate** - Container orchestration
-- **Google Cloud Run** - Serverless containers
-- **Azure Container Instances** - Managed containers
-
-Stay tuned for updates in the [Deployment Guide](deployment-guide.md)!
 
 ## Related Documentation
 
-- [Django Integration](django-integration.md)
-- [Configuration Reference](../config/configuration.md)
-- [Troubleshooting Guide](../troubleshooting.md)
+- [Setup Guide](../setup.md) - Basic setup and configuration
+- [Configuration Examples](examples.md) - Advanced configuration examples
+- [Troubleshooting Guide](../troubleshooting.md) - Common issues and solutions

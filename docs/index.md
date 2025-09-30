@@ -66,69 +66,19 @@ The implementation provides comprehensive metrics collection capabilities:
 
 ## Quick Start
 
-### Installation
-
-For detailed installation instructions, see the [Installation Guide](installation.md).
+For detailed setup instructions, see the [Setup Guide](setup.md).
 
 ```bash
-# Basic installation
+# Install
 pip install gunicorn-prometheus-exporter
 
-# With Redis support
-pip install gunicorn-prometheus-exporter[redis]
-
-# With all features (Redis + async workers)
-pip install gunicorn-prometheus-exporter[all]
-```
-
-### Basic Usage
-
-#### *Traditional File-Based Setup*
-
-```bash
-# Set up environment variables
-export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
-export PROMETHEUS_METRICS_PORT="9091"
-export PROMETHEUS_BIND_ADDRESS="0.0.0.0"
-export GUNICORN_WORKERS="2"
-
-# Create gunicorn.conf.py
-bind = "0.0.0.0:8000"
-workers = 2
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-
-# Start Gunicorn
+# Basic setup
 gunicorn -c gunicorn.conf.py your_app:app
 
-# Access metrics
-curl http://0.0.0.0:9091/metrics
+# Access metrics at http://localhost:9091/metrics
 ```
 
-#### *Redis-Based Setup (Recommended)*
-
-```bash
-# Enable Redis storage
-export REDIS_ENABLED="true"
-export REDIS_HOST="localhost"
-export REDIS_PORT="6379"
-export REDIS_DB="0"
-export PROMETHEUS_METRICS_PORT="9091"
-export PROMETHEUS_BIND_ADDRESS="0.0.0.0"
-export GUNICORN_WORKERS="2"
-
-# Create gunicorn.conf.py
-bind = "0.0.0.0:8000"
-workers = 2
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
-
-# Start Gunicorn
-gunicorn -c gunicorn.conf.py your_app:app
-
-# Access metrics
-curl http://0.0.0.0:9091/metrics
-```
-
-> *Note*: Redis setup eliminates file system dependencies and provides better performance for production environments. If Redis is not available, the system automatically falls back to file-based storage.
+> *Note*: See the [Setup Guide](setup.md) for complete configuration examples including Redis setup, Prometheus integration, and production deployment.
 
 ### Understanding the Three URLs
 
@@ -147,6 +97,7 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 ### Core Documentation
 
 - [Installation Guide](installation.md) - Detailed installation instructions
+- [Setup Guide](setup.md) - Quick setup and getting started
 - [Troubleshooting Guide](troubleshooting.md) - Common issues and solutions
 
 ### Components
@@ -193,38 +144,13 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 - [Contributing Guide](contributing.md) - How to contribute to the project
 - [Development Setup](development.md) - Setting up development environment
 
-## What Makes This Different
+## Key Benefits
 
-### *The Problem We Solved*
-
-Monitoring Gunicorn applications with Prometheus has traditionally been challenging:
-
-- *No built-in Prometheus support* - Gunicorn doesn't provide native metrics
-- *Indirect solutions only* - existing approaches require statsd-exporter or manual implementation
-- *File-based multiprocess metrics* create race conditions and performance bottlenecks when manually implemented
-- *No master process signal tracking* - critical for understanding server behavior and worker restarts
-- *Limited worker type support* - most solutions only work with basic sync workers
-- *Complex configuration* - requires extensive setup and maintenance
-- *No fallback mechanism* - fails completely when storage is unavailable
-
-### *My Solution*
-
-This solution addresses all these issues through:
-
-1. *Redis-Based Storage*: Eliminates file system bottlenecks with distributed storage
-2. *Arbiter Patching*: Captures all master process signals for complete visibility
-3. *Universal Worker Support*: Works with sync, thread, eventlet, and gevent workers
-4. *Zero-Configuration*: Works out of the box with sensible defaults
-5. *Automatic Fallback*: Continues with file-based storage when Redis setup fails
-6. *Production Ready*: Handles high-traffic scenarios with automatic cleanup
-
-### *Technical Deep Dive*
-
-- *RedisValue Class*: Custom implementation that replaces Prometheus' MmapedValue
-- *RedisMultiProcessCollector*: Aggregates metrics across processes using Redis
-- *PrometheusMaster*: Extended Arbiter class with signal handling and metrics
-- *PrometheusMixin*: Reusable mixin for adding metrics to any worker type
-- *Automatic Lifecycle Management*: Smart cleanup and resource management
+- **Redis-based storage** eliminates file system bottlenecks and race conditions
+- **Universal worker support** for sync, thread, eventlet, and gevent workers
+- **Zero-configuration** setup with sensible defaults
+- **Production-ready** with automatic fallback and cleanup
+- **Comprehensive metrics** including request rates, response times, and resource usage
 
 ## License
 
