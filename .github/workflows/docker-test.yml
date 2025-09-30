@@ -2,9 +2,8 @@ name: Test Docker Images
 
 on:
   push:
-    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: ["**"]
 
 jobs:
   test:
@@ -238,7 +237,7 @@ jobs:
 
           echo "✅ Kubernetes sidecar deployment test passed!"
 
-        - name: Summary
+      - name: Summary
         run: |
           echo "🎉 All Docker tests passed!"
           echo "✅ Sidecar image builds successfully"
