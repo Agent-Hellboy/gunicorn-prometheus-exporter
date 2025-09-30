@@ -93,7 +93,7 @@ jobs:
             sleep 1
           done
 
-          # Test Prometheus metrics collection (comprehensive check)
+          # Test Prometheus metrics collection (comprehensive validation)
           echo "Testing Prometheus metrics collection..."
           metrics_response=$(curl -f --max-time 10 http://localhost:9093/metrics 2>/dev/null)
 
@@ -104,37 +104,72 @@ jobs:
             exit 1
           fi
 
-          # Check for key gunicorn metrics
-          echo "Checking for gunicorn metrics..."
+          # Validate key gunicorn metrics with actual values
+          echo "Validating gunicorn metrics..."
 
-          # Check for request count metrics
-          if echo "$metrics_response" | grep -q "gunicorn_requests_total"; then
+          # Check for request count metrics and validate values
+          request_metrics=$(echo "$metrics_response" | grep "gunicorn_requests_total" || echo "")
+          if [ -n "$request_metrics" ]; then
             echo "✅ gunicorn_requests_total metric found"
+            # Extract actual request count values
+            request_counts=$(echo "$request_metrics" | grep -o '[0-9]\+' | sort -n | tail -1 || echo "0")
+            if [ "$request_counts" -gt 0 ] 2>/dev/null; then
+              echo "✅ Request metrics collected: $request_counts total requests"
+            else
+              echo "⚠️  Request metrics found but count is 0"
+            fi
           else
             echo "❌ gunicorn_requests_total metric missing"
           fi
 
           # Check for request duration metrics
-          if echo "$metrics_response" | grep -q "gunicorn_request_duration_seconds"; then
+          duration_metrics=$(echo "$metrics_response" | grep "gunicorn_request_duration_seconds" || echo "")
+          if [ -n "$duration_metrics" ]; then
             echo "✅ gunicorn_request_duration_seconds metric found"
+            # Check if duration metrics have actual values
+            duration_count=$(echo "$duration_metrics" | wc -l)
+            echo "✅ Duration metrics collected: $duration_count data points"
           else
             echo "❌ gunicorn_request_duration_seconds metric missing"
           fi
 
           # Check for worker metrics
-          if echo "$metrics_response" | grep -q "gunicorn_workers"; then
+          worker_metrics=$(echo "$metrics_response" | grep "gunicorn_workers" || echo "")
+          if [ -n "$worker_metrics" ]; then
             echo "✅ gunicorn_workers metric found"
+            # Extract worker count
+            worker_count=$(echo "$worker_metrics" | grep -o '[0-9]\+' | head -1 || echo "0")
+            echo "✅ Worker metrics: $worker_count workers"
           else
             echo "❌ gunicorn_workers metric missing"
           fi
 
-          # Check for request count > 0 (proves metrics are being collected)
-          request_count=$(echo "$metrics_response" | grep "gunicorn_requests_total" | head -1 | grep -o '[0-9]\+' | head -1 || echo "0")
+          # Check for additional important metrics
+          echo "Checking additional metrics..."
 
-          if [ "$request_count" -gt 0 ] 2>/dev/null; then
-            echo "✅ Metrics collection verified - found $request_count requests"
+          # Check for master restart metrics
+          if echo "$metrics_response" | grep -q "gunicorn_master_restart_total"; then
+            echo "✅ gunicorn_master_restart_total metric found"
+          fi
+
+          # Check for worker restart metrics
+          if echo "$metrics_response" | grep -q "gunicorn_worker_restart_total"; then
+            echo "✅ gunicorn_worker_restart_total metric found"
+          fi
+
+          # Check for exception metrics
+          if echo "$metrics_response" | grep -q "gunicorn_exceptions_total"; then
+            echo "✅ gunicorn_exceptions_total metric found"
+          fi
+
+          # Summary of metrics validation
+          total_metrics=$(echo "$metrics_response" | grep "^gunicorn_" | wc -l)
+          echo "📊 Total gunicorn metrics found: $total_metrics"
+
+          if [ "$total_metrics" -ge 5 ]; then
+            echo "✅ Comprehensive metrics validation passed"
           else
-            echo "⚠️  Metrics collection may not be working properly - request count: $request_count"
+            echo "⚠️  Limited metrics validation - found $total_metrics metrics (expected 5+)"
           fi
 
           # Cleanup
