@@ -227,8 +227,76 @@ jobs:
           # Wait for sidecar to collect metrics
           sleep 10
 
-          # Test metrics endpoint
-          curl -f http://localhost:9091/metrics || exit 1
+          # Fetch metrics
+          echo "Verifying comprehensive metrics collection..."
+          metrics_response=$(curl -f http://localhost:9091/metrics 2>/dev/null)
+
+          if [ -z "$metrics_response" ]; then
+            echo "❌ No metrics response from sidecar"
+            docker logs gunicorn-sidecar
+            exit 1
+          fi
+
+          # Validate critical worker metrics (same as system tests)
+          echo "Checking for gunicorn_worker_requests_total..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_requests_total"; then
+            request_count=$(echo "$metrics_response" | grep "gunicorn_worker_requests_total" | wc -l)
+            echo "✅ Found gunicorn_worker_requests_total ($request_count counters)"
+          else
+            echo "❌ gunicorn_worker_requests_total metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_request_duration_seconds..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_request_duration_seconds"; then
+            echo "✅ Found gunicorn_worker_request_duration_seconds"
+          else
+            echo "❌ gunicorn_worker_request_duration_seconds metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_memory_bytes..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_memory_bytes"; then
+            echo "✅ Found gunicorn_worker_memory_bytes"
+          else
+            echo "❌ gunicorn_worker_memory_bytes metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_cpu_percent..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_cpu_percent"; then
+            echo "✅ Found gunicorn_worker_cpu_percent"
+          else
+            echo "❌ gunicorn_worker_cpu_percent metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_uptime_seconds..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_uptime_seconds"; then
+            echo "✅ Found gunicorn_worker_uptime_seconds"
+          else
+            echo "❌ gunicorn_worker_uptime_seconds metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_state..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_state"; then
+            echo "✅ Found gunicorn_worker_state"
+          else
+            echo "❌ gunicorn_worker_state metric missing"
+            exit 1
+          fi
+
+          # Count total worker metrics
+          total_metrics=$(echo "$metrics_response" | grep -c "^gunicorn_worker_" || echo "0")
+          echo "📊 Total gunicorn_worker metrics found: $total_metrics"
+
+          if [ "$total_metrics" -ge 10 ]; then
+            echo "✅ Comprehensive metrics validation passed"
+          else
+            echo "❌ Only found $total_metrics worker metrics (expected 10+)"
+            exit 1
+          fi
 
           # Test Prometheus (check if it's responding)
           if curl -f --max-time 10 http://localhost:9090/-/healthy; then
