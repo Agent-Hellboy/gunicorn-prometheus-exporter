@@ -1,0 +1,6 @@
+Flask==3.1.2
+gunicorn==23.0.0
+prometheus-client==0.23.1
+psutil==7.1.0
+PyYAML==6.0.3
+redis==6.4.0

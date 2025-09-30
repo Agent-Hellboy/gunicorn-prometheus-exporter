@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gunicorn-app-with-sidecar
+  labels:
+    app: gunicorn-app
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: gunicorn-app
+  template:
+    metadata:
+      labels:
+        app: gunicorn-app
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        # Main application container
+        - name: app
+          image: your-registry/gunicorn-app:latest
+          ports:
+            - containerPort: 8000
+              name: http
+              protocol: TCP
+          env:
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: "/tmp/prometheus_multiproc"
+            - name: GUNICORN_WORKERS
+              value: "4"
+            - name: REDIS_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_DB
+              value: "0"
+            - name: REDIS_KEY_PREFIX
+              value: "gunicorn"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: prometheus-data
+              mountPath: /tmp/prometheus_multiproc
+
+        # Prometheus exporter sidecar
+        - name: prometheus-exporter
+          image: your-registry/gunicorn-prometheus-exporter:latest
+          ports:
+            - containerPort: 9091
+              name: metrics
+              protocol: TCP
+          env:
+            - name: PROMETHEUS_METRICS_PORT
+              value: "9091"
+            - name: PROMETHEUS_BIND_ADDRESS
+              value: "0.0.0.0"
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: "/tmp/prometheus_multiproc"
+            - name: REDIS_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_DB
+              value: "0"
+            - name: REDIS_KEY_PREFIX
+              value: "gunicorn"
+            - name: SIDECAR_UPDATE_INTERVAL
+              value: "30"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9091
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9091
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: prometheus-data
+              mountPath: /tmp/prometheus_multiproc
+      volumes:
+        - name: prometheus-data
+          emptyDir: {}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30

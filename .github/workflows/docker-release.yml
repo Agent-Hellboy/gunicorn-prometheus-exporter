@@ -1,0 +1,147 @@
+name: Build and Push Docker Images on Release
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - "v*"
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+            # Remove 'v' prefix if present
+            VERSION=${VERSION#v}
+          else
+            VERSION="latest"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version extracted: $VERSION"
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push sidecar image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+
+      - name: Build and push sample app image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile.app
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-app:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-app:latest
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          cat << EOF > release-notes.md
+          # Docker Images Released
+
+          ## Images
+          - **Sidecar**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}\`
+          - **Sample App**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-app:${{ steps.version.outputs.version }}\`
+
+          ## Quick Start
+
+          ### Docker Compose
+          \`\`\`yaml
+          version: '3.8'
+          services:
+            sidecar:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+              ports:
+                - "9091:9091"
+          \`\`\`
+
+          ### Kubernetes
+          \`\`\`yaml
+          apiVersion: apps/v1
+          kind: Deployment
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: prometheus-exporter
+                    image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          \`\`\`
+
+          ## Documentation
+          - [Docker Hub Guide](https://github.com/${{ github.repository }}/blob/main/DOCKER_HUB_GUIDE.md)
+          - [Kubernetes Deployment](https://github.com/${{ github.repository }}/blob/main/k8s/README.md)
+          - [Docker Compose Setup](https://github.com/${{ github.repository }}/blob/main/docker/README.md)
+          EOF
+
+      - name: Update release with Docker info
+        if: github.event_name == 'release'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const releaseNotes = fs.readFileSync('release-notes.md', 'utf8');
+
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id,
+              body: releaseNotes
+            });
+
+      - name: Create GitHub Package
+        if: github.event_name == 'release'
+        run: |
+          echo "Docker images have been pushed to Docker Hub:"
+          echo "- Sidecar: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}"
+          echo "- Sample App: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-app:${{ steps.version.outputs.version }}"

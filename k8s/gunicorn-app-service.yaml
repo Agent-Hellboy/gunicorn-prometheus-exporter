@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gunicorn-app-service
+  labels:
+    app: gunicorn-app
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+    - port: 9091
+      targetPort: 9091
+      protocol: TCP
+      name: metrics
+  selector:
+    app: gunicorn-app
