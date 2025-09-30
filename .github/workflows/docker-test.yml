@@ -129,9 +129,9 @@ jobs:
           fi
 
           # Check for request count > 0 (proves metrics are being collected)
-          request_count=$(echo "$metrics_response" | grep "gunicorn_requests_total" | grep -o '[0-9]\+' | head -1 || echo "0")
+          request_count=$(echo "$metrics_response" | grep "gunicorn_requests_total" | head -1 | grep -o '[0-9]\+' | head -1 || echo "0")
 
-          if [ "$request_count" -gt 0 ]; then
+          if [ "$request_count" -gt 0 ] 2>/dev/null; then
             echo "✅ Metrics collection verified - found $request_count requests"
           else
             echo "⚠️  Metrics collection may not be working properly - request count: $request_count"
