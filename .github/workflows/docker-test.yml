@@ -308,6 +308,9 @@ jobs:
         run: |
           echo "Testing Kubernetes manifests..."
 
+          # Install YAML parser
+          pip3 install --no-cache-dir PyYAML >/dev/null
+
           # Validate YAML files
           for file in k8s/*.yaml; do
             echo "Validating $file..."
@@ -327,8 +330,30 @@ jobs:
           # Test standalone mode
           docker run --rm gunicorn-prometheus-exporter:test standalone --help || exit 1
 
-          # Test health mode
-          docker run --rm gunicorn-prometheus-exporter:test health || exit 1
+          # Test health mode (start server first, then check health)
+          echo "Testing health mode with running server..."
+
+          # Start sidecar in background for health check testing
+          docker run -d --name test-health-server -p 9091:9091 \
+            -e PROMETHEUS_METRICS_PORT=9091 \
+            -e PROMETHEUS_BIND_ADDRESS=0.0.0.0 \
+            gunicorn-prometheus-exporter:test sidecar
+
+          # Wait for server to start
+          sleep 10
+
+          # Test health mode against running server
+          docker run --rm --network container:test-health-server \
+            gunicorn-prometheus-exporter:test health || {
+            echo "❌ Health check failed"
+            docker logs test-health-server
+            docker stop test-health-server || true
+            exit 1
+          }
+
+          # Cleanup
+          docker stop test-health-server || true
+          docker rm test-health-server || true
 
           echo "✅ Entrypoint modes test passed!"
 

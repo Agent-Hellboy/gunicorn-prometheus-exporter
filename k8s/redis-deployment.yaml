@@ -22,16 +22,20 @@ spec:
               name: redis
               protocol: TCP
           env:
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: redis-secret
-                  key: password
+            # Note: REDIS_PASSWORD should be set via secret for production
+            # For development/testing, Redis runs without password
+            # To enable password protection, create redis-secret.yaml:
+            # kubectl create secret generic redis-secret --from-literal=password='your-password'
+            # - name: REDIS_PASSWORD
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: redis-secret
+            #       key: password
           command:
             - redis-server
-            - --requirepass
-            - $(REDIS_PASSWORD)
             - --appendonly
+            # Password protection disabled for development
+            # To enable: add --requirepass $(REDIS_PASSWORD) after creating secret
             - "yes"
           resources:
             requests:

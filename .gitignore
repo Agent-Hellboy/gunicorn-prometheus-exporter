@@ -186,3 +186,6 @@ cython_debug/
 
 # Prometheus data directory
 prometheus-data/
+
+# Kubernetes secrets (should not be committed)
+k8s/*-secret.yaml
