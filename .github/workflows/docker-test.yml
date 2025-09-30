@@ -37,8 +37,12 @@ jobs:
           # Test sidecar help command
           docker run --rm gunicorn-prometheus-exporter:test --help
 
-          # Test sidecar health check
-          docker run --rm gunicorn-prometheus-exporter:test health
+          # Test sidecar health check (start sidecar in background, then test)
+          docker run -d --name test-sidecar-health -p 9091:9091 gunicorn-prometheus-exporter:test
+          sleep 10
+          docker run --rm --network container:test-sidecar-health gunicorn-prometheus-exporter:test health
+          docker stop test-sidecar-health
+          docker rm test-sidecar-health
 
           echo "✅ Sidecar image test passed!"
 
@@ -234,7 +238,7 @@ jobs:
 
           echo "✅ Kubernetes sidecar deployment test passed!"
 
-      - name: Summary
+        - name: Summary
         run: |
           echo "🎉 All Docker tests passed!"
           echo "✅ Sidecar image builds successfully"
