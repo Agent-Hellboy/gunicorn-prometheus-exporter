@@ -59,7 +59,7 @@ services:
       - PROMETHEUS_METRICS_PORT=9091
       - PROMETHEUS_BIND_ADDRESS=0.0.0.0
       - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
-      - REDIS_ENABLED=true
+      - REDIS_ENABLED=false
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
