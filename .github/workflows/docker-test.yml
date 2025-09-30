@@ -95,7 +95,6 @@ jobs:
 
           # Test Prometheus metrics collection (comprehensive check)
           echo "Testing Prometheus metrics collection..."
-          local metrics_response
           metrics_response=$(curl -f --max-time 10 http://localhost:9093/metrics 2>/dev/null)
 
           if [ -z "$metrics_response" ]; then
@@ -130,7 +129,6 @@ jobs:
           fi
 
           # Check for request count > 0 (proves metrics are being collected)
-          local request_count
           request_count=$(echo "$metrics_response" | grep "gunicorn_requests_total" | grep -o '[0-9]\+' | head -1 || echo "0")
 
           if [ "$request_count" -gt 0 ]; then
