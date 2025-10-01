@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.9] - 2025-10-02
+
+### Added
+
+- **Docs & Badges**: Added Docker Hub badges and updated deployment guides with Docker Hub build instructions
+- **Signal Test Resilience**: Hardened system tests for signal metrics in CI Docker runs
+
+### Changed
+
+- **Image Tags**: Updated documentation, manifests, and guides to default to `0.1.9`
+- **Kind Smoke Tests**: Generalized local image rewrites in CI to accept any pinned tag
+
+### Fixed
+
+- **Kubernetes Apply Steps**: Cleaned broken glob instructions and Redis defaults in `k8s/README.md`
+
 ## [0.1.8] - 2025-10-01
 
 ### Added

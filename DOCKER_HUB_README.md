@@ -1,14 +1,18 @@
 # Gunicorn Prometheus Exporter
 
+[![Docker Pulls](https://badgen.net/docker/pulls/princekrroshan01/gunicorn-prometheus-exporter)](https://hub.docker.com/repository/docker/princekrroshan01/gunicorn-prometheus-exporter)
+[![Docker Image Size](https://badgen.net/docker/size/princekrroshan01/gunicorn-prometheus-exporter/0.1.9/amd64)](https://hub.docker.com/repository/docker/princekrroshan01/gunicorn-prometheus-exporter)
+[![Docker Stars](https://badgen.net/docker/stars/princekrroshan01/gunicorn-prometheus-exporter)](https://hub.docker.com/repository/docker/princekrroshan01/gunicorn-prometheus-exporter)
+
 Production-ready Prometheus metrics exporter for Gunicorn applications, designed to run as a sidecar container.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Pull the Image
 
 ```bash
 # Sidecar exporter
-docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.8
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.9
 
 # Sample Flask application (for testing)
 docker pull princekrroshan01/gunicorn-app:latest
@@ -31,7 +35,7 @@ services:
       - prometheus_data:/tmp/prometheus_multiproc
 
   sidecar:
-    image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
+    image: princekrroshan01/gunicorn-prometheus-exporter:0.1.9
     ports:
       - "9091:9091"
     environment:
@@ -63,7 +67,7 @@ spec:
               mountPath: /tmp/prometheus_multiproc
 
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.1.9
           ports:
             - containerPort: 9091
           volumeMounts:
@@ -76,7 +80,7 @@ spec:
           emptyDir: {}
 ```
 
-## 📐 Architecture
+## Architecture
 
 The sidecar pattern separates metrics collection from your application:
 
@@ -104,7 +108,7 @@ The sidecar pattern separates metrics collection from your application:
           └──────────────┘
 ```
 
-## ✨ Features
+## Features
 
 - *Multi-Architecture*: AMD64 and ARM64 support
 - *Redis Backend*: Distributed metrics storage for multi-instance deployments
@@ -113,7 +117,7 @@ The sidecar pattern separates metrics collection from your application:
 - *Complete Stack*: Includes Prometheus and Grafana configurations
 - *Zero Configuration*: Works out of the box with sensible defaults
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -140,7 +144,7 @@ services:
       - "6379:6379"
 
   sidecar:
-    image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
+    image: princekrroshan01/gunicorn-prometheus-exporter:0.1.9
     environment:
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
@@ -149,7 +153,7 @@ services:
       - redis
 ```
 
-## 🔒 Security
+## Security
 
 The container runs with:
 - Non-root user (UID 1000)
@@ -158,7 +162,7 @@ The container runs with:
 - All capabilities dropped
 - Security contexts for Kubernetes
 
-## 📊 Metrics
+## Metrics
 
 Exposed metrics include:
 
@@ -175,7 +179,7 @@ Exposed metrics include:
 curl http://localhost:9091/metrics
 ```
 
-## 🎯 Use Cases
+## Use Cases
 
 ### Sidecar Pattern (Recommended)
 
@@ -199,7 +203,7 @@ scrape_configs:
     scrape_interval: 15s
 ```
 
-## 📚 Documentation
+## Documentation
 
 - [GitHub Repository](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter)
 - [Complete Documentation](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/tree/main/docs)
@@ -207,12 +211,12 @@ scrape_configs:
 - [Docker Compose Examples](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/tree/main/docker)
 - [Integration Examples](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/tree/main/docs/examples)
 
-## 🔗 Related Images
+## Related Images
 
-- `princekrroshan01/gunicorn-prometheus-exporter:0.1.8` - Sidecar exporter
+- `princekrroshan01/gunicorn-prometheus-exporter:0.1.9` - Sidecar exporter
 - `princekrroshan01/gunicorn-app:latest` - Sample Flask application
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 ### Metrics not appearing?
 
@@ -233,15 +237,15 @@ scrape_configs:
 - Check `REDIS_HOST` and `REDIS_PORT` settings
 - Verify Redis is running: `docker ps | grep redis`
 
-## 📄 License
+## License
 
 MIT License - See [LICENSE](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/blob/main/LICENSE)
 
-## 🤝 Contributing
+## Contributing
 
 Contributions welcome! Please see our [Contributing Guide](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/blob/main/docs/contributing.md)
 
-## ⭐ Support
+## Support
 
 If you find this project useful, please consider giving it a star on [GitHub](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter)!
 

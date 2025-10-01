@@ -610,7 +610,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.1.8
+          image: princekrroshan01/gunicorn-app:0.1.9
           ports:
             - containerPort: 8200
               name: http
@@ -625,7 +625,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.1.9
           ports:
             - containerPort: 9091
               name: metrics
