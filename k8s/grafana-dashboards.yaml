@@ -3,108 +3,118 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboards
 data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 10
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards
   gunicorn-dashboard.json: |
     {
-      "dashboard": {
-        "id": null,
-        "title": "Gunicorn Prometheus Exporter",
-        "tags": ["gunicorn", "prometheus"],
-        "style": "dark",
-        "timezone": "browser",
-        "panels": [
-          {
-            "id": 1,
-            "title": "Request Rate",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "rate(gunicorn_worker_requests_total[5m])",
-                "legendFormat": "{{worker_id}}"
-              }
-            ],
-            "yAxes": [
-              {
-                "label": "requests/sec"
-              }
-            ],
-            "xAxes": [
-              {
-                "type": "time"
-              }
-            ]
-          },
-          {
-            "id": 2,
-            "title": "Memory Usage",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "gunicorn_worker_memory_bytes",
-                "legendFormat": "{{worker_id}}"
-              }
-            ],
-            "yAxes": [
-              {
-                "label": "bytes"
-              }
-            ],
-            "xAxes": [
-              {
-                "type": "time"
-              }
-            ]
-          },
-          {
-            "id": 3,
-            "title": "CPU Usage",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "gunicorn_worker_cpu_percent",
-                "legendFormat": "{{worker_id}}"
-              }
-            ],
-            "yAxes": [
-              {
-                "label": "percent"
-              }
-            ],
-            "xAxes": [
-              {
-                "type": "time"
-              }
-            ]
-          },
-          {
-            "id": 4,
-            "title": "Request Duration",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "histogram_quantile(0.95, rate(gunicorn_worker_request_duration_seconds_bucket[5m]))",
-                "legendFormat": "95th percentile"
-              },
-              {
-                "expr": "histogram_quantile(0.50, rate(gunicorn_worker_request_duration_seconds_bucket[5m]))",
-                "legendFormat": "50th percentile"
-              }
-            ],
-            "yAxes": [
-              {
-                "label": "seconds"
-              }
-            ],
-            "xAxes": [
-              {
-                "type": "time"
-              }
-            ]
-          }
-        ],
-        "time": {
-          "from": "now-1h",
-          "to": "now"
+      "id": null,
+      "title": "Gunicorn Prometheus Exporter",
+      "tags": ["gunicorn", "prometheus"],
+      "style": "dark",
+      "timezone": "browser",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Request Rate",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(gunicorn_worker_requests_total[5m])",
+              "legendFormat": "{{worker_id}}"
+            }
+          ],
+          "yAxes": [
+            {
+              "label": "requests/sec"
+            }
+          ],
+          "xAxes": [
+            {
+              "type": "time"
+            }
+          ]
         },
-        "refresh": "30s"
-      }
+        {
+          "id": 2,
+          "title": "Memory Usage",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "gunicorn_worker_memory_bytes",
+              "legendFormat": "{{worker_id}}"
+            }
+          ],
+          "yAxes": [
+            {
+              "label": "bytes"
+            }
+          ],
+          "xAxes": [
+            {
+              "type": "time"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "CPU Usage",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "gunicorn_worker_cpu_percent",
+              "legendFormat": "{{worker_id}}"
+            }
+          ],
+          "yAxes": [
+            {
+              "label": "percent"
+            }
+          ],
+          "xAxes": [
+            {
+              "type": "time"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Request Duration",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, rate(gunicorn_worker_request_duration_seconds_bucket[5m]))",
+              "legendFormat": "95th percentile"
+            },
+            {
+              "expr": "histogram_quantile(0.50, rate(gunicorn_worker_request_duration_seconds_bucket[5m]))",
+              "legendFormat": "50th percentile"
+            }
+          ],
+          "yAxes": [
+            {
+              "label": "seconds"
+            }
+          ],
+          "xAxes": [
+            {
+              "type": "time"
+            }
+          ]
+        }
+      ],
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "refresh": "30s"
     }
