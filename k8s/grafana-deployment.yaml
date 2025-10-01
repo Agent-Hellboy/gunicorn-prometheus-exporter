@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: grafana/grafana:latest
+          image: grafana/grafana:11.2.0
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true

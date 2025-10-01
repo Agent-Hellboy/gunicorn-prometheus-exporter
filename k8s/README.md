@@ -4,28 +4,53 @@ This directory contains Kubernetes manifests for deploying the Gunicorn Promethe
 
 ## Quick Start
 
-### 1. Deploy Redis (Required for shared metrics)
+### 1. Create Secrets (Required)
+
+**Important**: Never commit secrets to version control. Create them from templates:
 
 ```bash
-kubectl apply -f redis-deployment.yaml
+# Create Grafana admin password
+kubectl create secret generic grafana-secret \
+  --from-literal=admin-password="$(openssl rand -base64 32)"
+
+# Optional: Create Redis password (if using Redis with authentication)
+# kubectl create secret generic redis-secret \
+#   --from-literal=password="$(openssl rand -base64 32)"
 ```
 
-### 2. Deploy the Application with Sidecar
+### 2. Deploy Redis (Required for shared metrics)
+
+```bash
+kubectl apply -f redis-pvc.yaml
+kubectl apply -f redis-deployment.yaml
+kubectl apply -f redis-service.yaml
+```
+
+### 3. Deploy the Application with Sidecar
 
 ```bash
 kubectl apply -f sidecar-deployment.yaml
+kubectl apply -f gunicorn-app-service.yaml
+kubectl apply -f gunicorn-metrics-service.yaml
 ```
 
-### 3. Deploy Prometheus (Optional)
+### 4. Deploy Prometheus (Optional)
 
 ```bash
+kubectl apply -f prometheus-config.yaml
+kubectl apply -f prometheus-pvc.yaml
 kubectl apply -f prometheus-deployment.yaml
+kubectl apply -f prometheus-service.yaml
 ```
 
-### 4. Deploy Grafana (Optional)
+### 5. Deploy Grafana (Optional)
 
 ```bash
+kubectl apply -f grafana-datasources.yaml
+kubectl apply -f grafana-dashboards.yaml
+kubectl apply -f grafana-pvc.yaml
 kubectl apply -f grafana-deployment.yaml
+kubectl apply -f grafana-service.yaml
 ```
 
 ## Complete Deployment
@@ -59,7 +84,9 @@ kubectl port-forward service/grafana-service 3000:3000
 - **Application**: http://localhost:8000
 - **Metrics**: http://localhost:9091/metrics
 - **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3000 (admin/admin)
+- **Grafana**: http://localhost:3000
+  - Username: `admin`
+  - Password: Use the password from the `grafana-secret` you created
 
 ## Configuration
 
