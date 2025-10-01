@@ -67,7 +67,18 @@ See [Flask Integration](flask-integration.md) for Flask-specific examples.
 
 ### Docker
 
-See [Deployment Guide](deployment-guide.md) for Docker and Kubernetes examples.
+See [Deployment Guide](deployment-guide.md) for Docker and Kubernetes deployment strategies.
+
+### Kubernetes
+
+See [Kubernetes Deployment](kubernetes-deployment.md) for complete Kubernetes sidecar deployment guide with production-ready configurations.
+
+### Container Orchestration
+
+- **[Kubernetes Deployment](kubernetes-deployment.md)** - Sidecar pattern, security contexts, monitoring stack
+- **[Deployment Guide](deployment-guide.md)** - General deployment strategies
+- **[Docker Setup](../../docker/README.md)** - Local Docker Compose testing
+- **[K8s Manifests](../../k8s/README.md)** - Production K8s manifests
 
 ## Best Practices
 
