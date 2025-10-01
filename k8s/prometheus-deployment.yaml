@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: prometheus
-          image: prom/prometheus:latest
+          image: prom/prometheus:v2.54.1
           ports:
             - containerPort: 9090
               name: web
@@ -28,6 +28,8 @@ spec:
             - "--web.console.templates=/etc/prometheus/consoles"
             - "--storage.tsdb.retention.time=200h"
             - "--web.enable-lifecycle"
+            # Note: Admin API allows operations like deleting time series
+            # Ensure proper access controls are in place for production
             - "--web.enable-admin-api"
           resources:
             requests:
