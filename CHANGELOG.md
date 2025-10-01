@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.8] - 2025-10-01
+
+### Added
+
+- **Docker Sidecar Support**: Production-ready Docker images with multi-architecture support (AMD64, ARM64)
+  - Pre-built images available on Docker Hub: `princekrroshan01/gunicorn-prometheus-exporter`
+  - Sidecar pattern for Kubernetes deployments with security contexts
+  - Complete Docker Compose stack with Prometheus and Grafana
+- **Kubernetes Manifests**: Production-ready K8s deployments with Redis, Prometheus, and Grafana
+- **GitHub Actions CI/CD**: Automated multi-arch Docker builds and testing
+- **Comprehensive Documentation**: Docker Hub README, Kubernetes guides, and deployment examples
+
+### Changed
+
+- **Metrics Server Binding**: Updated to support configurable bind address for Docker compatibility
+
 ## [0.1.7] - 2025-09-30
 
 ### Added

@@ -63,7 +63,7 @@ docker run -d \
   --name gunicorn-sidecar \
   -p 9091:9091 \
   -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
-  gunicorn-prometheus-exporter:latest
+  gunicorn-prometheus-exporter:0.1.8
 ```
 
 ### Application Image
@@ -72,7 +72,7 @@ The sample application image is built from `docker/Dockerfile.app`:
 
 ```bash
 # Build the application image
-docker build -f docker/Dockerfile.app -t gunicorn-app:latest .
+docker build -f docker/Dockerfile.app -t gunicorn-app:0.1.8 .
 
 # Run with increased shared memory (required for Gunicorn workers using /dev/shm)
 docker run -d \
@@ -81,12 +81,14 @@ docker run -d \
   -p 8000:8000 \
   -e PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc \
   -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
-  gunicorn-app:latest
+  gunicorn-app:0.1.8
 ```
 
 **Important**: Gunicorn uses `/dev/shm` for worker temporary files. The default Docker shared memory is only 64MB, which may be insufficient for production workloads. Always set `--shm-size` (Docker) or `shm_size` (Docker Compose) to at least 1GB.
 
 ## Configuration
+
+> *Production recommendation*: Enable Redis (`REDIS_ENABLED=true`) for any deployment running more than one Gunicorn worker or multiple containers. The sample Compose and Kubernetes manifests already wire Redis by default.
 
 ### Environment Variables
 
@@ -126,7 +128,7 @@ docker run -d \
   --name gunicorn-sidecar \
   -p 9091:9091 \
   -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
-  gunicorn-prometheus-exporter:latest sidecar
+  gunicorn-prometheus-exporter:0.1.8 sidecar
 ```
 
 ### 2. Standalone Mode
@@ -138,7 +140,7 @@ docker run -d \
   --name gunicorn-standalone \
   -p 9091:9091 \
   -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
-  gunicorn-prometheus-exporter:latest standalone
+  gunicorn-prometheus-exporter:0.1.8 standalone
 ```
 
 ### 3. Health Check Mode
@@ -147,7 +149,7 @@ Run health check:
 
 ```bash
 docker run --rm \
-  gunicorn-prometheus-exporter:latest health
+  gunicorn-prometheus-exporter:0.1.8 health
 ```
 
 ## Kubernetes Deployment
@@ -176,7 +178,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: your-registry/gunicorn-app:latest
+          image: princekrroshan01/gunicorn-app:0.1.8
           ports:
             - containerPort: 8000
               name: http
@@ -191,7 +193,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: your-registry/gunicorn-prometheus-exporter:latest
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
           ports:
             - containerPort: 9091
               name: metrics
@@ -230,7 +232,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: your-registry/gunicorn-app:latest
+          image: princekrroshan01/gunicorn-app:0.1.8
           ports:
             - containerPort: 8000
               name: http
@@ -244,7 +246,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: your-registry/gunicorn-prometheus-exporter:latest
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
           ports:
             - containerPort: 9091
               name: metrics
@@ -266,8 +268,8 @@ spec:
 docker build -t gunicorn-prometheus-exporter:latest .
 
 # Tag for Docker Hub
-docker tag gunicorn-prometheus-exporter:latest your-username/gunicorn-prometheus-exporter:latest
-docker tag gunicorn-prometheus-exporter:latest your-username/gunicorn-prometheus-exporter:0.1.7
+docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:latest
+docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:0.1.8
 ```
 
 ### 2. Push to Docker Hub
@@ -277,8 +279,8 @@ docker tag gunicorn-prometheus-exporter:latest your-username/gunicorn-prometheus
 docker login
 
 # Push the images
-docker push your-username/gunicorn-prometheus-exporter:latest
-docker push your-username/gunicorn-prometheus-exporter:0.1.7
+docker push princekrroshan01/gunicorn-prometheus-exporter:latest
+docker push princekrroshan01/gunicorn-prometheus-exporter:0.1.8
 ```
 
 ### 3. Automated Builds
@@ -336,7 +338,7 @@ Run the sidecar in debug mode:
 ```bash
 docker run -it --rm \
   -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
-  gunicorn-prometheus-exporter:latest \
+  gunicorn-prometheus-exporter:0.1.8 \
   python3 /app/sidecar.py --port 9091 --bind 0.0.0.0
 ```
 

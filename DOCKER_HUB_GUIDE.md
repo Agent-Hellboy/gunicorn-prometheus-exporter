@@ -17,7 +17,7 @@ This guide explains how to build and publish the Gunicorn Prometheus Exporter si
 docker build -t gunicorn-prometheus-exporter:latest .
 
 # Build with specific version tag
-docker build -t gunicorn-prometheus-exporter:0.1.7 .
+docker build -t gunicorn-prometheus-exporter:0.1.8 .
 ```
 
 ### Build the Sample Application Image
@@ -29,15 +29,15 @@ docker build -f docker/Dockerfile.app -t gunicorn-app:latest .
 
 ## Step 2: Tag Images for Docker Hub
 
-Replace `your-username` with your actual Docker Hub username:
+Replace `princekrroshan01` with your actual Docker Hub username:
 
 ```bash
 # Tag sidecar image
-docker tag gunicorn-prometheus-exporter:latest your-username/gunicorn-prometheus-exporter:latest
-docker tag gunicorn-prometheus-exporter:latest your-username/gunicorn-prometheus-exporter:0.1.7
+docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:latest
+docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:0.1.8
 
 # Tag application image
-docker tag gunicorn-app:latest your-username/gunicorn-app:latest
+docker tag gunicorn-app:latest princekrroshan01/gunicorn-app:latest
 ```
 
 ## Step 3: Login to Docker Hub
@@ -52,11 +52,11 @@ Enter your Docker Hub username and password when prompted.
 
 ```bash
 # Push sidecar image
-docker push your-username/gunicorn-prometheus-exporter:latest
-docker push your-username/gunicorn-prometheus-exporter:0.1.7
+docker push princekrroshan01/gunicorn-prometheus-exporter:latest
+docker push princekrroshan01/gunicorn-prometheus-exporter:0.1.8
 
 # Push application image
-docker push your-username/gunicorn-app:latest
+docker push princekrroshan01/gunicorn-app:latest
 ```
 
 ## Step 5: Verify Upload
@@ -158,8 +158,8 @@ docker buildx create --name multiarch --driver docker-container --use
 
 # Build for multiple architectures
 docker buildx build --platform linux/amd64,linux/arm64 \
-  -t your-username/gunicorn-prometheus-exporter:latest \
-  -t your-username/gunicorn-prometheus-exporter:0.1.7 \
+  -t princekrroshan01/gunicorn-prometheus-exporter:latest \
+  -t princekrroshan01/gunicorn-prometheus-exporter:0.1.8 \
   --push .
 ```
 
@@ -281,7 +281,7 @@ FROM python:3.11-slim
 curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
 
 # Scan image
-trivy image your-username/gunicorn-prometheus-exporter:latest
+trivy image princekrroshan01/gunicorn-prometheus-exporter:latest
 ```
 
 ## Image Optimization
@@ -340,14 +340,14 @@ Add these secrets to your GitHub repository settings:
 
 ```bash
 # Pull the image
-docker pull your-username/gunicorn-prometheus-exporter:latest
+docker pull princekrroshan01/gunicorn-prometheus-exporter:latest
 
 # Run as sidecar
 docker run -d \
   --name gunicorn-sidecar \
   -p 9091:9091 \
   -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
-  your-username/gunicorn-prometheus-exporter:latest
+  princekrroshan01/gunicorn-prometheus-exporter:latest
 ```
 
 ### Docker Compose
@@ -356,7 +356,7 @@ docker run -d \
 version: '3.8'
 services:
   sidecar:
-    image: your-username/gunicorn-prometheus-exporter:latest
+    image: princekrroshan01/gunicorn-prometheus-exporter:latest
     ports:
       - "9091:9091"
     environment:
@@ -377,7 +377,7 @@ spec:
     spec:
       containers:
         - name: prometheus-exporter
-          image: your-username/gunicorn-prometheus-exporter:latest
+          image: princekrroshan01/gunicorn-prometheus-exporter:latest
           ports:
             - containerPort: 9091
 ```
@@ -395,13 +395,13 @@ spec:
 
 ```bash
 # Check image size
-docker images your-username/gunicorn-prometheus-exporter
+docker images princekrroshan01/gunicorn-prometheus-exporter
 
 # Inspect image layers
-docker history your-username/gunicorn-prometheus-exporter:latest
+docker history princekrroshan01/gunicorn-prometheus-exporter:latest
 
 # Test image locally
-docker run --rm your-username/gunicorn-prometheus-exporter:latest --help
+docker run --rm princekrroshan01/gunicorn-prometheus-exporter:latest --help
 ```
 
 ## Maintenance
@@ -416,7 +416,7 @@ docker run --rm your-username/gunicorn-prometheus-exporter:latest --help
 
 ### Version Management
 
-- Use semantic versioning (e.g., 0.1.7)
+- Use semantic versioning (e.g., 0.1.8)
 - Tag releases in Git
 - Maintain compatibility between versions
 - Document breaking changes
@@ -427,4 +427,4 @@ For issues and questions:
 
 - **GitHub Issues**: [Create an issue](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues)
 - **Documentation**: [Read the docs](https://princekrroshan01.github.io/gunicorn-prometheus-exporter)
-- **Docker Hub**: [Repository page](https://hub.docker.com/r/your-username/gunicorn-prometheus-exporter)
+- **Docker Hub**: [Repository page](https://hub.docker.com/r/princekrroshan01/gunicorn-prometheus-exporter)

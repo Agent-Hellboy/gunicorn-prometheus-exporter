@@ -8,7 +8,7 @@ Production-ready Prometheus metrics exporter for Gunicorn applications, designed
 
 ```bash
 # Sidecar exporter
-docker pull princekrroshan01/gunicorn-prometheus-exporter:latest
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.8
 
 # Sample Flask application (for testing)
 docker pull princekrroshan01/gunicorn-app:latest
@@ -31,7 +31,7 @@ services:
       - prometheus_data:/tmp/prometheus_multiproc
 
   sidecar:
-    image: princekrroshan01/gunicorn-prometheus-exporter:latest
+    image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
     ports:
       - "9091:9091"
     environment:
@@ -63,7 +63,7 @@ spec:
               mountPath: /tmp/prometheus_multiproc
 
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:latest
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
           ports:
             - containerPort: 9091
           volumeMounts:
@@ -140,7 +140,7 @@ services:
       - "6379:6379"
 
   sidecar:
-    image: princekrroshan01/gunicorn-prometheus-exporter:latest
+    image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
     environment:
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
@@ -209,7 +209,7 @@ scrape_configs:
 
 ## 🔗 Related Images
 
-- `princekrroshan01/gunicorn-prometheus-exporter:latest` - Sidecar exporter
+- `princekrroshan01/gunicorn-prometheus-exporter:0.1.8` - Sidecar exporter
 - `princekrroshan01/gunicorn-app:latest` - Sample Flask application
 
 ## 🆘 Troubleshooting

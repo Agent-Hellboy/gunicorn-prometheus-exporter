@@ -17,19 +17,23 @@ This guide covers deploying the exporter as a sidecar container in Kubernetes, i
 
 ### Prerequisites
 
-- Kubernetes cluster (1.19+)
+- Kubernetes cluster (1.23+) - Required for `autoscaling/v2` HPA
 - kubectl configured
 - Docker (for local testing)
 
 ### 1. Pull Pre-built Images
 
 ```bash
-# Sidecar exporter image
-docker pull princekrroshan01/gunicorn-prometheus-exporter:latest
+# Sidecar exporter image (use specific version for production)
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.8
 
 # Sample Flask application (for testing)
-docker pull princekrroshan01/gunicorn-app:latest
+docker pull princekrroshan01/gunicorn-app:0.1.8
 ```
+
+**Production Note**: Always use specific version tags (e.g., `0.1.8`) instead of `:latest` for reproducibility and stability.
+
+> *Redis recommendation*: Redis storage is required for multi-worker deployments. The manifests enable it by default (`REDIS_ENABLED=true`). Only disable Redis when running a single worker for local demos.
 
 Images are automatically built and published for:
 - `linux/amd64` (x86_64)
@@ -132,7 +136,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: princekrroshan01/gunicorn-app:latest
+          image: princekrroshan01/gunicorn-app:0.1.8
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -158,7 +162,7 @@ spec:
               cpu: "500m"
 
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:latest
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true

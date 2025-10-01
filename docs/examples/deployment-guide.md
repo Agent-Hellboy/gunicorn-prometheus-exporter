@@ -115,7 +115,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: your-registry/gunicorn-app:latest
+          image: princekrroshan01/gunicorn-app:0.1.8
           ports:
             - containerPort: 8000
               name: http
@@ -169,7 +169,7 @@ Pre-built Docker images are available on Docker Hub:
 
 ```bash
 # Sidecar exporter image
-docker pull princekrroshan01/gunicorn-prometheus-exporter:latest
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.8
 
 # Sample Flask application (for testing)
 docker pull princekrroshan01/gunicorn-app:latest
@@ -181,7 +181,7 @@ Images are automatically built and published for:
 
 ### Quick Start with Docker Compose
 
-The easiest way to test the sidecar deployment locally:
+> *Production recommendation*: Keep Redis storage enabled (`REDIS_ENABLED=true`) so that metrics aggregate across all workers/pods. Only disable Redis for single-worker demos.
 
 ```bash
 # Clone the repository
@@ -247,7 +247,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:latest
+          image: princekrroshan01/gunicorn-app:0.1.8
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -276,7 +276,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:latest
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true

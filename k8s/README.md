@@ -111,7 +111,7 @@ The sidecar container supports the following environment variables:
 
 #### 1. Update Image References
 
-Replace `your-registry/gunicorn-app:latest` and `your-registry/gunicorn-prometheus-exporter:latest` with your actual image references.
+Replace the default registry `docker.io/princekrroshan01/...` only if you are publishing to a different registry.
 
 #### 2. Adjust Resource Limits
 

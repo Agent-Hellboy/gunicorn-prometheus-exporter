@@ -1,9 +1,9 @@
 # Gunicorn Prometheus Exporter
 
-[![CI](https://github.com/princekrroshan01/gunicorn-prometheus-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/princekrroshan01/gunicorn-prometheus-exporter/actions/workflows/ci.yml)
+[![CI](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter/graph/badge.svg?token=NE7JS4FZHC)](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter)
 [![PyPI - Version](https://img.shields.io/pypi/v/gunicorn-prometheus-exporter.svg)](https://pypi.org/project/gunicorn-prometheus-exporter/)
-[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://princekrroshan01.github.io/gunicorn-prometheus-exporter)
+[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://Agent-Hellboy.github.io/gunicorn-prometheus-exporter)
 [![PyPI Downloads](https://static.pepy.tech/badge/gunicorn-prometheus-exporter)](https://pepy.tech/projects/gunicorn-prometheus-exporter)
 
 A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities, featuring innovative Redis-based storage, YAML configuration support, and advanced signal handling. This Gunicorn worker plugin exports Prometheus metrics to monitor worker performance, including memory usage, CPU usage, request durations, and error tracking (trying to replace <https://docs.gunicorn.org/en/stable/instrumentation.html> with extra info). It also aims to replace request-level tracking, such as the number of requests made to a particular endpoint, for any framework (e.g., Flask, Django, and others) that conforms to the WSGI specification.
@@ -609,7 +609,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: your-registry/gunicorn-app:latest
+          image: princekrroshan01/gunicorn-app:0.1.8
           ports:
             - containerPort: 8200
               name: http
@@ -624,7 +624,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: your-registry/gunicorn-prometheus-exporter:latest
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
           ports:
             - containerPort: 9091
               name: metrics
@@ -726,3 +726,7 @@ make quick-test
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+> *Production recommendation*: All Docker/Kubernetes examples ship with `REDIS_ENABLED=true`. Redis-backed storage is the supported default for any multi-worker or multi-pod deployment. Only disable Redis when running a single Gunicorn worker for local demos.
+
+See [Docker README](../docker/README.md) and [Kubernetes Guide](../k8s/README.md) for deployment details.

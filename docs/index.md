@@ -103,9 +103,9 @@ git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter.git
 cd gunicorn-prometheus-exporter
 docker-compose up --build
 
-# Or pull pre-built images
-docker pull princekrroshan01/gunicorn-prometheus-exporter:latest
-docker pull princekrroshan01/gunicorn-app:latest
+# Or pull pre-built images (pin versions for reproducibility)
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.8
+docker pull princekrroshan01/gunicorn-app:0.1.8
 ```
 
 **Available Services:**
@@ -119,6 +119,8 @@ docker pull princekrroshan01/gunicorn-app:latest
 - Production-ready security contexts
 - Automated CI/CD with GitHub Actions
 - Complete monitoring stack included
+
+> *Production recommendation*: Use Redis-backed storage (`REDIS_ENABLED=true`) for all multi-worker or multi-pod deployments. The provided Docker Compose and Kubernetes manifests enable Redis by default.
 
 See [Docker README](../docker/README.md) and [Kubernetes Guide](../k8s/README.md) for deployment details.
 

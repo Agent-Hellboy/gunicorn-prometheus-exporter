@@ -1,6 +1,6 @@
 # Basic Gunicorn Prometheus Exporter Configuration
-# This configuration uses standard file-based multiprocess storage for Prometheus metrics.
-# Perfect for simple deployments without Redis requirements.
+# Production-ready configuration with Redis-backed storage enabled by default.
+# For local one-off testing, set exporter.redis.enabled=false to fall back to file storage.
 
 exporter:
   prometheus:
@@ -21,8 +21,8 @@ exporter:
     keepalive: 2
 
   redis:
-    enabled: false
-    host: "127.0.0.1"
+    enabled: true
+    host: "redis"
     port: 6379
     db: 0
     password: null
