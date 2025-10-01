@@ -103,10 +103,10 @@ run_health() {
     echo "Running health check..."
 
     PORT=${PROMETHEUS_METRICS_PORT:-$DEFAULT_PORT}
-    BIND=${PROMETHEUS_BIND_ADDRESS:-$DEFAULT_BIND}
 
     # Check if metrics endpoint is responding
-    if curl -f -s "http://$BIND:$PORT/metrics" > /dev/null; then
+    # Use 127.0.0.1 instead of BIND address since 0.0.0.0 doesn't work with curl
+    if curl -f -s "http://127.0.0.1:$PORT/metrics" > /dev/null; then
         echo "Health check passed - metrics endpoint is responding"
         exit 0
     else
