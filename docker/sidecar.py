@@ -33,6 +33,12 @@ from prometheus_client import CollectorRegistry, Gauge, start_http_server
 from prometheus_client.multiprocess import MultiProcessCollector
 
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
 # Import our modules
 try:
     from gunicorn_prometheus_exporter.backend import (
@@ -41,21 +47,12 @@ try:
         setup_redis_metrics,
         teardown_redis_metrics,
     )
-except ImportError:
-    # Fallback if package not installed
-    sys.path.insert(0, "/usr/local/lib/python3.11/site-packages")
-    from gunicorn_prometheus_exporter.backend import (
-        get_redis_storage_manager,
-        is_redis_enabled,
-        setup_redis_metrics,
-        teardown_redis_metrics,
+except ImportError as e:
+    logger.error("Failed to import gunicorn_prometheus_exporter package: %s", e)
+    logger.error(
+        "Ensure the package is installed: pip install gunicorn-prometheus-exporter"
     )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+    sys.exit(1)
 
 # Global variables for cleanup
 http_server = None
