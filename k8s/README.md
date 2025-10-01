@@ -127,17 +127,7 @@ resources:
     cpu: "500m"
 ```
 
-#### 3. Configure Redis Password
-
-Update the Redis secret:
-
-```bash
-echo -n "your-password" | base64
-```
-
-Then update the `redis-secret` in `redis-deployment.yaml`.
-
-#### 4. Modify Prometheus Configuration
+#### 3. Modify Prometheus Configuration
 
 Edit the `prometheus-config` ConfigMap in `prometheus-deployment.yaml` to customize scraping rules.
 
@@ -273,6 +263,71 @@ kubectl logs -f deployment/grafana
 
 ## Security
 
+### Secret Management
+
+*Important*: All secrets are managed via templates and should be created at deployment time, never committed to version control.
+
+**Available Secret Templates:**
+- `grafana-secret.yaml.template` - Grafana admin password
+- `redis-secret.yaml.template` - Redis authentication password (optional)
+
+**Creating Secrets:**
+
+```bash
+# Required: Grafana admin password
+kubectl create secret generic grafana-secret \
+  --from-literal=admin-password="$(openssl rand -base64 32)"
+
+# Optional: Redis password (for production with authentication enabled)
+kubectl create secret generic redis-secret \
+  --from-literal=password="$(openssl rand -base64 32)"
+```
+
+*Note*: Redis runs without password authentication by default for development/testing. For production, enable authentication by:
+1. Creating the `redis-secret` as shown above
+2. Uncommenting the password-related configuration in `redis-deployment.yaml`
+
+**Protected Files:**
+All `*-secret.yaml` files are blocked by `.gitignore` to prevent accidental commits.
+
+### Security Contexts
+
+All containers run with hardened security contexts following the principle of least privilege:
+
+**Application Container:**
+- Non-root user (UID 1000)
+- No privilege escalation
+- All capabilities dropped
+- Writable `/tmp` for Prometheus multiprocess files
+
+**Sidecar Container:**
+- Non-root user (UID 1000)
+- Read-only root filesystem
+- No privilege escalation
+- All capabilities dropped
+
+**Redis Container:**
+- Non-root user (UID 999, redis user)
+- No privilege escalation
+- All capabilities dropped
+
+**Prometheus Container:**
+- Non-root user (UID 65534, nobody)
+- No privilege escalation
+- All capabilities dropped
+
+**Grafana Container:**
+- Non-root user (UID 472, grafana user)
+- No privilege escalation
+- All capabilities dropped
+
+### Image Versions
+
+All container images use pinned versions for reproducible deployments:
+- `redis:7-alpine`
+- `prom/prometheus:v2.54.1`
+- `grafana/grafana:11.2.0`
+
 ### Network Policies
 
 Create network policies to restrict traffic:
@@ -328,6 +383,28 @@ metadata:
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
 ```
+
+### Additional Security Recommendations
+
+1. *Secrets Management*:
+   - Use external secrets operators (AWS Secrets Manager, HashiCorp Vault, etc.) for production
+   - Rotate secrets regularly
+   - Use RBAC to restrict secret access
+
+2. *Network Security*:
+   - Enable TLS/SSL for all external-facing services
+   - Use service mesh for mTLS between services
+   - Implement proper network policies
+
+3. *Monitoring*:
+   - Enable audit logging
+   - Monitor for security events
+   - Set up alerts for suspicious activities
+
+4. *Access Control*:
+   - Use RBAC for fine-grained permissions
+   - Enable authentication for Prometheus and Grafana
+   - Secure Redis with password authentication in production
 
 ## Production Considerations
 
