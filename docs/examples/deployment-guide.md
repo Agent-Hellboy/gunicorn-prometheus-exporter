@@ -172,7 +172,7 @@ Pre-built Docker images are available on Docker Hub:
 docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.8
 
 # Sample Flask application (for testing)
-docker pull princekrroshan01/gunicorn-app:latest
+docker pull princekrroshan01/gunicorn-app:0.1.8
 ```
 
 Images are automatically built and published for:

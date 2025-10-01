@@ -58,7 +58,7 @@ kubectl apply -f grafana-service.yaml
 Deploy everything at once:
 
 ```bash
-kubectl apply -f .
+kubectl apply -f '*.yaml'
 ```
 
 ## Accessing the Services

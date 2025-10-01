@@ -303,7 +303,8 @@ All images use pinned versions for reproducible deployments:
 - `redis:7-alpine`
 - `prom/prometheus:v2.54.1`
 - `grafana/grafana:11.2.0`
-- `princekrroshan01/gunicorn-prometheus-exporter:latest` (or use version tags)
+- `princekrroshan01/gunicorn-prometheus-exporter:0.1.8`
+- `princekrroshan01/gunicorn-app:0.1.8`
 
 ## Configuration
 
