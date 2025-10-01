@@ -8,10 +8,10 @@ Production-ready Prometheus metrics exporter for Gunicorn applications, designed
 
 ```bash
 # Sidecar exporter
-docker pull agent-hellboy/gunicorn-prometheus-exporter:latest
+docker pull princekrroshan01/gunicorn-prometheus-exporter:latest
 
 # Sample Flask application (for testing)
-docker pull agent-hellboy/gunicorn-app:latest
+docker pull princekrroshan01/gunicorn-app:latest
 ```
 
 ### Docker Compose
@@ -21,7 +21,7 @@ version: '3.8'
 
 services:
   app:
-    image: agent-hellboy/gunicorn-app:latest
+    image: princekrroshan01/gunicorn-app:latest
     ports:
       - "8000:8000"
     environment:
@@ -31,7 +31,7 @@ services:
       - prometheus_data:/tmp/prometheus_multiproc
 
   sidecar:
-    image: agent-hellboy/gunicorn-prometheus-exporter:latest
+    image: princekrroshan01/gunicorn-prometheus-exporter:latest
     ports:
       - "9091:9091"
     environment:
@@ -63,7 +63,7 @@ spec:
               mountPath: /tmp/prometheus_multiproc
 
         - name: prometheus-exporter
-          image: agent-hellboy/gunicorn-prometheus-exporter:latest
+          image: princekrroshan01/gunicorn-prometheus-exporter:latest
           ports:
             - containerPort: 9091
           volumeMounts:
@@ -140,7 +140,7 @@ services:
       - "6379:6379"
 
   sidecar:
-    image: agent-hellboy/gunicorn-prometheus-exporter:latest
+    image: princekrroshan01/gunicorn-prometheus-exporter:latest
     environment:
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
@@ -209,8 +209,8 @@ scrape_configs:
 
 ## 🔗 Related Images
 
-- `agent-hellboy/gunicorn-prometheus-exporter:latest` - Sidecar exporter
-- `agent-hellboy/gunicorn-app:latest` - Sample Flask application
+- `princekrroshan01/gunicorn-prometheus-exporter:latest` - Sidecar exporter
+- `princekrroshan01/gunicorn-app:latest` - Sample Flask application
 
 ## 🆘 Troubleshooting
 

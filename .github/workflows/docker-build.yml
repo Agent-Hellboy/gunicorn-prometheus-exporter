@@ -20,16 +20,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Compute image names (lowercase)
+      - name: Compute image names
         id: names
         run: |
-          OWNER_LC="${GITHUB_REPOSITORY_OWNER,,}"
+          # Use Docker Hub username (princekrroshan01) instead of GitHub username
+          DOCKER_HUB_USER="princekrroshan01"
           REPO="${GITHUB_REPOSITORY#*/}"
           REPO_LC="${REPO,,}"
-          echo "owner=${OWNER_LC}" >> $GITHUB_OUTPUT
+          echo "owner=${DOCKER_HUB_USER}" >> $GITHUB_OUTPUT
           echo "repo=${REPO_LC}" >> $GITHUB_OUTPUT
-          echo "image=${OWNER_LC}/${REPO_LC}" >> $GITHUB_OUTPUT
-          echo "Computed image: ${OWNER_LC}/${REPO_LC}"
+          echo "image=${DOCKER_HUB_USER}/${REPO_LC}" >> $GITHUB_OUTPUT
+          echo "Computed image: ${DOCKER_HUB_USER}/${REPO_LC}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

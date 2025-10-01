@@ -87,7 +87,7 @@ The documentation is automatically deployed to GitHub Pages when changes are pus
 1. **Trigger**: Changes to `docs/`, `mkdocs.yml`, or the docs workflow
 2. **Build**: MkDocs builds the documentation using Python 3.9
 3. **Deploy**: Built documentation is deployed to GitHub Pages
-4. **URL**: Available at `https://agent-hellboy.github.io/gunicorn-prometheus-exporter`
+4. **URL**: Available at `https://princekrroshan01.github.io/gunicorn-prometheus-exporter`
 
 ### Manual Deployment
 
@@ -101,6 +101,6 @@ If you need to manually trigger a documentation deployment:
 ## Related Links
 
 - [GitHub Repository](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter)
-- [Live Documentation](https://agent-hellboy.github.io/gunicorn-prometheus-exporter)
+- [Live Documentation](https://princekrroshan01.github.io/gunicorn-prometheus-exporter)
 - [Issues](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues)
 - [Pull Requests](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/pulls)

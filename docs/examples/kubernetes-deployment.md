@@ -25,10 +25,10 @@ This guide covers deploying the exporter as a sidecar container in Kubernetes, i
 
 ```bash
 # Sidecar exporter image
-docker pull agent-hellboy/gunicorn-prometheus-exporter:latest
+docker pull princekrroshan01/gunicorn-prometheus-exporter:latest
 
 # Sample Flask application (for testing)
-docker pull agent-hellboy/gunicorn-app:latest
+docker pull princekrroshan01/gunicorn-app:latest
 ```
 
 Images are automatically built and published for:
@@ -132,7 +132,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: agent-hellboy/gunicorn-app:latest
+          image: princekrroshan01/gunicorn-app:latest
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -158,7 +158,7 @@ spec:
               cpu: "500m"
 
         - name: prometheus-exporter
-          image: agent-hellboy/gunicorn-prometheus-exporter:latest
+          image: princekrroshan01/gunicorn-prometheus-exporter:latest
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -299,7 +299,7 @@ All images use pinned versions for reproducible deployments:
 - `redis:7-alpine`
 - `prom/prometheus:v2.54.1`
 - `grafana/grafana:11.2.0`
-- `agent-hellboy/gunicorn-prometheus-exporter:latest` (or use version tags)
+- `princekrroshan01/gunicorn-prometheus-exporter:latest` (or use version tags)
 
 ## Configuration
 

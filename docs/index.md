@@ -104,8 +104,8 @@ cd gunicorn-prometheus-exporter
 docker-compose up --build
 
 # Or pull pre-built images
-docker pull agent-hellboy/gunicorn-prometheus-exporter:latest
-docker pull agent-hellboy/gunicorn-app:latest
+docker pull princekrroshan01/gunicorn-prometheus-exporter:latest
+docker pull princekrroshan01/gunicorn-app:latest
 ```
 
 **Available Services:**

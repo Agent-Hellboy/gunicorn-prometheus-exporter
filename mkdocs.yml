@@ -1,7 +1,7 @@
 site_name: Gunicorn Prometheus Exporter
 site_description: Universal Gunicorn Monitoring - Works with Django, FastAPI, Flask, and any WSGI framework
 site_author: Prince Roshan
-site_url: https://agent-hellboy.github.io/gunicorn-prometheus-exporter
+site_url: https://princekrroshan01.github.io/gunicorn-prometheus-exporter
 
 repo_name: Agent-Hellboy/gunicorn-prometheus-exporter
 repo_url: https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter

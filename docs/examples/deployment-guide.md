@@ -169,10 +169,10 @@ Pre-built Docker images are available on Docker Hub:
 
 ```bash
 # Sidecar exporter image
-docker pull agent-hellboy/gunicorn-prometheus-exporter:latest
+docker pull princekrroshan01/gunicorn-prometheus-exporter:latest
 
 # Sample Flask application (for testing)
-docker pull agent-hellboy/gunicorn-app:latest
+docker pull princekrroshan01/gunicorn-app:latest
 ```
 
 Images are automatically built and published for:
@@ -247,7 +247,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: agent-hellboy/gunicorn-app:latest
+          image: princekrroshan01/gunicorn-app:latest
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -276,7 +276,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: agent-hellboy/gunicorn-prometheus-exporter:latest
+          image: princekrroshan01/gunicorn-prometheus-exporter:latest
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true

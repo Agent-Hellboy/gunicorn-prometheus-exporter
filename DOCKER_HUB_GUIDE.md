@@ -426,5 +426,5 @@ docker run --rm your-username/gunicorn-prometheus-exporter:latest --help
 For issues and questions:
 
 - **GitHub Issues**: [Create an issue](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues)
-- **Documentation**: [Read the docs](https://agent-hellboy.github.io/gunicorn-prometheus-exporter)
+- **Documentation**: [Read the docs](https://princekrroshan01.github.io/gunicorn-prometheus-exporter)
 - **Docker Hub**: [Repository page](https://hub.docker.com/r/your-username/gunicorn-prometheus-exporter)

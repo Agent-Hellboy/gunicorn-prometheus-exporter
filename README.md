@@ -1,9 +1,9 @@
 # Gunicorn Prometheus Exporter
 
-[![CI](https://github.com/agent-hellboy/gunicorn-prometheus-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/agent-hellboy/gunicorn-prometheus-exporter/actions/workflows/ci.yml)
+[![CI](https://github.com/princekrroshan01/gunicorn-prometheus-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/princekrroshan01/gunicorn-prometheus-exporter/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter/graph/badge.svg?token=NE7JS4FZHC)](https://codecov.io/gh/Agent-Hellboy/gunicorn-prometheus-exporter)
 [![PyPI - Version](https://img.shields.io/pypi/v/gunicorn-prometheus-exporter.svg)](https://pypi.org/project/gunicorn-prometheus-exporter/)
-[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://agent-hellboy.github.io/gunicorn-prometheus-exporter)
+[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://princekrroshan01.github.io/gunicorn-prometheus-exporter)
 [![PyPI Downloads](https://static.pepy.tech/badge/gunicorn-prometheus-exporter)](https://pepy.tech/projects/gunicorn-prometheus-exporter)
 
 A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities, featuring innovative Redis-based storage, YAML configuration support, and advanced signal handling. This Gunicorn worker plugin exports Prometheus metrics to monitor worker performance, including memory usage, CPU usage, request durations, and error tracking (trying to replace <https://docs.gunicorn.org/en/stable/instrumentation.html> with extra info). It also aims to replace request-level tracking, such as the number of requests made to a particular endpoint, for any framework (e.g., Flask, Django, and others) that conforms to the WSGI specification.
@@ -305,7 +305,7 @@ curl http://YOUR_BIND_ADDRESS:9091/metrics
 
 ## Documentation
 
-**Complete documentation is available at: [https://agent-hellboy.github.io/gunicorn-prometheus-exporter](https://agent-hellboy.github.io/gunicorn-prometheus-exporter)**
+**Complete documentation is available at: [https://princekrroshan01.github.io/gunicorn-prometheus-exporter](https://princekrroshan01.github.io/gunicorn-prometheus-exporter)**
 
 The documentation includes:
 
@@ -708,7 +708,7 @@ See [`system-test/README.md`](system-test/README.md) for detailed documentation.
 
 ## Contributing
 
-Contributions are welcome! Please see our [contributing guide](https://agent-hellboy.github.io/gunicorn-prometheus-exporter/contributing/) for details.
+Contributions are welcome! Please see our [contributing guide](https://princekrroshan01.github.io/gunicorn-prometheus-exporter/contributing/) for details.
 
 **Current Issues**: Check our [GitHub Issues](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues) for known issues and feature requests.
 

@@ -437,5 +437,5 @@ Thank you for contributing to the Gunicorn Prometheus Exporter! Your contributio
 
 - [GitHub Repository](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter)
 - [Issue Tracker](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues)
-- [Documentation](https://agent-hellboy.github.io/gunicorn-prometheus-exporter/)
+- [Documentation](https://princekrroshan01.github.io/gunicorn-prometheus-exporter/)
 - [PyPI Package](https://pypi.org/project/gunicorn-prometheus-exporter/)
