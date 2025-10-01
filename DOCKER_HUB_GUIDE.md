@@ -197,16 +197,25 @@ jobs:
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-    - name: Build and push sidecar image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./Dockerfile
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
+      username: ${{ secrets.DOCKER_USERNAME }}
+      password: ${{ secrets.DOCKER_PASSWORD }}
+  - name: Extract metadata
+    id: meta
+    uses: docker/metadata-action@v5
+    with:
+      images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      tags: |
+        type=ref,event=tag
+        type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+  - name: Build and push sidecar image
+    uses: docker/build-push-action@v5
+    with:
+      context: .
+      file: ./Dockerfile
+      platforms: linux/amd64,linux/arm64
+      push: true
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
 ```
 
 #### 2. **Development Workflow** (`.github/workflows/docker-build.yml`)
