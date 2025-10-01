@@ -135,6 +135,22 @@ pip install gunicorn-prometheus-exporter[redis]
 pip install gunicorn-prometheus-exporter[all]
 ```
 
+### Docker Image (Docker Hub)
+
+The published container lives at `princekrroshan01/gunicorn-prometheus-exporter`. See the Docker Hub listing for tags and architecture support: <https://hub.docker.com/r/princekrroshan01/gunicorn-prometheus-exporter>
+
+```bash
+# Pull the latest stable exporter image
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.9
+
+# Run the exporter standalone
+docker run --rm -p 9091:9091 princekrroshan01/gunicorn-prometheus-exporter:0.1.9
+```
+
+The container exposes metrics on `0.0.0.0:9091` by default. Override behaviour via environment variables such as `PROMETHEUS_METRICS_PORT`, `PROMETHEUS_BIND_ADDRESS`, and `PROMETHEUS_MULTIPROC_DIR`.
+
+For the sidecar pattern, reuse the manifest under *Deployment Options → Sidecar Deployment* and reference the same image/tag.
+
 ### Basic Usage
 
 #### Option A: YAML Configuration (Recommended)
