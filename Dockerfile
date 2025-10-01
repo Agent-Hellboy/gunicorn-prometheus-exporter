@@ -53,8 +53,9 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy sidecar script
+# Copy sidecar script and configuration
 COPY docker/sidecar.py /app/sidecar.py
+COPY docker/gunicorn-prometheus-exporter-basic.yml /app/
 COPY docker/entrypoint.sh /app/entrypoint.sh
 
 # Make scripts executable

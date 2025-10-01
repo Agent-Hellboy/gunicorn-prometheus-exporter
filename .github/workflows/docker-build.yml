@@ -1,5 +1,4 @@
-name: Build and Push Docker Images
-
+name: Release Sidecar to Docker Hub
 on:
   release:
     types: [published]
