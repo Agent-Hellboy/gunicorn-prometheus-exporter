@@ -27,7 +27,7 @@ COPY . .
 RUN mkdir -p /tmp/prometheus_multiproc
 
 # Expose ports
-EXPOSE 8200 9091
+EXPOSE 8000 9091
 
 # Set environment variables
 ENV PROMETHEUS_METRICS_PORT=9091
@@ -48,7 +48,7 @@ services:
   app:
     build: .
     ports:
-      - "8200:8200" # Application port
+      - "8000:8000" # Application port
       - "9091:9091" # Metrics port
     environment:
       - PROMETHEUS_METRICS_PORT=9091
@@ -117,7 +117,7 @@ spec:
         - name: app
           image: your-registry/gunicorn-app:latest
           ports:
-            - containerPort: 8200
+            - containerPort: 8000
               name: http
             - containerPort: 9091
               name: metrics
@@ -151,8 +151,8 @@ spec:
     app: gunicorn-app
   ports:
     - name: http
-      port: 8200
-      targetPort: 8200
+      port: 8000
+      targetPort: 8000
     - name: metrics
       port: 9091
       targetPort: 9091
@@ -169,10 +169,10 @@ Pre-built Docker images are available on Docker Hub:
 
 ```bash
 # Sidecar exporter image
-docker pull agenthellboy/gunicorn-prometheus-exporter:latest
+docker pull agent-hellboy/gunicorn-prometheus-exporter:latest
 
 # Sample Flask application (for testing)
-docker pull agenthellboy/gunicorn-app:latest
+docker pull agent-hellboy/gunicorn-app:latest
 ```
 
 Images are automatically built and published for:
@@ -195,7 +195,9 @@ docker-compose up --build
 # - Application: http://localhost:8000
 # - Metrics: http://localhost:9091/metrics
 # - Prometheus: http://localhost:9090
-# - Grafana: http://localhost:3000 (admin/admin)
+# - Grafana: http://localhost:3000
+#   Username: admin
+#   Password: from grafana-secret (kubectl get secret grafana-secret -o jsonpath='{.data.admin-password}' | base64 -d)
 ```
 
 See [docker/README.md](../../docker/README.md) for detailed Docker Compose documentation.
@@ -245,7 +247,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: agenthellboy/gunicorn-app:latest
+          image: agent-hellboy/gunicorn-app:latest
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -274,7 +276,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: agenthellboy/gunicorn-prometheus-exporter:latest
+          image: agent-hellboy/gunicorn-prometheus-exporter:latest
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true

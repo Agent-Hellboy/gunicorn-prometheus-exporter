@@ -104,8 +104,8 @@ cd gunicorn-prometheus-exporter
 docker-compose up --build
 
 # Or pull pre-built images
-docker pull agenthellboy/gunicorn-prometheus-exporter:latest
-docker pull agenthellboy/gunicorn-app:latest
+docker pull agent-hellboy/gunicorn-prometheus-exporter:latest
+docker pull agent-hellboy/gunicorn-app:latest
 ```
 
 **Available Services:**
@@ -129,7 +129,7 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 | Service              | URL                             | Purpose                                                       |
 | -------------------- | ------------------------------- | ------------------------------------------------------------- |
 | *Prometheus UI*    | `http://localhost:9090`         | Prometheus web interface for querying and visualizing metrics |
-| *Your Application* | `http://localhost:8200`         | Your actual web application (Gunicorn server)                 |
+| *Your Application* | `http://localhost:8000`         | Your actual web application (Gunicorn server)                 |
 | *Metrics Endpoint* | `http://127.0.0.1:9091/metrics` | Raw metrics data for Prometheus to scrape                     |
 
 > *Note*: The metrics endpoint URL is configurable through environment variables. The default port is 9091 to avoid conflicts with Prometheus UI (9090).

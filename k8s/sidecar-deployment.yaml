@@ -20,6 +20,9 @@ spec:
         prometheus.io/port: "9091"
         prometheus.io/path: "/metrics"
     spec:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
       containers:
         # Main application container
         - name: app

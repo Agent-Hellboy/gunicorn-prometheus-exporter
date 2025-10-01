@@ -19,11 +19,5 @@ spec:
       ports:
         - protocol: TCP
           port: 9090
-    # Allow Prometheus to scrape gunicorn metrics (actually gunicorn connects to Prometheus)
-    - from:
-        - podSelector:
-            matchLabels:
-              app: gunicorn-app
-      ports:
-        - protocol: TCP
-          port: 9090
+  # Note: Prometheus scrapes targets via egress, not ingress
+  # No ingress from app needed - Prometheus pulls metrics from app:9091

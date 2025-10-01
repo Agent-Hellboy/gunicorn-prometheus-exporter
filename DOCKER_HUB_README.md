@@ -8,10 +8,10 @@ Production-ready Prometheus metrics exporter for Gunicorn applications, designed
 
 ```bash
 # Sidecar exporter
-docker pull agenthellboy/gunicorn-prometheus-exporter:latest
+docker pull agent-hellboy/gunicorn-prometheus-exporter:latest
 
 # Sample Flask application (for testing)
-docker pull agenthellboy/gunicorn-app:latest
+docker pull agent-hellboy/gunicorn-app:latest
 ```
 
 ### Docker Compose
@@ -21,7 +21,7 @@ version: '3.8'
 
 services:
   app:
-    image: agenthellboy/gunicorn-app:latest
+    image: agent-hellboy/gunicorn-app:latest
     ports:
       - "8000:8000"
     environment:
@@ -31,7 +31,7 @@ services:
       - prometheus_data:/tmp/prometheus_multiproc
 
   sidecar:
-    image: agenthellboy/gunicorn-prometheus-exporter:latest
+    image: agent-hellboy/gunicorn-prometheus-exporter:latest
     ports:
       - "9091:9091"
     environment:
@@ -63,7 +63,7 @@ spec:
               mountPath: /tmp/prometheus_multiproc
 
         - name: prometheus-exporter
-          image: agenthellboy/gunicorn-prometheus-exporter:latest
+          image: agent-hellboy/gunicorn-prometheus-exporter:latest
           ports:
             - containerPort: 9091
           volumeMounts:
@@ -123,7 +123,7 @@ The sidecar pattern separates metrics collection from your application:
 | `PROMETHEUS_BIND_ADDRESS` | `0.0.0.0` | Bind address for metrics server |
 | `PROMETHEUS_MULTIPROC_DIR` | `/tmp/prometheus_multiproc` | Directory for multiprocess metrics |
 | `REDIS_ENABLED` | `false` | Enable Redis storage backend |
-| `REDIS_HOST` | `localhost` | Redis host |
+| `REDIS_HOST` | `redis-service` | Redis host (use `localhost` for local dev) |
 | `REDIS_PORT` | `6379` | Redis port |
 | `REDIS_DB` | `0` | Redis database number |
 | `REDIS_PASSWORD` | *(none)* | Redis password |
@@ -140,7 +140,7 @@ services:
       - "6379:6379"
 
   sidecar:
-    image: agenthellboy/gunicorn-prometheus-exporter:latest
+    image: agent-hellboy/gunicorn-prometheus-exporter:latest
     environment:
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
@@ -209,8 +209,8 @@ scrape_configs:
 
 ## 🔗 Related Images
 
-- `agenthellboy/gunicorn-prometheus-exporter:latest` - Sidecar exporter
-- `agenthellboy/gunicorn-app:latest` - Sample Flask application
+- `agent-hellboy/gunicorn-prometheus-exporter:latest` - Sidecar exporter
+- `agent-hellboy/gunicorn-app:latest` - Sample Flask application
 
 ## 🆘 Troubleshooting
 
