@@ -17,6 +17,13 @@ spec:
       containers:
         - name: grafana
           image: grafana/grafana:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 472 # Grafana's default user ID
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 3000
               name: grafana
