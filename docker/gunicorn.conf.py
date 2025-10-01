@@ -76,6 +76,6 @@ max_worker_connections = 1000  # Max pending connections for async workers
 backlog = 2048  # Max number of pending connections in the listen queue
 
 # Reload settings
-reload = False
-reload_engine = "auto"
-reload_extra_files = []
+reload = False  # Auto-reload workers when code changes (disable in production)
+reload_engine = "auto"  # Reload detection engine
+reload_extra_files = []  # Additional files to watch for reload triggers
