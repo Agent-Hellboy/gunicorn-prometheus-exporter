@@ -54,10 +54,6 @@ except ImportError as e:
     )
     sys.exit(1)
 
-# Global variables for cleanup
-http_server = None
-redis_manager = None
-
 
 class SidecarMetrics:
     """Additional metrics specific to the sidecar container."""
@@ -160,9 +156,8 @@ def setup_metrics_server(
     # Add sidecar-specific metrics
     sidecar_metrics = SidecarMetrics(registry)
 
-    # Start HTTP server
-    global http_server
-    http_server = start_http_server(port, addr=bind_address, registry=registry)
+    # Start HTTP server (daemon thread, no cleanup needed)
+    start_http_server(port, addr=bind_address, registry=registry)
     logger.info(f"Metrics server started on {bind_address}:{port}")
 
     return registry, sidecar_metrics
@@ -180,12 +175,7 @@ def signal_handler(signum, frame):
         except Exception as e:
             logger.error(f"Failed to teardown Redis metrics: {e}")
 
-    # Stop HTTP server
-    global http_server
-    if http_server:
-        http_server.shutdown()
-        logger.info("HTTP server stopped")
-
+    # HTTP server is a daemon thread and will stop automatically
     sys.exit(0)
 
 
