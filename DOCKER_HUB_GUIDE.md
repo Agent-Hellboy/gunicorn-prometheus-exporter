@@ -82,9 +82,9 @@ docker push your-username/gunicorn-app:latest
    - Set build context to `/`
 
 3. **Configure Build Rules**:
-   - **Branch**: `main` → Tag: `latest`
-   - **Branch**: `main` → Tag: `{{.Branch}}`
-   - **Tag**: `v*` → Tag: `{{.Tag}}`
+   - **Source Type**: `Branch`, **Source**: `main` → **Docker Tag**: `latest`
+   - **Source Type**: `Tag`, **Source**: `/^v([0-9.]+)$/` → **Docker Tag**: `{\1}`
+   - **Source Type**: `Tag`, **Source**: `/^v(.*)$/` → **Docker Tag**: `{\1}`
 
 4. **Build Triggers**:
    - Enable "Build on push to source repository"
