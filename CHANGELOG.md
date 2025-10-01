@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.9] - 2025-10-02
+## [0.2.0] - 2025-10-02
 
 ### Added
 
@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- **Image Tags**: Updated documentation, manifests, and guides to default to `0.1.9`
+- **Image Tags**: Updated documentation, manifests, and guides to default to `0.2.0`
 - **Kind Smoke Tests**: Generalized local image rewrites in CI to accept any pinned tag
 
 ### Fixed
