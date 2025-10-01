@@ -132,11 +132,23 @@ jobs:
             const fs = require('fs');
             const releaseNotes = fs.readFileSync('release-notes.md', 'utf8');
 
+            // Get existing release body
+            const release = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id
+            });
+
+            // Append to existing body
+            const updatedBody = release.data.body
+              ? `${release.data.body}\n\n---\n\n${releaseNotes}`
+              : releaseNotes;
+
             await github.rest.repos.updateRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
               release_id: context.payload.release.id,
-              body: releaseNotes
+              body: updatedBody
             });
 
       - name: Wait for registry propagation
