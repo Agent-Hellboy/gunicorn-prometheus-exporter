@@ -450,22 +450,26 @@ jobs:
           kind load docker-image gunicorn-prometheus-exporter:test --name test-cluster
           kind load docker-image gunicorn-app:test --name test-cluster
 
-          # Update image references in Kubernetes manifests
-          sed -i "s|your-registry/gunicorn-app:latest|gunicorn-app:test|g" k8s/sidecar-deployment.yaml
-          sed -i "s|your-registry/gunicorn-prometheus-exporter:latest|gunicorn-prometheus-exporter:test|g" k8s/sidecar-deployment.yaml
+          # Create temporary copies of manifests
+          mkdir -p /tmp/k8s-test
+          cp k8s/*.yaml /tmp/k8s-test/
+
+          # Update image references in temporary manifests
+          sed -i "s|your-registry/gunicorn-app:latest|gunicorn-app:test|g" /tmp/k8s-test/sidecar-deployment.yaml
+          sed -i "s|your-registry/gunicorn-prometheus-exporter:latest|gunicorn-prometheus-exporter:test|g" /tmp/k8s-test/sidecar-deployment.yaml
 
           # Deploy Redis first (without secret for dev/test)
-          kubectl apply -f k8s/redis-deployment.yaml
-          kubectl apply -f k8s/redis-service.yaml
-          kubectl apply -f k8s/redis-pvc.yaml
+          kubectl apply -f /tmp/k8s-test/redis-deployment.yaml
+          kubectl apply -f /tmp/k8s-test/redis-service.yaml
+          kubectl apply -f /tmp/k8s-test/redis-pvc.yaml
 
           # Wait for Redis to be ready
           kubectl wait --for=condition=ready pod -l app=redis --timeout=300s
 
           # Deploy the sidecar application
-          kubectl apply -f k8s/sidecar-deployment.yaml
-          kubectl apply -f k8s/gunicorn-app-service.yaml
-          kubectl apply -f k8s/gunicorn-metrics-service.yaml
+          kubectl apply -f /tmp/k8s-test/sidecar-deployment.yaml
+          kubectl apply -f /tmp/k8s-test/gunicorn-app-service.yaml
+          kubectl apply -f /tmp/k8s-test/gunicorn-metrics-service.yaml
 
           # Wait for the deployment to be ready
           kubectl wait --for=condition=ready pod -l app=gunicorn-app --timeout=300s
