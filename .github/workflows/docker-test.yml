@@ -1,4 +1,4 @@
-name: Sidecar Deployment Tests
+name: Smoke Tests - (Linux Docker) Sidecar
 
 on:
   push:
@@ -457,8 +457,8 @@ jobs:
           cp k8s/*.yaml /tmp/k8s-test/
 
           # Update image references in temporary manifests
-          sed -i "s|your-registry/gunicorn-app:latest|gunicorn-app:test|g" /tmp/k8s-test/sidecar-deployment.yaml
-          sed -i "s|your-registry/gunicorn-prometheus-exporter:latest|gunicorn-prometheus-exporter:test|g" /tmp/k8s-test/sidecar-deployment.yaml
+          sed -i "s|princekrroshan01/gunicorn-app:0.1.8|gunicorn-app:test|g" /tmp/k8s-test/sidecar-deployment.yaml
+          sed -i "s|princekrroshan01/gunicorn-prometheus-exporter:0.1.8|gunicorn-prometheus-exporter:test|g" /tmp/k8s-test/sidecar-deployment.yaml
 
           # Deploy Redis first (without secret for dev/test)
           kubectl apply -f /tmp/k8s-test/redis-deployment.yaml
@@ -474,17 +474,33 @@ jobs:
           kubectl apply -f /tmp/k8s-test/gunicorn-metrics-service.yaml
 
           # Wait for the deployment to be ready
-          kubectl wait --for=condition=ready pod -l app=gunicorn-app --timeout=300s
+          if ! kubectl wait --for=condition=ready pod -l app=gunicorn-app --timeout=300s; then
+            echo "❌ gunicorn-app pods failed to become ready"
+            kubectl get pods -l app=gunicorn-app
+            kubectl describe pods -l app=gunicorn-app
+            echo "--- Sidecar container logs ---"
+            kubectl logs -l app=gunicorn-app -c prometheus-exporter --tail=200 || true
+            echo "--- App container logs ---"
+            kubectl logs -l app=gunicorn-app -c app --tail=200 || true
+            exit 1
+          fi
 
           # Test the application
           kubectl port-forward service/gunicorn-app-service 8000:8000 &
+          PF_APP_PID=$!
           kubectl port-forward service/gunicorn-metrics-service 9091:9091 &
+          PF_METRICS_PID=$!
 
           # Wait for port forwarding to be ready
           sleep 10
 
           # Test application health
-          curl -f http://localhost:8000/health || exit 1
+          if ! curl -f http://localhost:8000/health; then
+            echo "❌ Application health check failed"
+            kubectl logs -l app=gunicorn-app -c app --tail=200 || true
+            kill $PF_APP_PID $PF_METRICS_PID || true
+            exit 1
+          fi
 
           # Generate some requests to create metrics
           echo "Generating test requests..."
@@ -500,6 +516,8 @@ jobs:
 
           if [ -z "$metrics_response" ]; then
             echo "❌ No metrics response from sidecar"
+            kubectl logs -l app=gunicorn-app -c prometheus-exporter --tail=200 || true
+            kill $PF_APP_PID $PF_METRICS_PID || true
             exit 1
           fi
 
@@ -537,6 +555,9 @@ jobs:
           else
             echo "⚠️  Only found $total_metrics worker metrics in K8s (may need more requests)"
           fi
+
+          # Stop port-forward background jobs
+          kill $PF_APP_PID $PF_METRICS_PID || true
 
           # Cleanup
           pkill -f "kubectl port-forward" || true
