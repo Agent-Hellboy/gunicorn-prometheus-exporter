@@ -8,6 +8,7 @@ from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 
+from gunicorn_prometheus_exporter.config import get_config, initialize_config
 from gunicorn_prometheus_exporter.hooks import (
     EnvironmentManager,
     HookContext,
@@ -312,14 +313,24 @@ def test_start_https_server():
 
 
 def test_start_http_server():
-    """Test _start_http_server method."""
+    """Test _start_http_server method with bind address from config."""
+    # Ensure config is initialized (conftest does this for pytest, but not for direct calls)
+    try:
+        initialize_config()
+    except RuntimeError:
+        pass  # Already initialized
+
     mock_logger = MagicMock()
     manager = MetricsServerManager(mock_logger)
 
     with patch("prometheus_client.exposition.start_http_server") as mock_start_server:
         manager._start_http_server(9091, MagicMock())
 
-        mock_start_server.assert_called_once_with(9091, registry=ANY)
+        # Should be called with the bind address from config (127.0.0.1 in tests)
+        expected_addr = get_config().prometheus_bind_address
+        mock_start_server.assert_called_once_with(
+            9091, addr=expected_addr, registry=ANY
+        )
         mock_logger.debug.assert_called_once()
 
 

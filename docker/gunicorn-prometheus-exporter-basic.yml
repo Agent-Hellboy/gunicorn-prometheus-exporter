@@ -1,0 +1,34 @@
+# Basic Gunicorn Prometheus Exporter Configuration
+# Production-ready configuration with Redis-backed storage enabled by default.
+# For local one-off testing, set exporter.redis.enabled=false to fall back to file storage.
+
+exporter:
+  prometheus:
+    metrics_port: 9093
+    bind_address: "0.0.0.0"
+    multiproc_dir: "/tmp/prometheus_multiproc"
+    ssl:
+      enabled: false
+      certfile: null
+      keyfile: null
+      client_cafile: null
+      client_capath: null
+      client_auth_required: false
+
+  gunicorn:
+    workers: 2
+    timeout: 300
+    keepalive: 2
+
+  redis:
+    enabled: true
+    host: "redis"
+    port: 6379
+    db: 0
+    password: null
+    key_prefix: "gunicorn"
+    ttl_seconds: 300
+    ttl_disabled: false
+
+  cleanup:
+    db_files: true

@@ -1,0 +1,578 @@
+name: Smoke Tests - (Linux Docker) Sidecar
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build sidecar image locally
+        run: |
+          echo "Building sidecar image locally..."
+          docker build -t gunicorn-prometheus-exporter:test .
+          echo "✅ Sidecar image built successfully"
+
+      - name: Build sample app image locally
+        run: |
+          echo "Building sample app image locally..."
+          docker build -f docker/Dockerfile.app -t gunicorn-app:test .
+          echo "✅ Sample app image built successfully"
+
+      - name: Test sidecar image
+        run: |
+          echo "Testing sidecar image..."
+          # Test sidecar help command
+          docker run --rm gunicorn-prometheus-exporter:test --help
+
+          # Test sidecar health check (start sidecar in background, then test)
+          docker run -d --name test-sidecar-health -p 9091:9091 gunicorn-prometheus-exporter:test
+          sleep 10
+          docker run --rm --network container:test-sidecar-health gunicorn-prometheus-exporter:test health
+          docker stop test-sidecar-health
+          docker rm test-sidecar-health
+
+          echo "✅ Sidecar image test passed!"
+
+      - name: Test sample app image
+        run: |
+          echo "Testing sample app image..."
+          # Test app by running it briefly and checking if it starts
+          timeout 30 docker run --rm -d --name test-app -p 8000:8000 -p 9093:9093 \
+            -e PROMETHEUS_BIND_ADDRESS=0.0.0.0 \
+            -e PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc \
+            -e REDIS_ENABLED=false \
+            gunicorn-app:test || {
+            echo "❌ Failed to start container"
+            exit 1
+          }
+
+          # Wait for app to start
+          echo "Waiting for app to start..."
+          sleep 15
+
+          # Check if container is still running
+          if ! docker ps | grep -q test-app; then
+            echo "❌ App container stopped unexpectedly"
+            docker logs test-app 2>&1 || echo "No logs available"
+            exit 1
+          fi
+
+          # Test if the app is responding to basic requests
+          echo "Testing app response..."
+          if ! curl -f --max-time 10 http://localhost:8000/; then
+            echo "❌ App not responding"
+            docker logs test-app 2>&1 || echo "No logs available"
+            docker stop test-app || true
+            exit 1
+          fi
+
+          # Test health endpoint
+          echo "Testing health endpoint..."
+          if ! curl -f --max-time 10 http://localhost:8000/health; then
+            echo "❌ Health endpoint not responding"
+            docker logs test-app 2>&1 || echo "No logs available"
+            docker stop test-app || true
+            exit 1
+          fi
+
+          # Generate requests and test metrics collection
+          echo "Generating test requests..."
+          for i in {1..5}; do
+            curl -s http://localhost:8000/ || echo "Request $i failed"
+            curl -s http://localhost:8000/health || echo "Health request $i failed"
+            sleep 1
+          done
+
+          # Test Prometheus metrics collection (comprehensive validation)
+          echo "Testing Prometheus metrics collection..."
+          metrics_response=$(curl -f --max-time 10 http://localhost:9093/metrics 2>/dev/null)
+
+          if [ -z "$metrics_response" ]; then
+            echo "❌ No metrics response from Prometheus endpoint"
+            docker logs test-app 2>&1 || echo "No logs available"
+            docker stop test-app || true
+            exit 1
+          fi
+
+          # Validate key gunicorn metrics with actual values
+          echo "Validating gunicorn metrics..."
+
+          # Validate key gunicorn metrics - these MUST be present for the exporter to work
+          echo "Validating critical gunicorn metrics..."
+
+          # Check for request count metrics (CRITICAL - must have actual values)
+          request_metrics=$(echo "$metrics_response" | grep "gunicorn_worker_requests_total" || echo "")
+          if [ -n "$request_metrics" ]; then
+            echo "✅ gunicorn_worker_requests_total metric found"
+            # Extract actual request count values (supports both integers and floats)
+            request_counts=$(echo "$request_metrics" | awk '{print $NF}' | sort -n | tail -1)
+            request_counts=${request_counts:-0}
+            if [ "$request_counts" != "0" ]; then
+              echo "✅ Request metrics collected: $request_counts total requests"
+            else
+              echo "❌ Request metrics found but count is 0 - no requests were tracked!"
+              docker logs test-app 2>&1 || echo "No logs available"
+              docker stop test-app || true
+              exit 1
+            fi
+          else
+            echo "❌ gunicorn_worker_requests_total metric missing - requests are not being tracked!"
+            docker logs test-app 2>&1 || echo "No logs available"
+            docker stop test-app || true
+            exit 1
+          fi
+
+          # Check for request duration metrics (CRITICAL)
+          duration_metrics=$(echo "$metrics_response" | grep "gunicorn_worker_request_duration_seconds" || echo "")
+          if [ -n "$duration_metrics" ]; then
+            echo "✅ gunicorn_worker_request_duration_seconds metric found"
+            # Check if duration metrics have actual values
+            duration_count=$(echo "$duration_metrics" | wc -l)
+            if [ "$duration_count" -gt 1 ]; then
+              echo "✅ Duration metrics collected: $duration_count data points"
+            else
+              echo "⚠️  Duration metrics found but only $duration_count data point"
+            fi
+          else
+            echo "❌ gunicorn_worker_request_duration_seconds metric missing - request timing not tracked!"
+            docker logs test-app 2>&1 || echo "No logs available"
+            docker stop test-app || true
+            exit 1
+          fi
+
+          # Check for worker metrics (CRITICAL)
+          worker_metrics=$(echo "$metrics_response" | grep "gunicorn_worker_state" || echo "")
+          if [ -n "$worker_metrics" ]; then
+            echo "✅ gunicorn_worker_state metric found"
+            # Extract worker count
+            worker_count=$(echo "$worker_metrics" | wc -l)
+            echo "✅ Worker state metrics: $worker_count data points"
+          else
+            echo "❌ gunicorn_worker_state metric missing - worker status not tracked!"
+            docker logs test-app 2>&1 || echo "No logs available"
+            docker stop test-app || true
+            exit 1
+          fi
+
+          # Check for additional important metrics
+          echo "Checking additional metrics..."
+
+          # Check for master restart metrics
+          if echo "$metrics_response" | grep -q "gunicorn_master_restart_total"; then
+            echo "✅ gunicorn_master_restart_total metric found"
+          fi
+
+          # Check for worker restart metrics
+          if echo "$metrics_response" | grep -q "gunicorn_worker_restart_total"; then
+            echo "✅ gunicorn_worker_restart_total metric found"
+          fi
+
+          # Check for exception metrics
+          if echo "$metrics_response" | grep -q "gunicorn_exceptions_total"; then
+            echo "✅ gunicorn_exceptions_total metric found"
+          fi
+
+          # Summary of metrics validation - require minimum critical metrics
+          total_metrics=$(echo "$metrics_response" | grep "^gunicorn_worker_" | wc -l)
+          echo "📊 Total gunicorn_worker metrics found: $total_metrics"
+
+          # Require at least 10 worker metrics (we typically have 30-40)
+          if [ "$total_metrics" -ge 10 ]; then
+            echo "✅ Critical metrics validation passed - found $total_metrics worker metrics"
+          else
+            echo "❌ Critical metrics validation failed - only found $total_metrics metrics (need 10+)"
+            docker logs test-app 2>&1 || echo "No logs available"
+            docker stop test-app || true
+            exit 1
+          fi
+
+          # Cleanup
+          docker stop test-app || true
+          docker rm test-app || true
+
+          echo "✅ Sample app image test passed!"
+
+      - name: Test Docker Compose
+        run: |
+          echo "Testing Docker Compose setup..."
+
+          # Start services in background (use docker compose for newer versions)
+          docker compose up -d --build
+
+          # Wait for services to be ready
+          sleep 30
+
+          # Test application health
+          curl -f http://localhost:8000/health || exit 1
+
+          # Generate some requests to create metrics
+          echo "Generating test requests..."
+          for i in {1..10}; do
+            curl -s http://localhost:8000/ > /dev/null || true
+            curl -s http://localhost:8000/health > /dev/null || true
+          done
+
+          # Wait for sidecar to collect metrics
+          sleep 10
+
+          # Fetch metrics
+          echo "Verifying comprehensive metrics collection..."
+          metrics_response=$(curl -f http://localhost:9091/metrics 2>/dev/null)
+
+          if [ -z "$metrics_response" ]; then
+            echo "❌ No metrics response from sidecar"
+            docker logs gunicorn-sidecar
+            exit 1
+          fi
+
+          # Validate critical worker metrics (same as system tests)
+          echo "Checking for gunicorn_worker_requests_total..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_requests_total"; then
+            request_count=$(echo "$metrics_response" | grep "gunicorn_worker_requests_total" | wc -l)
+            echo "✅ Found gunicorn_worker_requests_total ($request_count counters)"
+          else
+            echo "❌ gunicorn_worker_requests_total metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_request_duration_seconds..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_request_duration_seconds"; then
+            echo "✅ Found gunicorn_worker_request_duration_seconds"
+          else
+            echo "❌ gunicorn_worker_request_duration_seconds metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_memory_bytes..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_memory_bytes"; then
+            echo "✅ Found gunicorn_worker_memory_bytes"
+          else
+            echo "❌ gunicorn_worker_memory_bytes metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_cpu_percent..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_cpu_percent"; then
+            echo "✅ Found gunicorn_worker_cpu_percent"
+          else
+            echo "❌ gunicorn_worker_cpu_percent metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_uptime_seconds..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_uptime_seconds"; then
+            echo "✅ Found gunicorn_worker_uptime_seconds"
+          else
+            echo "❌ gunicorn_worker_uptime_seconds metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_state..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_state"; then
+            echo "✅ Found gunicorn_worker_state"
+          else
+            echo "❌ gunicorn_worker_state metric missing"
+            exit 1
+          fi
+
+          # Count total worker metrics
+          total_metrics=$(echo "$metrics_response" | grep -c "^gunicorn_worker_" || echo "0")
+          echo "📊 Total gunicorn_worker metrics found: $total_metrics"
+
+          if [ "$total_metrics" -ge 10 ]; then
+            echo "✅ Comprehensive metrics validation passed"
+          else
+            echo "❌ Only found $total_metrics worker metrics (expected 10+)"
+            exit 1
+          fi
+
+          # Test Prometheus (check if it's responding)
+          if curl -f --max-time 10 http://localhost:9090/-/healthy; then
+            echo "✅ Prometheus server is healthy"
+          else
+            echo "⚠️  Prometheus server health check failed (may not be critical for sidecar test)"
+          fi
+
+          # Test Grafana (check if it's responding)
+          if curl -f --max-time 10 http://localhost:3000/api/health; then
+            echo "✅ Grafana is healthy"
+          else
+            echo "⚠️  Grafana health check failed (may not be critical for sidecar test)"
+          fi
+
+          # Stop services
+          docker compose down
+
+          echo "✅ Docker Compose test passed!"
+
+      - name: Test sidecar functionality
+        run: |
+          echo "Testing sidecar functionality..."
+
+          # Create a temporary directory for multiprocess files with proper permissions
+          mkdir -p /tmp/test_prometheus_multiproc
+          chmod 777 /tmp/test_prometheus_multiproc
+
+          # Start sidecar in background
+          docker run -d \
+            --name test-sidecar \
+            -p 9091:9091 \
+            -v /tmp/test_prometheus_multiproc:/tmp/prometheus_multiproc \
+            gunicorn-prometheus-exporter:test
+
+          # Wait for sidecar to start
+          sleep 10
+
+          # Test metrics endpoint (should respond even with no metrics)
+          if curl -f http://localhost:9091/metrics; then
+            echo "✅ Sidecar metrics endpoint responding"
+          else
+            echo "❌ Sidecar metrics endpoint not responding"
+            docker logs test-sidecar
+            exit 1
+          fi
+
+          # Cleanup
+          docker stop test-sidecar
+          docker rm test-sidecar
+          rm -rf /tmp/test_prometheus_multiproc
+
+          echo "✅ Sidecar functionality test passed!"
+
+      - name: Test with Redis
+        run: |
+          echo "Testing sidecar with Redis..."
+
+          # Create a network for the test
+          docker network create test-network
+
+          # Start Redis
+          docker run -d --name test-redis --network test-network -p 6379:6379 redis:7-alpine
+
+          # Wait for Redis to start
+          sleep 5
+
+          # Start sidecar with Redis enabled
+          docker run -d \
+            --name test-sidecar-redis \
+            --network test-network \
+            -p 9092:9091 \
+            -e REDIS_ENABLED=true \
+            -e REDIS_HOST=test-redis \
+            -e REDIS_PORT=6379 \
+            gunicorn-prometheus-exporter:test
+
+          # Wait for sidecar to start
+          sleep 10
+
+          # Test metrics endpoint
+          curl -f http://localhost:9092/metrics || exit 1
+
+          # Cleanup
+          docker stop test-sidecar-redis test-redis
+          docker rm test-sidecar-redis test-redis
+          docker network rm test-network
+
+          echo "✅ Redis integration test passed!"
+
+      - name: Test Kubernetes manifests
+        run: |
+          echo "Testing Kubernetes manifests..."
+
+          # Install YAML parser
+          pip3 install --no-cache-dir PyYAML >/dev/null
+
+          # Validate YAML files
+          for file in k8s/*.yaml; do
+            echo "Validating $file..."
+            # Basic YAML syntax check
+            python3 -c "import yaml; yaml.safe_load(open('$file'))" || exit 1
+          done
+
+          echo "✅ Kubernetes manifests validation passed!"
+
+      - name: Test entrypoint modes
+        run: |
+          echo "Testing entrypoint modes..."
+
+          # Test sidecar mode help
+          echo "Testing sidecar mode..."
+          docker run --rm gunicorn-prometheus-exporter:test sidecar --help 2>&1 | head -5 || exit 1
+          echo "✅ Sidecar mode works"
+
+          # Test standalone mode help
+          echo "Testing standalone mode..."
+          docker run --rm gunicorn-prometheus-exporter:test standalone --help 2>&1 | head -5 || exit 1
+          echo "✅ Standalone mode works"
+
+          # Test health mode help
+          echo "Testing health mode..."
+          docker run --rm gunicorn-prometheus-exporter:test health --help 2>&1 | head -5 || exit 1
+          echo "✅ Health mode works"
+
+          # Test help mode
+          echo "Testing help mode..."
+          docker run --rm gunicorn-prometheus-exporter:test help 2>&1 | head -5 || exit 1
+          echo "✅ Help mode works"
+
+          echo "✅ All entrypoint modes test passed!"
+
+      - name: Test Kubernetes sidecar deployment
+        run: |
+          echo "Testing Kubernetes sidecar deployment..."
+
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+          # Install kind (Kubernetes in Docker)
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+          # Create a kind cluster
+          kind create cluster --name test-cluster --wait 300s
+
+          # Load our Docker images into the kind cluster
+          kind load docker-image gunicorn-prometheus-exporter:test --name test-cluster
+          kind load docker-image gunicorn-app:test --name test-cluster
+
+          # Create temporary copies of manifests
+          mkdir -p /tmp/k8s-test
+          cp k8s/*.yaml /tmp/k8s-test/
+
+          # Update image references in temporary manifests
+          sed -i -E "s|princekrroshan01/gunicorn-app:[^\"[:space:]]*|gunicorn-app:test|g" /tmp/k8s-test/sidecar-deployment.yaml
+          sed -i -E "s|princekrroshan01/gunicorn-prometheus-exporter:[^\"[:space:]]*|gunicorn-prometheus-exporter:test|g" /tmp/k8s-test/sidecar-deployment.yaml
+
+          # Deploy Redis first (without secret for dev/test)
+          kubectl apply -f /tmp/k8s-test/redis-deployment.yaml
+          kubectl apply -f /tmp/k8s-test/redis-service.yaml
+          kubectl apply -f /tmp/k8s-test/redis-pvc.yaml
+
+          # Wait for Redis to be ready
+          kubectl wait --for=condition=ready pod -l app=redis --timeout=300s
+
+          # Deploy the sidecar application
+          kubectl apply -f /tmp/k8s-test/sidecar-deployment.yaml
+          kubectl apply -f /tmp/k8s-test/gunicorn-app-service.yaml
+          kubectl apply -f /tmp/k8s-test/gunicorn-metrics-service.yaml
+
+          # Wait for the deployment to be ready
+          if ! kubectl wait --for=condition=ready pod -l app=gunicorn-app --timeout=300s; then
+            echo "❌ gunicorn-app pods failed to become ready"
+            kubectl get pods -l app=gunicorn-app
+            kubectl describe pods -l app=gunicorn-app
+            echo "--- Sidecar container logs ---"
+            kubectl logs -l app=gunicorn-app -c prometheus-exporter --tail=200 || true
+            echo "--- App container logs ---"
+            kubectl logs -l app=gunicorn-app -c app --tail=200 || true
+            exit 1
+          fi
+
+          # Test the application
+          kubectl port-forward service/gunicorn-app-service 8000:8000 &
+          PF_APP_PID=$!
+          kubectl port-forward service/gunicorn-metrics-service 9091:9091 &
+          PF_METRICS_PID=$!
+
+          # Wait for port forwarding to be ready
+          sleep 10
+
+          # Test application health
+          if ! curl -f http://localhost:8000/health; then
+            echo "❌ Application health check failed"
+            kubectl logs -l app=gunicorn-app -c app --tail=200 || true
+            kill $PF_APP_PID $PF_METRICS_PID || true
+            exit 1
+          fi
+
+          # Generate some requests to create metrics
+          echo "Generating test requests..."
+          for i in {1..10}; do
+            curl -s http://localhost:8000/ > /dev/null || true
+            curl -s http://localhost:8000/health > /dev/null || true
+          done
+          sleep 5
+
+          # Fetch and validate metrics (same as Docker Compose test)
+          echo "Verifying comprehensive metrics collection..."
+          metrics_response=$(curl -f http://localhost:9091/metrics 2>/dev/null)
+
+          if [ -z "$metrics_response" ]; then
+            echo "❌ No metrics response from sidecar"
+            kubectl logs -l app=gunicorn-app -c prometheus-exporter --tail=200 || true
+            kill $PF_APP_PID $PF_METRICS_PID || true
+            exit 1
+          fi
+
+          # Validate critical worker metrics
+          echo "Checking for gunicorn_worker_requests_total..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_requests_total"; then
+            echo "✅ Found gunicorn_worker_requests_total"
+          else
+            echo "❌ gunicorn_worker_requests_total metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_request_duration_seconds..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_request_duration_seconds"; then
+            echo "✅ Found gunicorn_worker_request_duration_seconds"
+          else
+            echo "❌ gunicorn_worker_request_duration_seconds metric missing"
+            exit 1
+          fi
+
+          echo "Checking for gunicorn_worker_state..."
+          if echo "$metrics_response" | grep -q "gunicorn_worker_state"; then
+            echo "✅ Found gunicorn_worker_state"
+          else
+            echo "❌ gunicorn_worker_state metric missing"
+            exit 1
+          fi
+
+          # Count total worker metrics
+          total_metrics=$(echo "$metrics_response" | grep -c "^gunicorn_worker_" || echo "0")
+          echo "📊 Total gunicorn_worker metrics found: $total_metrics"
+
+          if [ "$total_metrics" -ge 10 ]; then
+            echo "✅ Kubernetes metrics validation passed"
+          else
+            echo "⚠️  Only found $total_metrics worker metrics in K8s (may need more requests)"
+          fi
+
+          # Stop port-forward background jobs
+          kill $PF_APP_PID $PF_METRICS_PID || true
+
+          # Cleanup
+          pkill -f "kubectl port-forward" || true
+          kind delete cluster --name test-cluster
+
+          echo "✅ Kubernetes sidecar deployment test passed!"
+
+      - name: Summary
+        run: |
+          echo "🎉 All Docker tests passed!"
+          echo "✅ Sidecar image builds successfully"
+          echo "✅ Sample app image builds successfully"
+          echo "✅ Docker Compose setup works"
+          echo "✅ Sidecar functionality works"
+          echo "✅ Redis integration works"
+          echo "✅ Kubernetes manifests are valid"
+          echo "✅ Entrypoint modes work correctly"
+          echo "✅ Kubernetes sidecar deployment works"

@@ -1,0 +1,279 @@
+name: Release Sidecar to Docker Hub
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - "v*"
+
+env:
+  REGISTRY: docker.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compute image names
+        id: names
+        run: |
+          # Use Docker Hub username (princekrroshan01) instead of GitHub username
+          DOCKER_HUB_USER="princekrroshan01"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          REPO_LC="${REPO,,}"
+          echo "owner=${DOCKER_HUB_USER}" >> $GITHUB_OUTPUT
+          echo "repo=${REPO_LC}" >> $GITHUB_OUTPUT
+          echo "image=${DOCKER_HUB_USER}/${REPO_LC}" >> $GITHUB_OUTPUT
+          echo "Computed image: ${DOCKER_HUB_USER}/${REPO_LC}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+            # Remove 'v' prefix if present
+            VERSION=${VERSION#v}
+          else
+            VERSION="latest"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version extracted: $VERSION"
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable=${{ github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Build and push sidecar image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+
+      - name: Build and push sample app image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile.app
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:latest
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update Docker Hub Description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: ${{ steps.names.outputs.image }}
+          readme-filepath: ./DOCKER_HUB_README.md
+          short-description: "Production-ready Prometheus metrics exporter for Gunicorn - Sidecar pattern"
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          cat << EOF > release-notes.md
+          # Docker Images Released
+
+          ## Images
+          - **Sidecar**: \`${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}\`
+          - **Sample App**: \`${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:${{ steps.version.outputs.version }}\`
+
+          ## Quick Start
+
+          ### Docker Compose
+          \`\`\`yaml
+          version: '3.8'
+          services:
+            sidecar:
+              image: ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}
+              ports:
+                - "9091:9091"
+          \`\`\`
+
+          ### Kubernetes
+          \`\`\`yaml
+          apiVersion: apps/v1
+          kind: Deployment
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: prometheus-exporter
+                    image: ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}
+          \`\`\`
+
+          ## Documentation
+          - [Docker Hub Guide](https://github.com/${{ github.repository }}/blob/main/DOCKER_HUB_GUIDE.md)
+          - [Kubernetes Deployment](https://github.com/${{ github.repository }}/blob/main/k8s/README.md)
+          - [Docker Compose Setup](https://github.com/${{ github.repository }}/blob/main/docker/README.md)
+          EOF
+
+      - name: Update release with Docker info
+        if: github.event_name == 'release'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const releaseNotes = fs.readFileSync('release-notes.md', 'utf8');
+
+            // Get existing release body
+            const release = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id
+            });
+
+            // Append to existing body
+            const updatedBody = release.data.body
+              ? `${release.data.body}\n\n---\n\n${releaseNotes}`
+              : releaseNotes;
+
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id,
+              body: updatedBody
+            });
+
+      - name: Wait for registry propagation
+        if: github.event_name == 'release'
+        run: |
+          echo "Waiting 3 minutes for Docker Hub registry propagation..."
+          sleep 180
+          echo "Registry propagation wait completed"
+
+      - name: Pull and test sidecar image
+        if: github.event_name == 'release'
+        run: |
+          echo "Pulling and testing sidecar image from Docker Hub..."
+
+          # Pull the sidecar image
+          docker pull ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}
+
+          # Test sidecar help command
+          docker run --rm ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }} --help
+
+          # Test sidecar health check
+          docker run --rm ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }} health
+
+          echo "✅ Sidecar image pulled and tested successfully!"
+
+      - name: Pull and test sample app image
+        if: github.event_name == 'release'
+        run: |
+          echo "Pulling and testing sample app image from Docker Hub..."
+
+          # Pull the sample app image
+          docker pull ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:${{ steps.version.outputs.version }}
+
+          # Test app help command
+          docker run --rm ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:${{ steps.version.outputs.version }} --help
+
+          echo "✅ Sample app image pulled and tested successfully!"
+
+      - name: Test sidecar functionality with pulled images
+        if: github.event_name == 'release'
+        run: |
+          echo "Testing sidecar functionality with pulled images..."
+
+          # Create a temporary directory for multiprocess files
+          mkdir -p /tmp/test_prometheus_multiproc
+
+          # Start sidecar in background
+          docker run -d \
+            --name test-sidecar-pulled \
+            -p 9091:9091 \
+            -v /tmp/test_prometheus_multiproc:/tmp/prometheus_multiproc \
+            ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}
+
+          # Wait for sidecar to start
+          sleep 10
+
+          # Test metrics endpoint
+          curl -f http://localhost:9091/metrics || exit 1
+
+          # Test health check
+          curl -f http://localhost:9091/metrics | grep -q "gunicorn_sidecar" || exit 1
+
+          # Cleanup
+          docker stop test-sidecar-pulled
+          docker rm test-sidecar-pulled
+          rm -rf /tmp/test_prometheus_multiproc
+
+          echo "✅ Sidecar functionality test with pulled image passed!"
+
+      - name: Test with Redis using pulled images
+        if: github.event_name == 'release'
+        run: |
+          echo "Testing sidecar with Redis using pulled images..."
+
+          # Start Redis
+          docker run -d --name test-redis-pulled -p 6379:6379 redis:7-alpine
+
+          # Wait for Redis to start
+          sleep 5
+
+          # Start sidecar with Redis enabled
+          docker run -d \
+            --name test-sidecar-redis-pulled \
+            -p 9092:9091 \
+            --link test-redis-pulled:redis \
+            -e REDIS_ENABLED=true \
+            -e REDIS_HOST=redis \
+            -e REDIS_PORT=6379 \
+            ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}
+
+          # Wait for sidecar to start
+          sleep 10
+
+          # Test metrics endpoint
+          curl -f http://localhost:9092/metrics || exit 1
+
+          # Cleanup
+          docker stop test-sidecar-redis-pulled test-redis-pulled
+          docker rm test-sidecar-redis-pulled test-redis-pulled
+
+          echo "✅ Redis integration test with pulled images passed!"
+
+      - name: Create GitHub Package
+        if: github.event_name == 'release'
+        run: |
+          echo "Docker images have been pushed to Docker Hub and tested:"
+          echo "- Sidecar: ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}"
+          echo "- Sample App: ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:${{ steps.version.outputs.version }}"
+          echo "✅ All images pulled and tested successfully from Docker Hub!"

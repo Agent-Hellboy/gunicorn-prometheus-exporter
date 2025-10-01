@@ -1,0 +1,66 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Tests
+tests/
+test_*.py
+*_test.py
+
+# Development
+.tox/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# System test
+system-test/
+!system-test/system_test_basic.sh
+!system-test/system_test_redis_integ.sh
+!system-test/system_test_yaml_config.sh
+!system-test/test_app.py
+!system-test/test_configs/
+!system-test/gunicorn.yaml.conf.py
+!system-test/prometheus.yml
+!system-test/requirements-dev.txt
+example/prometheus-data/
+example/venv/
+
+# CI/CD
+.github/
+
+# Docker
+docker-compose.yml
+docker-compose.*.yml

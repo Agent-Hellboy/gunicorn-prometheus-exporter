@@ -443,9 +443,9 @@ EOF
             -p 8089:8089 \
             -p 9094:9094 \
             -e PROMETHEUS_CONFIG_FILE="/app/test_basic_config.yml" \
-            -v "$SYSTEM_TEST_DIR/test_basic_config.yml:/app/test_basic_config.yml" \
+            -v "$SYSTEM_TEST_DIR/test_configs/basic.yml:/app/test_basic_config.yml:ro" \
             -v "$SYSTEM_TEST_DIR/test_app.py:/app/test_app.py" \
-            -v "$SYSTEM_TEST_DIR/test_basic_gunicorn.conf.py:/app/test_basic_gunicorn.conf.py" \
+            -v "$SYSTEM_TEST_DIR/gunicorn.yaml.conf.py:/app/test_basic_gunicorn.conf.py:ro" \
             "$DOCKER_IMAGE" \
             gunicorn --config /app/test_basic_gunicorn.conf.py test_app:app
 

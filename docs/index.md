@@ -77,6 +77,8 @@ The system provides flexible YAML-based configuration management that:
 
 ## Quick Start
 
+### Option 1: Direct Installation
+
 For detailed setup instructions, see the [Setup Guide](setup.md).
 
 ```bash
@@ -91,6 +93,37 @@ gunicorn -c gunicorn.conf.py your_app:app
 
 > *Note*: See the [Setup Guide](setup.md) for complete configuration examples including Redis setup, Prometheus integration, and production deployment.
 
+### Option 2: Docker Sidecar (Recommended for Production)
+
+Pre-built Docker images are available for sidecar deployment:
+
+```bash
+# Quick test with Docker Compose
+git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter.git
+cd gunicorn-prometheus-exporter
+docker-compose up --build
+
+# Or pull pre-built images (pin versions for reproducibility)
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.8
+docker pull princekrroshan01/gunicorn-app:0.1.8
+```
+
+**Available Services:**
+- Application: http://localhost:8000
+- Metrics (Sidecar): http://localhost:9091/metrics
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3000
+
+**Features:**
+- Multi-architecture support (AMD64, ARM64)
+- Production-ready security contexts
+- Automated CI/CD with GitHub Actions
+- Complete monitoring stack included
+
+> *Production recommendation*: Use Redis-backed storage (`REDIS_ENABLED=true`) for all multi-worker or multi-pod deployments. The provided Docker Compose and Kubernetes manifests enable Redis by default.
+
+See [Docker README](../docker/README.md) and [Kubernetes Guide](../k8s/README.md) for deployment details.
+
 ### Understanding the Three URLs
 
 When deploying with Gunicorn Prometheus Exporter, you'll work with three distinct URLs:
@@ -98,7 +131,7 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 | Service              | URL                             | Purpose                                                       |
 | -------------------- | ------------------------------- | ------------------------------------------------------------- |
 | *Prometheus UI*    | `http://localhost:9090`         | Prometheus web interface for querying and visualizing metrics |
-| *Your Application* | `http://localhost:8200`         | Your actual web application (Gunicorn server)                 |
+| *Your Application* | `http://localhost:8000`         | Your actual web application (Gunicorn server)                 |
 | *Metrics Endpoint* | `http://127.0.0.1:9091/metrics` | Raw metrics data for Prometheus to scrape                     |
 
 > *Note*: The metrics endpoint URL is configurable through environment variables. The default port is 9091 to avoid conflicts with Prometheus UI (9090).
@@ -142,6 +175,13 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 
 - [Backend Architecture](components/backend/architecture.md) - System architecture details
 
+### Deployment
+
+- [Deployment Guide](examples/deployment-guide.md) - Production deployment strategies
+- [Kubernetes Deployment](examples/kubernetes-deployment.md) - Complete K8s sidecar guide
+- [Docker Sidecar Setup](../docker/README.md) - Docker Compose deployment
+- [K8s Manifests Reference](../k8s/README.md) - Production-ready K8s manifests
+
 ### Framework Integration
 
 - [Django Integration](examples/django-integration.md)
@@ -149,7 +189,6 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 - [Flask Integration](examples/flask-integration.md)
 - [Pyramid Integration](examples/pyramid-integration.md)
 - [Custom WSGI App](examples/custom-wsgi-app.md)
-- [Deployment Guide](examples/deployment-guide.md)
 
 ### Development
 

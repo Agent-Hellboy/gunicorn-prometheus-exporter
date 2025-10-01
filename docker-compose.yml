@@ -1,0 +1,130 @@
+version: "3.8"
+
+services:
+  # Redis for shared metrics storage (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: gunicorn-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gunicorn-network
+
+  # Sample Flask application with Gunicorn
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.app
+    container_name: gunicorn-app
+    ports:
+      - "8000:8000"
+    environment:
+      - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
+      - GUNICORN_WORKERS=2
+      - REDIS_ENABLED=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_KEY_PREFIX=gunicorn
+    volumes:
+      - prometheus_data:/tmp/prometheus_multiproc
+    shm_size: 1gb # Ensure sufficient shared memory for Gunicorn workers using /dev/shm
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - gunicorn-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus Exporter Sidecar
+  sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gunicorn-sidecar
+    ports:
+      - "9091:9091"
+    environment:
+      - PROMETHEUS_METRICS_PORT=9091
+      - PROMETHEUS_BIND_ADDRESS=0.0.0.0
+      - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
+      - REDIS_ENABLED=false
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_KEY_PREFIX=gunicorn
+      - SIDECAR_UPDATE_INTERVAL=30
+    volumes:
+      - prometheus_data:/tmp/prometheus_multiproc
+    depends_on:
+      app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gunicorn-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus server for scraping metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data_server:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
+      - "--web.enable-lifecycle"
+    depends_on:
+      - sidecar
+    networks:
+      - gunicorn-network
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - gunicorn-network
+
+volumes:
+  redis_data:
+  prometheus_data:
+  prometheus_data_server:
+  grafana_data:
+
+networks:
+  gunicorn-network:
+    driver: bridge

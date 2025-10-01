@@ -27,7 +27,7 @@ COPY . .
 RUN mkdir -p /tmp/prometheus_multiproc
 
 # Expose ports
-EXPOSE 8200 9091
+EXPOSE 8000 9091
 
 # Set environment variables
 ENV PROMETHEUS_METRICS_PORT=9091
@@ -48,7 +48,7 @@ services:
   app:
     build: .
     ports:
-      - "8200:8200" # Application port
+      - "8000:8000" # Application port
       - "9091:9091" # Metrics port
     environment:
       - PROMETHEUS_METRICS_PORT=9091
@@ -115,9 +115,9 @@ spec:
     spec:
       containers:
         - name: app
-          image: your-registry/gunicorn-app:latest
+          image: princekrroshan01/gunicorn-app:0.1.8
           ports:
-            - containerPort: 8200
+            - containerPort: 8000
               name: http
             - containerPort: 9091
               name: metrics
@@ -151,8 +151,8 @@ spec:
     app: gunicorn-app
   ports:
     - name: http
-      port: 8200
-      targetPort: 8200
+      port: 8000
+      targetPort: 8000
     - name: metrics
       port: 9091
       targetPort: 9091
@@ -161,9 +161,73 @@ spec:
 
 ## Sidecar Deployment
 
-Deploy the exporter as a sidecar container within the same Kubernetes pod for isolated monitoring:
+Deploy the exporter as a sidecar container within the same Kubernetes pod for isolated monitoring.
 
-**deployment-with-sidecar.yaml:**
+### Docker Hub Images
+
+Pre-built Docker images are available on Docker Hub:
+
+```bash
+# Sidecar exporter image
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.8
+
+# Sample Flask application (for testing)
+docker pull princekrroshan01/gunicorn-app:0.1.8
+
+# Or build locally if the release is not yet available:
+# docker build -t princekrroshan01/gunicorn-prometheus-exporter:0.1.8 .
+# docker build -f docker/Dockerfile.app -t princekrroshan01/gunicorn-app:0.1.8 .
+```
+
+Images are automatically built and published for:
+- `linux/amd64` (x86_64)
+- `linux/arm64` (ARM64)
+
+### Quick Start with Docker Compose
+
+> *Production recommendation*: Keep Redis storage enabled (`REDIS_ENABLED=true`) so that metrics aggregate across all workers/pods. Only disable Redis for single-worker demos.
+
+```bash
+# Clone the repository
+git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter.git
+cd gunicorn-prometheus-exporter
+
+# Start all services (app, sidecar, Redis, Prometheus, Grafana)
+docker-compose up --build
+
+# Access services:
+# - Application: http://localhost:8000
+# - Metrics: http://localhost:9091/metrics
+# - Prometheus: http://localhost:9090
+# - Grafana: http://localhost:3000
+#   Username: admin
+#   Password: admin (set GF_SECURITY_ADMIN_PASSWORD to override in production)
+```
+
+See [docker/README.md](../../docker/README.md) for detailed Docker Compose documentation.
+
+### Kubernetes Sidecar Deployment
+
+For a complete Kubernetes deployment with Redis, Prometheus, and Grafana:
+
+**Quick Deploy:**
+
+```bash
+# Create required secrets
+kubectl create secret generic grafana-secret \
+  --from-literal=admin-password="$(openssl rand -base64 32)"
+
+# Deploy everything
+kubectl apply -f k8s/
+
+# Access services via port-forwarding
+kubectl port-forward service/gunicorn-app-service 8000:8000
+kubectl port-forward service/gunicorn-metrics-service 9091:9091
+kubectl port-forward service/prometheus-service 9090:9090
+kubectl port-forward service/grafana-service 3000:3000
+```
+
+**Minimal Sidecar Example:**
 
 ```yaml
 apiVersion: apps/v1
@@ -187,15 +251,22 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: your-registry/gunicorn-app:latest
+          image: princekrroshan01/gunicorn-app:0.1.8
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
           ports:
-            - containerPort: 8200
+            - containerPort: 8000
               name: http
           env:
             - name: PROMETHEUS_MULTIPROC_DIR
               value: "/tmp/prometheus_multiproc"
             - name: GUNICORN_WORKERS
-              value: "4"
+              value: "2"
           volumeMounts:
             - name: prometheus-data
               mountPath: /tmp/prometheus_multiproc
@@ -209,7 +280,15 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: your-registry/gunicorn-prometheus-exporter:latest
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.1.8
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 9091
               name: metrics
@@ -220,9 +299,12 @@ spec:
               value: "0.0.0.0"
             - name: PROMETHEUS_MULTIPROC_DIR
               value: "/tmp/prometheus_multiproc"
+            - name: REDIS_ENABLED
+              value: "false"
           volumeMounts:
             - name: prometheus-data
               mountPath: /tmp/prometheus_multiproc
+              readOnly: true
           resources:
             requests:
               memory: "64Mi"
@@ -232,12 +314,19 @@ spec:
               cpu: "100m"
       volumes:
         - name: prometheus-data
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
 ```
+
+For production-ready Kubernetes deployments with Redis, security contexts, secrets management, and monitoring stack, see the [Kubernetes Deployment Guide](../../k8s/README.md).
 
 **Benefits of Sidecar Deployment:**
 
-- **Isolation**: Metrics collection is separate from application logic
+- *Isolation*: Metrics collection is separate from application logic
+- *Pre-built Images*: Ready-to-use Docker images on Docker Hub
+- *Multi-arch Support*: Works on AMD64 and ARM64 architectures
+- *Production-Ready*: Includes security contexts and resource limits
 - **Resource Management**: Independent resource limits for monitoring
 - **Scaling**: Can scale monitoring independently
 - **Security**: Reduced attack surface for main application
