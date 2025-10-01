@@ -36,6 +36,7 @@ services:
       - REDIS_KEY_PREFIX=gunicorn
     volumes:
       - prometheus_data:/tmp/prometheus_multiproc
+    shm_size: 1gb # Ensure sufficient shared memory for Gunicorn workers using /dev/shm
     depends_on:
       redis:
         condition: service_healthy

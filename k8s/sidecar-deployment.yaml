@@ -140,6 +140,8 @@ spec:
               mountPath: /tmp/prometheus_multiproc
       volumes:
         - name: prometheus-data
-          emptyDir: {}
+          emptyDir:
+            medium: Memory # Use tmpfs backed by RAM for better performance
+            sizeLimit: 1Gi # Ensure sufficient shared memory for Gunicorn workers
       restartPolicy: Always
       terminationGracePeriodSeconds: 30

@@ -73,7 +73,18 @@ The sample application image is built from `docker/Dockerfile.app`:
 ```bash
 # Build the application image
 docker build -f docker/Dockerfile.app -t gunicorn-app:latest .
+
+# Run with increased shared memory (required for Gunicorn workers using /dev/shm)
+docker run -d \
+  --name gunicorn-app \
+  --shm-size=1g \
+  -p 8000:8000 \
+  -e PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc \
+  -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
+  gunicorn-app:latest
 ```
+
+**Important**: Gunicorn uses `/dev/shm` for worker temporary files. The default Docker shared memory is only 64MB, which may be insufficient for production workloads. Always set `--shm-size` (Docker) or `shm_size` (Docker Compose) to at least 1GB.
 
 ## Configuration
 
