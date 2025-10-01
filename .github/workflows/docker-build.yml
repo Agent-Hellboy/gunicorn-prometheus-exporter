@@ -8,7 +8,6 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: ${{ toLower(github.repository) }}
 
 jobs:
   build-and-push:
@@ -20,6 +19,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Compute image names (lowercase)
+        id: names
+        run: |
+          OWNER_LC="${GITHUB_REPOSITORY_OWNER,,}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          REPO_LC="${REPO,,}"
+          echo "owner=${OWNER_LC}" >> $GITHUB_OUTPUT
+          echo "repo=${REPO_LC}" >> $GITHUB_OUTPUT
+          echo "image=${OWNER_LC}/${REPO_LC}" >> $GITHUB_OUTPUT
+          echo "Computed image: ${OWNER_LC}/${REPO_LC}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -49,7 +59,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}
           tags: |
             type=ref,event=tag
             type=raw,value=${{ steps.version.outputs.version }}
@@ -77,8 +87,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-app:${{ steps.version.outputs.version }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-app:latest
+            ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:latest
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -88,7 +98,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: ${{ env.IMAGE_NAME }}
+          repository: ${{ steps.names.outputs.image }}
           readme-filepath: ./DOCKER_HUB_README.md
           short-description: "Production-ready Prometheus metrics exporter for Gunicorn - Sidecar pattern"
 
@@ -99,8 +109,8 @@ jobs:
           # Docker Images Released
 
           ## Images
-          - **Sidecar**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}\`
-          - **Sample App**: \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-app:${{ steps.version.outputs.version }}\`
+          - **Sidecar**: \`${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}\`
+          - **Sample App**: \`${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:${{ steps.version.outputs.version }}\`
 
           ## Quick Start
 
@@ -109,7 +119,7 @@ jobs:
           version: '3.8'
           services:
             sidecar:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+              image: ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}
               ports:
                 - "9091:9091"
           \`\`\`
@@ -123,7 +133,7 @@ jobs:
               spec:
                 containers:
                   - name: prometheus-exporter
-                    image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+                    image: ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}
           \`\`\`
 
           ## Documentation
@@ -172,13 +182,13 @@ jobs:
           echo "Pulling and testing sidecar image from Docker Hub..."
 
           # Pull the sidecar image
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          docker pull ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}
 
           # Test sidecar help command
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }} --help
+          docker run --rm ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }} --help
 
           # Test sidecar health check
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }} health
+          docker run --rm ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }} health
 
           echo "✅ Sidecar image pulled and tested successfully!"
 
@@ -188,10 +198,10 @@ jobs:
           echo "Pulling and testing sample app image from Docker Hub..."
 
           # Pull the sample app image
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-app:${{ steps.version.outputs.version }}
+          docker pull ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:${{ steps.version.outputs.version }}
 
           # Test app help command
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-app:${{ steps.version.outputs.version }} --help
+          docker run --rm ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:${{ steps.version.outputs.version }} --help
 
           echo "✅ Sample app image pulled and tested successfully!"
 
@@ -208,7 +218,7 @@ jobs:
             --name test-sidecar-pulled \
             -p 9091:9091 \
             -v /tmp/test_prometheus_multiproc:/tmp/prometheus_multiproc \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}
 
           # Wait for sidecar to start
           sleep 10
@@ -245,7 +255,7 @@ jobs:
             -e REDIS_ENABLED=true \
             -e REDIS_HOST=redis \
             -e REDIS_PORT=6379 \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}
 
           # Wait for sidecar to start
           sleep 10
@@ -263,6 +273,6 @@ jobs:
         if: github.event_name == 'release'
         run: |
           echo "Docker images have been pushed to Docker Hub and tested:"
-          echo "- Sidecar: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}"
-          echo "- Sample App: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-app:${{ steps.version.outputs.version }}"
+          echo "- Sidecar: ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}:${{ steps.version.outputs.version }}"
+          echo "- Sample App: ${{ env.REGISTRY }}/${{ steps.names.outputs.image }}-app:${{ steps.version.outputs.version }}"
           echo "✅ All images pulled and tested successfully from Docker Hub!"
