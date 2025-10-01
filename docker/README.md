@@ -11,6 +11,9 @@ This directory contains Docker configurations for running the Gunicorn Prometheu
 git clone https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter.git
 cd gunicorn-prometheus-exporter
 
+# (Optional) Set Grafana admin password for production
+export GRAFANA_ADMIN_PASSWORD=your-secure-password
+
 # Build and start all services
 docker-compose up --build
 
@@ -18,12 +21,16 @@ docker-compose up --build
 docker-compose up -d --build
 ```
 
+**Security Note**: For production deployments, always set `GRAFANA_ADMIN_PASSWORD` environment variable. The default `admin` password is only for local development.
+
 ### 2. Access the Services
 
 - **Application**: http://localhost:8000
 - **Metrics (Sidecar)**: http://localhost:9091/metrics
 - **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3000 (admin/admin)
+- **Grafana**: http://localhost:3000
+  - Username: `admin`
+  - Password: `${GRAFANA_ADMIN_PASSWORD}` (default: `admin`)
 
 ### 3. Test the Setup
 
