@@ -173,6 +173,83 @@ docs: update installation guide with Docker examples
 test: add comprehensive test coverage for metrics module
 ```
 
+## DevOps Playbook for Contributors
+
+This project relies heavily on containerised workflows and infrastructure automation. The checklist below highlights the DevOps skills you will touch when contributing and why they matter.
+
+### Local Container Tooling
+
+- **Docker images**: The sidecar and sample app live under `Dockerfile` and `docker/Dockerfile.app`. Rebuild them with `docker build -t gunicorn-prometheus-exporter:test .` and `docker build -f docker/Dockerfile.app -t gunicorn-app:test .` before running integration tests.
+- **Docker Compose stack**: `docker-compose.yml` wires Redis, Gunicorn, the exporter, Prometheus, and Grafana. Use `docker compose up -d --build` for end-to-end smoke tests and `docker compose down` for cleanup.
+- **Shared memory requirements**: Gunicorn expects `/dev/shm` ≥ 1 GiB. Compose already sets `shm_size: 1gb`; if you run `docker run` manually, append `--shm-size=1g`.
+
+### Kubernetes Hands-on
+
+- **kind (Kubernetes in Docker)**: The CI workflow spins up a throwaway cluster. Install it locally with `brew install kind` and create a cluster via `kind create cluster --name test-cluster --wait 300s`.
+- **kubectl essentials**: You will apply manifests from `k8s/`, wait for pods, and port-forward services. Common commands:
+  ```bash
+  kubectl apply -f k8s/sidecar-deployment.yaml
+  kubectl wait --for=condition=ready pod -l app=gunicorn-app --timeout=300s
+  kubectl port-forward service/gunicorn-metrics-service 9091:9091
+  ```
+- **Temporary manifest rewrites**: In CI we copy `k8s/*.yaml` into `/tmp/k8s-test/` and `sed` the image tags to `gunicorn-app:test` and `gunicorn-prometheus-exporter:test`. Mirror this when testing locally so the cluster uses your freshly built images.
+- **Cleanup discipline**: Delete port-forward processes (`pkill -f "kubectl port-forward"`) and clusters (`kind delete cluster --name test-cluster`) to avoid resource leaks.
+
+### Observability Stack
+
+- **Prometheus**: Validate metrics at `http://localhost:9091/metrics` (Docker) or `kubectl port-forward service/gunicorn-metrics-service`. CI asserts the presence of key `gunicorn_worker_*` families.
+- **Grafana**: Default credentials are sourced from `GRAFANA_ADMIN_PASSWORD`. Override for production with `export GRAFANA_ADMIN_PASSWORD='strong-secret'` before `docker compose up`.
+- **Redis**: Acts as the default multiprocess metrics backend. For local smoke tests set `REDIS_ENABLED=false`; for cluster and Compose scenarios ensure Redis is reachable and unsecured or seeded with secrets templates.
+
+### CI/CD Awareness
+
+- **GitHub Actions pipelines**: `.github/workflows/docker-test.yml` runs the full integration matrix, and `.github/workflows/docker-build.yml` handles multi-arch builds and Docker Hub publishing. Read these files when adding features to anticipate required updates.
+- **Docker Hub metadata**: Release jobs rely on `docker/metadata-action` and `peter-evans/dockerhub-description`. If you change image names or tags, update the workflows and `DOCKER_HUB_README.md`.
+- **Secrets and tokens**: Keep credentials out of source control. Use `.env` files locally and GitHub Action secrets (`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, etc.) in CI. Document new secrets in `docs/README.md` or workflow comments.
+
+### Automation Etiquette
+
+- Run `tox -e docker-test` before opening PRs to catch integration regressions early (mirrors the main CI job).
+- Capture diagnostic logs on failure (`docker logs <container>`, `kubectl describe pod/<pod>`). Attach snippets to issues or pull requests.
+- Prefer Infrastructure as Code changes alongside documentation updates so contributors understand new operational steps.
+
+### Environment Parity Tips
+
+- Align local, CI, and production defaults by keeping `.env` examples in sync with the Helm or manifest defaults. Drift here is the top cause of "works locally" bugs.
+- Prefer declarative config (YAML + templates) over ad-hoc `kubectl` edits. If you must hotfix a cluster, capture the change in the manifest immediately.
+- Record one command to bootstrap each environment (local: `docker compose up`; CI: GitHub workflow reference; staging/prod: `kubectl apply -f`). Contributors should be able to rehearse the exact promotion path.
+
+### Secret Management Fundamentals
+
+- Ship secrets as templates only (`*.template`). Real secrets belong in local `.env` or secret managers (SOPS, Vault, GitHub Encrypted Secrets).
+- Use `kubectl create secret generic ... --dry-run=client -o yaml` to generate manifests without leaking values.
+- When adding a new secret requirement, update `k8s/README.md`, `docker-compose.yml`, and `docs/examples/` so others know how to populate it.
+
+### CI/CD Troubleshooting Checklist
+
+- Re-run failing jobs with `Retry` before diving deep—many Docker registry blips are transient.
+- Use `::group::` logs in GitHub Actions when adding verbose debugging so the default output stays readable.
+- For flaky Kubernetes tests, inspect `kind export logs` artifacts and attach them to PRs.
+- If multi-arch builds error, temporarily force `platforms: linux/amd64` and log an issue so we can fix ARM64 parity deliberately.
+
+### Release & Registry Hygiene
+
+- Tag images with SemVer (`0.x.y`) and avoid `latest` in docs except for quick-start notes. Our release jobs automatically push `:0.x.y` and mark `:latest` only on tagged builds.
+- Update `CHANGELOG.md` in the same PR as version bumps so release notes stay trustworthy.
+- After merging release PRs, smoke-test the published Docker images (`docker run princekrroshan01/gunicorn-prometheus-exporter:0.x.y --help`) and link the results in the GitHub release discussion.
+
+### Security & Compliance Basics
+
+- Evaluate new dependencies with `pip install .[dev] && pip check`. If something pulls in a CVE, document the mitigation or seek alternatives.
+- Keep containers slim: install only runtime packages and drop build tools in the final stage. Every extra binary widens the attack surface.
+- Ensure RBAC, NetworkPolicies, and PodSecurity settings are updated whenever you add a new component. Copy + tweak existing patterns instead of inventing new ones.
+
+### Performance & Reliability Testing
+
+- Use `hey` or `wrk` inside the cluster (`kubectl run ... --image=ghcr.io/rakyll/hey`) to generate synthetic load against the app while watching metrics.
+- When tuning Gunicorn worker counts or Redis settings, capture before/after metrics snapshots and document the rationale in the PR description.
+- Monitor local test runs with `docker stats` or `kubectl top pod` to catch runaway resource consumption early.
+
 ## Testing
 
 ### Running Tests
