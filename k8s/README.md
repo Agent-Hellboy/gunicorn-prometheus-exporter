@@ -330,7 +330,9 @@ All container images use pinned versions for reproducible deployments:
 
 ### Network Policies
 
-Create network policies to restrict traffic:
+Create network policies to restrict traffic between services:
+
+**Application Network Policy:**
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -369,6 +371,53 @@ spec:
           port: 6379
 ```
 
+**Prometheus Network Policy:**
+
+*Important*: Prometheus has `--web.enable-admin-api` enabled for operations like deleting time series. This should be restricted to authorized services only.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prometheus-netpol
+spec:
+  podSelector:
+    matchLabels:
+      app: prometheus
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow Grafana to query metrics
+    - from:
+        - podSelector:
+            matchLabels:
+              app: grafana
+      ports:
+        - protocol: TCP
+          port: 9090
+    # Allow Prometheus to scrape gunicorn metrics
+    - from:
+        - podSelector:
+            matchLabels:
+              app: gunicorn-app
+      ports:
+        - protocol: TCP
+          port: 9090
+```
+
+**Deploy Network Policies:**
+
+```bash
+# Save the policies to files
+kubectl apply -f gunicorn-app-netpol.yaml
+kubectl apply -f prometheus-netpol.yaml
+```
+
+*Note*: Network policies require a CNI plugin that supports them (Calico, Cilium, Weave Net, etc.). If using a managed Kubernetes service:
+- GKE: Network policies are supported by default
+- EKS: Requires Calico or AWS VPC CNI plugin
+- AKS: Requires Azure Network Policy or Calico
+
 ### Pod Security Standards
 
 Apply pod security standards:
@@ -405,6 +454,8 @@ metadata:
    - Use RBAC for fine-grained permissions
    - Enable authentication for Prometheus and Grafana
    - Secure Redis with password authentication in production
+   - Consider disabling `--web.enable-admin-api` in Prometheus if not needed
+   - If admin API is required, use network policies to restrict access
 
 ## Production Considerations
 
