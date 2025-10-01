@@ -65,33 +65,17 @@ worker_tmp_dir = "/dev/shm"  # nosec B108
 # Graceful timeout
 graceful_timeout = 30
 
-# Restart workers after this many requests, to help prevent memory leaks
-max_requests = 1000
-max_requests_jitter = 100
+# Worker lifecycle settings
+max_requests = 1000  # Restart workers after this many requests
+max_requests_jitter = (
+    100
+)  # Add randomness to prevent all workers restarting simultaneously
 
-# Restart workers after this many seconds, to help prevent memory leaks
-max_worker_connections = 1000
+# Connection settings
+max_worker_connections = 1000  # Max pending connections for async workers
+backlog = 2048  # Max number of pending connections in the listen queue
 
-# The maximum number of pending connections
-backlog = 2048
-
-# The maximum number of requests a worker will process before restarting
-max_requests = 1000
-
-# The maximum number of requests a worker will process before restarting
-max_requests_jitter = 100
-
-# The maximum number of seconds a worker may take to reload
+# Reload settings
 reload = False
-
-# The maximum number of seconds a worker may take to reload
-reload_extra_files = []
-
-# The maximum number of seconds a worker may take to reload
 reload_engine = "auto"
-
-# The maximum number of seconds a worker may take to reload
 reload_extra_files = []
-
-# The maximum number of seconds a worker may take to reload
-reload_engine = "auto"
