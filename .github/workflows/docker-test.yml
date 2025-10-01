@@ -457,8 +457,8 @@ jobs:
           cp k8s/*.yaml /tmp/k8s-test/
 
           # Update image references in temporary manifests
-          sed -i "s|princekrroshan01/gunicorn-app:0.1.8|gunicorn-app:test|g" /tmp/k8s-test/sidecar-deployment.yaml
-          sed -i "s|princekrroshan01/gunicorn-prometheus-exporter:0.1.8|gunicorn-prometheus-exporter:test|g" /tmp/k8s-test/sidecar-deployment.yaml
+          sed -i -E "s|princekrroshan01/gunicorn-app:[^\"[:space:]]*|gunicorn-app:test|g" /tmp/k8s-test/sidecar-deployment.yaml
+          sed -i -E "s|princekrroshan01/gunicorn-prometheus-exporter:[^\"[:space:]]*|gunicorn-prometheus-exporter:test|g" /tmp/k8s-test/sidecar-deployment.yaml
 
           # Deploy Redis first (without secret for dev/test)
           kubectl apply -f /tmp/k8s-test/redis-deployment.yaml

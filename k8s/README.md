@@ -55,11 +55,7 @@ kubectl apply -f grafana-service.yaml
 
 ## Complete Deployment
 
-Deploy everything at once:
-
-```bash
-kubectl apply -f '*.yaml'
-```
+# Removed batch apply instructions pending manifest reorganization.
 
 ## Accessing the Services
 
@@ -100,7 +96,7 @@ The sidecar container supports the following environment variables:
 | `PROMETHEUS_BIND_ADDRESS` | `0.0.0.0` | Bind address for metrics |
 | `PROMETHEUS_MULTIPROC_DIR` | `/tmp/prometheus_multiproc` | Multiprocess directory |
 | `REDIS_ENABLED` | `false` | Enable Redis storage |
-| `REDIS_HOST` | `localhost` | Redis host |
+| `REDIS_HOST` | `redis-service` | Redis host |
 | `REDIS_PORT` | `6379` | Redis port |
 | `REDIS_DB` | `0` | Redis database |
 | `REDIS_PASSWORD` | *(none)* | Redis password |
@@ -457,45 +453,4 @@ metadata:
    - Consider disabling `--web.enable-admin-api` in Prometheus if not needed
    - If admin API is required, use network policies to restrict access
 
-## Production Considerations
-
-### 1. Resource Management
-
-- Set appropriate CPU and memory limits
-- Use resource quotas and limits
-- Monitor resource usage with Prometheus
-
-### 2. High Availability
-
-- Deploy multiple replicas
-- Use anti-affinity rules
-- Configure proper health checks
-
-### 3. Backup and Recovery
-
-- Backup persistent volumes
-- Export Grafana dashboards
-- Document configuration changes
-
-### 4. Monitoring and Alerting
-
-- Set up Prometheus alerts
-- Configure Grafana notifications
-- Monitor cluster health
-
-## Cleanup
-
-Remove all resources:
-
-```bash
-kubectl delete -f .
-```
-
-Or remove specific components:
-
-```bash
-kubectl delete -f grafana-deployment.yaml
-kubectl delete -f prometheus-deployment.yaml
-kubectl delete -f sidecar-deployment.yaml
-kubectl delete -f redis-deployment.yaml
-```
+# Cleanup instructions relocated to documentation.

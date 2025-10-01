@@ -173,6 +173,10 @@ docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.8
 
 # Sample Flask application (for testing)
 docker pull princekrroshan01/gunicorn-app:0.1.8
+
+# Or build locally if the release is not yet available:
+# docker build -t princekrroshan01/gunicorn-prometheus-exporter:0.1.8 .
+# docker build -f docker/Dockerfile.app -t princekrroshan01/gunicorn-app:0.1.8 .
 ```
 
 Images are automatically built and published for:
@@ -197,7 +201,7 @@ docker-compose up --build
 # - Prometheus: http://localhost:9090
 # - Grafana: http://localhost:3000
 #   Username: admin
-#   Password: from grafana-secret (kubectl get secret grafana-secret -o jsonpath='{.data.admin-password}' | base64 -d)
+#   Password: admin (set GF_SECURITY_ADMIN_PASSWORD to override in production)
 ```
 
 See [docker/README.md](../../docker/README.md) for detailed Docker Compose documentation.

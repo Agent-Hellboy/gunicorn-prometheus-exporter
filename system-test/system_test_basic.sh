@@ -561,8 +561,12 @@ test_signal_handling() {
 
             # Check if the signal metric was captured
             print_status "Checking if SIG${signal} metric was captured..."
-            local metrics_response
-            metrics_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart_total" | grep "reason=\"${reason}\"" || echo "")
+            local metrics_response=""
+            for _ in {1..3}; do
+                metrics_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart_total" | grep "reason=\"${reason}\"" || echo "")
+                [ -n "$metrics_response" ] && break
+                sleep 1
+            done
 
             if [ ! -z "$metrics_response" ]; then
                 print_success "✓ SIG${signal} metric captured: ${metrics_response}"
@@ -572,8 +576,12 @@ test_signal_handling() {
 
             # Also check for worker restart metrics with reasons
             print_status "Checking worker restart metrics for SIG${signal}..."
-            local worker_restart_response
-            worker_restart_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_total" | grep "reason=\"${reason}\"" || echo "")
+            local worker_restart_response=""
+            for _ in {1..3}; do
+                worker_restart_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_total" | grep "reason=\"${reason}\"" || echo "")
+                [ -n "$worker_restart_response" ] && break
+                sleep 1
+            done
 
             if [ ! -z "$worker_restart_response" ]; then
                 print_success "✓ Worker restart metric captured: ${worker_restart_response}"
@@ -583,8 +591,12 @@ test_signal_handling() {
 
             # Check for restart count metrics
             print_status "Checking restart count metrics for SIG${signal}..."
-            local restart_count_response
-            restart_count_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_count_total" | grep "reason=\"${reason}\"" || echo "")
+            local restart_count_response=""
+            for _ in {1..3}; do
+                restart_count_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_count_total" | grep "reason=\"${reason}\"" || echo "")
+                [ -n "$restart_count_response" ] && break
+                sleep 1
+            done
 
             if [ ! -z "$restart_count_response" ]; then
                 print_success "✓ Restart count metric captured: ${restart_count_response}"
@@ -596,23 +608,18 @@ test_signal_handling() {
         # Test worker-specific signals (QUIT/ABORT) to trigger worker restart metrics
         print_status "Testing worker-specific signals to trigger worker restart metrics..."
 
-        # Get worker PIDs - try multiple methods to find Gunicorn workers
+        # Get worker PIDs - prioritize direct children of Gunicorn master
         local worker_pids=""
 
-        # Method 1: Look for gunicorn worker processes
-        worker_pids=$(ps aux | grep -E "gunicorn.*worker|python.*worker" | grep -v grep | awk '{print $2}' | head -2)
+        worker_pids=$(pgrep -P "$GUNICORN_PID" 2>/dev/null | head -2)
 
-        # Method 2: If no workers found, look for python processes with worker in command line
+        # Fallback methods if direct child lookup fails
         if [ -z "$worker_pids" ]; then
-            worker_pids=$(ps aux | grep python | grep -E "worker|gunicorn" | grep -v grep | awk '{print $2}' | head -2)
+            worker_pids=$(ps aux | grep -E "gunicorn.*worker|python.*worker" | grep -v grep | awk '{print $2}' | head -2)
         fi
-
-        # Method 3: Look for processes listening on port 8088 (our test port)
         if [ -z "$worker_pids" ]; then
             worker_pids=$(lsof -ti:8088 2>/dev/null | head -2)
         fi
-
-        # Method 4: Look for any python processes (as fallback)
         if [ -z "$worker_pids" ]; then
             worker_pids=$(ps aux | grep python | grep -v grep | awk '{print $2}' | head -2)
         fi
@@ -633,8 +640,12 @@ test_signal_handling() {
                 sleep 3  # Give time for the signal to be processed
 
                 # Check for worker restart metrics
-                local quit_metrics
-                quit_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_total" | grep "reason=\"quit\"" || echo "")
+                local quit_metrics=""
+                for _ in {1..3}; do
+                    quit_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_total" | grep "reason=\"quit\"" || echo "")
+                    [ -n "$quit_metrics" ] && break
+                    sleep 1
+                done
 
                 if [ ! -z "$quit_metrics" ]; then
                     print_success "✓ Worker QUIT metric captured: ${quit_metrics}"
@@ -643,8 +654,12 @@ test_signal_handling() {
                 fi
 
                 # Check for restart count metrics
-                local quit_count_metrics
-                quit_count_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_count_total" | grep "reason=\"quit\"" || echo "")
+                local quit_count_metrics=""
+                for _ in {1..3}; do
+                    quit_count_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_count_total" | grep "reason=\"quit\"" || echo "")
+                    [ -n "$quit_count_metrics" ] && break
+                    sleep 1
+                done
 
                 if [ ! -z "$quit_count_metrics" ]; then
                     print_success "✓ Worker QUIT count metric captured: ${quit_count_metrics}"
@@ -666,8 +681,12 @@ test_signal_handling() {
                 sleep 3  # Give time for the signal to be processed
 
                 # Check for worker restart metrics
-                local abort_metrics
-                abort_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_total" | grep "reason=\"abort\"" || echo "")
+                local abort_metrics=""
+                for _ in {1..3}; do
+                    abort_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_total" | grep "reason=\"abort\"" || echo "")
+                    [ -n "$abort_metrics" ] && break
+                    sleep 1
+                done
 
                 if [ ! -z "$abort_metrics" ]; then
                     print_success "✓ Worker ABORT metric captured: ${abort_metrics}"
@@ -676,8 +695,12 @@ test_signal_handling() {
                 fi
 
                 # Check for restart count metrics
-                local abort_count_metrics
-                abort_count_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_count_total" | grep "reason=\"abort\"" || echo "")
+                local abort_count_metrics=""
+                for _ in {1..3}; do
+                    abort_count_metrics=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_worker_restart_count_total" | grep "reason=\"abort\"" || echo "")
+                    [ -n "$abort_count_metrics" ] && break
+                    sleep 1
+                done
 
                 if [ ! -z "$abort_count_metrics" ]; then
                     print_success "✓ Worker ABORT count metric captured: ${abort_count_metrics}"
@@ -707,31 +730,44 @@ test_signal_handling() {
         sleep 0.5  # Very short delay to allow synchronous metric capture
         print_status "Checking if SIGINT metric was captured..."
 
-        local int_metrics_response
-        int_metrics_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart_total" | grep "reason=\"int\"" || echo "")
+        local int_metrics_response=""
+        for _ in {1..3}; do
+            int_metrics_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart_total" | grep "reason=\"int\"" || echo "")
+            [ -n "$int_metrics_response" ] && break
+            sleep 0.5
+        done
 
         if [ ! -z "$int_metrics_response" ]; then
             print_success "✓ SIGINT metric captured: ${int_metrics_response}"
         else
-            # Try one more time with a slightly longer delay
-            sleep 0.5
-            int_metrics_response=$(curl -s "http://localhost:9093/metrics" 2>/dev/null | grep "gunicorn_master_worker_restart_total" | grep "reason=\"int\"" || echo "")
-
-            if [ ! -z "$int_metrics_response" ]; then
-                print_success "✓ SIGINT metric captured (delayed check): ${int_metrics_response}"
-            else
-                print_warning "⚠ SIGINT metric not found (process terminated too quickly - metric was captured synchronously)"
-            fi
+            print_warning "⚠ SIGINT metric not found (process terminated too quickly - metric was captured synchronously)"
         fi
 
-        # Wait for process to terminate
-        sleep 2
+        # Wait for process to terminate (gracefully first)
+        local graceful_wait=0
+        local graceful_timeout=12
+        while [ $graceful_wait -lt $graceful_timeout ]; do
+            if ! kill -0 "$GUNICORN_PID" 2>/dev/null; then
+                break
+            fi
+            sleep 1
+            graceful_wait=$((graceful_wait + 1))
+        done
 
-        # Check if process is still running
+        # If still running, send SIGTERM and wait again
         if kill -0 "$GUNICORN_PID" 2>/dev/null; then
             print_warning "Process still running after SIGINT, sending SIGTERM"
             kill -TERM "$GUNICORN_PID" 2>/dev/null || true
-            sleep 2
+
+            local force_wait=0
+            local force_timeout=10
+            while [ $force_wait -lt $force_timeout ]; do
+                if ! kill -0 "$GUNICORN_PID" 2>/dev/null; then
+                    break
+                fi
+                sleep 1
+                force_wait=$((force_wait + 1))
+            done
         fi
 
         # Final check

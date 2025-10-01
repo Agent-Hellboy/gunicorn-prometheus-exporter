@@ -29,9 +29,13 @@ docker pull princekrroshan01/gunicorn-prometheus-exporter:0.1.8
 
 # Sample Flask application (for testing)
 docker pull princekrroshan01/gunicorn-app:0.1.8
+
+# Or build locally if the release has not been published yet:
+# docker build -t princekrroshan01/gunicorn-prometheus-exporter:0.1.8 .
+# docker build -f docker/Dockerfile.app -t princekrroshan01/gunicorn-app:0.1.8 .
 ```
 
-**Production Note**: Always use specific version tags (e.g., `0.1.8`) instead of `:latest` for reproducibility and stability.
+**Production Note**: Always use specific version tags (e.g., `0.1.8`) instead of `:latest` for reproducibility and stability. If the published image tag is not yet available, build the images locally with the commands above before deploying.
 
 > *Redis recommendation*: Redis storage is required for multi-worker deployments. The manifests enable it by default (`REDIS_ENABLED=true`). Only disable Redis when running a single worker for local demos.
 
@@ -447,13 +451,13 @@ spec:
 Update the `GUNICORN_WORKERS` environment variable:
 
 ```bash
-kubectl set env deployment/gunicorn-app-with-sidecar GUNICORN_WORKERS=4
+kubectl set env deployment/gunicorn-app-minimal GUNICORN_WORKERS=4
 ```
 
-Or edit the deployment:
+Or edit the deployment (replace with your deployment name if different):
 
 ```bash
-kubectl edit deployment gunicorn-app-with-sidecar
+kubectl edit deployment gunicorn-app-minimal
 ```
 
 ## Troubleshooting
@@ -475,10 +479,10 @@ kubectl get events --sort-by=.metadata.creationTimestamp
 
 ```bash
 # Application logs
-kubectl logs -f deployment/gunicorn-app-with-sidecar -c app
+kubectl logs -f deployment/gunicorn-app-minimal -c app
 
 # Sidecar logs
-kubectl logs -f deployment/gunicorn-app-with-sidecar -c prometheus-exporter
+kubectl logs -f deployment/gunicorn-app-minimal -c prometheus-exporter
 
 # Redis logs
 kubectl logs -f deployment/redis
@@ -525,7 +529,7 @@ kubectl logs deployment/redis
 Enable debug logging:
 
 ```bash
-kubectl set env deployment/gunicorn-app-with-sidecar LOG_LEVEL=debug
+kubectl set env deployment/gunicorn-app-minimal LOG_LEVEL=debug
 ```
 
 ## Production Checklist
