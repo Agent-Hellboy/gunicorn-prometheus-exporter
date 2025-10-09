@@ -12,7 +12,8 @@ repos:
       - id: shellcheck
         name: shellcheck
         language: docker_image
-        entry: koalaman/shellcheck:stable
+        entry: shellcheck
+        additional_dependencies: [koalaman/shellcheck:stable]
         types: [shell]
         files: ^.*\.(sh|bash|zsh|ksh)$
         stages: [commit]
