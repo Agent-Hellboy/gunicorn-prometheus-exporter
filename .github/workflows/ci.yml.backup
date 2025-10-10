@@ -41,14 +41,6 @@ jobs:
       - name: Run tests
         run: tox -e ${{ matrix.toxenv }}
 
-      - name: Run ShellCheck
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y shellcheck
-          # Run ShellCheck recursively on all shell scripts
-          shellcheck -e SC1091 -S error $(find . -type f -name "*.sh")  
-
-
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
