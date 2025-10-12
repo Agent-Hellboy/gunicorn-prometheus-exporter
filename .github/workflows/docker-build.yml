@@ -46,6 +46,8 @@ jobs:
       - name: Verify sidecar image
         run: |
           echo "Verifying sidecar image was built successfully..."
+          # Load the image from buildx cache to make it available locally
+          docker buildx build --load --file ./Dockerfile --platform linux/amd64 .
           docker images | grep gunicorn-prometheus-exporter
           echo "Sidecar image verification completed successfully"
 
@@ -79,6 +81,8 @@ jobs:
       - name: Verify app image
         run: |
           echo "Verifying app image was built successfully..."
+          # Load the image from buildx cache to make it available locally
+          docker buildx build --load --file ./docker/Dockerfile.app --platform linux/amd64 .
           docker images | grep gunicorn-app
           echo "App image verification completed successfully"
 
