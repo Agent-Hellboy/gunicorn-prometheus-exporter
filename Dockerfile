@@ -2,6 +2,7 @@
 FROM python:3.11-slim as builder
 
 # Set build arguments
+ARG VERSION_FILE=VERSION
 ARG VERSION=0.2.0
 ARG INSTALL_EXTRAS=all
 
