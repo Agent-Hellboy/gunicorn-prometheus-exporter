@@ -34,8 +34,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch,prefix=
-            type=sha,prefix={{branch}}-
+            type=ref,event=branch,prefix=dev-
+            type=sha,prefix=sha-
 
       - name: Build and push sidecar image
         uses: docker/build-push-action@v5
