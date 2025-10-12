@@ -47,7 +47,10 @@ jobs:
         run: |
           echo "Verifying sidecar image was built successfully..."
           docker buildx build --load --file ./Dockerfile --platform linux/amd64 --tag verify-sidecar:test .
-          docker images | grep gunicorn-prometheus-exporter || echo "Warning: Sidecar image not found in local images"
+          if ! docker image inspect verify-sidecar:test > /dev/null 2>&1; then
+            echo "::error::Sidecar image not found after build"
+            exit 1
+          fi
           echo "Sidecar image verification completed successfully"
 
       - name: Prepare app image tag
@@ -81,14 +84,21 @@ jobs:
         run: |
           echo "Verifying app image was built successfully..."
           docker buildx build --load --file ./docker/Dockerfile.app --platform linux/amd64 --tag verify-app:test .
-          docker images | grep gunicorn-app || echo "Warning: App image not found in local images"
+          if ! docker image inspect verify-app:test > /dev/null 2>&1; then
+            echo "::error::App image not found after build"
+            exit 1
+          fi
           echo "App image verification completed successfully"
 
       - name: Build verification summary
         run: |
           echo "=== Docker Build Verification Summary ==="
           echo "Sidecar image:"
-          docker images | grep gunicorn-prometheus-exporter || echo "Sidecar image not found"
+          docker image inspect verify-sidecar:test > /dev/null 2>&1 \
+            && echo "verify-sidecar:test present" \
+            || echo "Sidecar image not found"
           echo "App image:"
-          docker images | grep gunicorn-app || echo "App image not found"
+          docker image inspect verify-app:test > /dev/null 2>&1 \
+            && echo "verify-app:test present" \
+            || echo "App image not found"
           echo "=== All Docker containers built and verified successfully ==="
