@@ -68,7 +68,12 @@ jobs:
           else
             ref="$REF_NAME"
           fi
-          sanitized="${ref//\//-}"
+          sanitized="$(printf '%s' "$ref" | tr '/' '-' | python - <<'PY'
+          import re, sys
+          ref = sys.stdin.read().strip()
+          print(re.sub(r'[^A-Za-z0-9_.-]+', '-', ref).strip('-') or 'dev-build')
+          PY
+          )"
           echo "tag=$sanitized" >> "$GITHUB_OUTPUT"
 
       - name: Build app image (test only)
