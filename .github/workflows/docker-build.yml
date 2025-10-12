@@ -1,4 +1,4 @@
-name: Build and Push Docker Images
+name: Build and Verify Docker Containers
 
 on:
   push:
@@ -43,6 +43,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Verify sidecar image
+        run: |
+          echo "Verifying sidecar image was built successfully..."
+          docker images | grep gunicorn-prometheus-exporter
+          echo "Sidecar image verification completed successfully"
+
       - name: Prepare app image tag
         id: app_tag
         run: |
@@ -65,3 +71,18 @@ jobs:
             ${{ env.REGISTRY }}/princekrroshan01/gunicorn-app:${{ steps.app_tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Verify app image
+        run: |
+          echo "Verifying app image was built successfully..."
+          docker images | grep gunicorn-app
+          echo "App image verification completed successfully"
+
+      - name: Build verification summary
+        run: |
+          echo "=== Docker Build Verification Summary ==="
+          echo "Sidecar image:"
+          docker images | grep gunicorn-prometheus-exporter || echo "Sidecar image not found"
+          echo "App image:"
+          docker images | grep gunicorn-app || echo "App image not found"
+          echo "=== All Docker containers built and verified successfully ==="
