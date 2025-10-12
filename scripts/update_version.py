@@ -18,41 +18,129 @@ def update_file_version(file_path, old_version, new_version):
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Replace version patterns
-        patterns = [
+        original_content = content
+
+        # Create escaped version for regex patterns
+        escaped_old_version = old_version.replace(".", r"\.")
+        escaped_new_version = new_version.replace(".", r"\.")
+
+        # Replace version patterns - comprehensive coverage
+        replacements = [
             # Docker image tags
-            rf"princekrroshan01/gunicorn-prometheus-exporter:{re.escape(old_version)}",
-            rf"princekrroshan01/gunicorn-app:{re.escape(old_version)}",
-            # Version strings
-            rf'version = "{re.escape(old_version)}"',
-            rf'version="{re.escape(old_version)}"',
-            rf"ARG VERSION={re.escape(old_version)}",
-            rf'LABEL version="{re.escape(old_version)}"',
-            # Docker pull commands
-            rf"docker pull princekrroshan01/gunicorn-prometheus-exporter:{re.escape(old_version)}",
-            rf"docker pull princekrroshan01/gunicorn-app:{re.escape(old_version)}",
-            # Docker run commands
-            rf"princekrroshan01/gunicorn-prometheus-exporter:{re.escape(old_version)}",
-            rf"princekrroshan01/gunicorn-app:{re.escape(old_version)}",
+            (
+                f"princekrroshan01/gunicorn-prometheus-exporter:{old_version}",
+                f"princekrroshan01/gunicorn-prometheus-exporter:{new_version}",
+            ),
+            (
+                f"princekrroshan01/gunicorn-app:{old_version}",
+                f"princekrroshan01/gunicorn-app:{new_version}",
+            ),
+            (
+                f"gunicorn-prometheus-exporter:{old_version}",
+                f"gunicorn-prometheus-exporter:{new_version}",
+            ),
+            (f"gunicorn-app:{old_version}", f"gunicorn-app:{new_version}"),
+            # Version strings (both escaped and unescaped)
+            (f'version = "{old_version}"', f'version = "{new_version}"'),
+            (f'version="{old_version}"', f'version="{new_version}"'),
+            (
+                f'version = "{escaped_old_version}"',
+                f'version = "{escaped_new_version}"',
+            ),
+            (f'version="{escaped_old_version}"', f'version="{escaped_new_version}"'),
+            (f"ARG VERSION={old_version}", f"ARG VERSION={new_version}"),
+            (
+                f"ARG VERSION={escaped_old_version}",
+                f"ARG VERSION={escaped_new_version}",
+            ),
+            (f'LABEL version="{old_version}"', f'LABEL version="{new_version}"'),
+            (
+                f'LABEL version="{escaped_old_version}"',
+                f'LABEL version="{escaped_new_version}"',
+            ),
+            # Docker commands
+            (
+                f"docker pull princekrroshan01/gunicorn-prometheus-exporter:{old_version}",
+                f"docker pull princekrroshan01/gunicorn-prometheus-exporter:{new_version}",
+            ),
+            (
+                f"docker pull princekrroshan01/gunicorn-app:{old_version}",
+                f"docker pull princekrroshan01/gunicorn-app:{new_version}",
+            ),
+            (
+                f"docker build -t gunicorn-prometheus-exporter:{old_version}",
+                f"docker build -t gunicorn-prometheus-exporter:{new_version}",
+            ),
+            (
+                f"docker build -f docker/Dockerfile.app -t gunicorn-app:{old_version}",
+                f"docker build -f docker/Dockerfile.app -t gunicorn-app:{new_version}",
+            ),
+            (
+                f"docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:{old_version}",
+                f"docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:{new_version}",
+            ),
+            (
+                f"docker push princekrroshan01/gunicorn-prometheus-exporter:{old_version}",
+                f"docker push princekrroshan01/gunicorn-prometheus-exporter:{new_version}",
+            ),
+            # Docker Compose and Kubernetes
+            (
+                f"image: princekrroshan01/gunicorn-prometheus-exporter:{old_version}",
+                f"image: princekrroshan01/gunicorn-prometheus-exporter:{new_version}",
+            ),
+            (
+                f"image: princekrroshan01/gunicorn-app:{old_version}",
+                f"image: princekrroshan01/gunicorn-app:{new_version}",
+            ),
+            # Badge URLs
+            (
+                f"badgen.net/docker/size/princekrroshan01/gunicorn-prometheus-exporter/{old_version}/amd64",
+                f"badgen.net/docker/size/princekrroshan01/gunicorn-prometheus-exporter/{new_version}/amd64",
+            ),
+            # Documentation examples
+            (
+                f"specific version tags (e.g., `{old_version}`)",
+                f"specific version tags (e.g., `{new_version}`)",
+            ),
+            (
+                f"semantic versioning (e.g., {old_version})",
+                f"semantic versioning (e.g., {new_version})",
+            ),
+            # Changelog entries
+            (f"## [{old_version}]", f"## [{new_version}]"),
+            (
+                f"Updated documentation, manifests, and guides to default to `{old_version}`",
+                f"Updated documentation, manifests, and guides to default to `{new_version}`",
+            ),
+            # Generic patterns (be more specific to avoid false matches)
+            (f":{old_version} ", f":{new_version} "),
+            (f":{old_version}\n", f":{new_version}\n"),
+            (f':{old_version}"', f':{new_version}"'),
+            (f":{old_version}>", f":{new_version}>"),
+            (f":{old_version}`", f":{new_version}`"),
+            (f":{old_version})", f":{new_version})"),
+            (f":{old_version}\\", f":{new_version}\\"),
         ]
 
-        updated_content = content
-        for pattern in patterns:
-            updated_content = re.sub(
-                pattern, pattern.replace(old_version, new_version), updated_content
-            )
+        # Apply all replacements
+        for old_pattern, new_pattern in replacements:
+            content = content.replace(old_pattern, new_pattern)
 
-        if updated_content != content:
+        # Also handle the VERSION file content directly
+        if Path(file_path).name == "VERSION":
+            content = new_version + "\n"
+
+        if content != original_content:
             with open(file_path, "w", encoding="utf-8") as f:
-                f.write(updated_content)
-            print(f"✅ Updated {file_path}")
+                f.write(content)
+            print(f"Updated {file_path}")
             return True
         else:
-            print(f"⏭️  No changes needed in {file_path}")
+            print(f"No changes needed in {file_path}")
             return False
 
     except Exception as e:
-        print(f"❌ Error updating {file_path}: {e}")
+        print(f"Error updating {file_path}: {e}")
         return False
 
 
@@ -66,19 +154,19 @@ def main():
 
     # Validate version format
     if not re.match(r"^\d+\.\d+\.\d+$", new_version):
-        print("❌ Invalid version format. Use semantic versioning (e.g., 0.3.0)")
+        print("Invalid version format. Use semantic versioning (e.g., 0.3.0)")
         sys.exit(1)
 
     # Read current version from VERSION file
     version_file = Path("VERSION")
     if not version_file.exists():
-        print("❌ VERSION file not found")
+        print("VERSION file not found")
         sys.exit(1)
 
     with open(version_file, "r") as f:
         old_version = f.read().strip()
 
-    print(f"🔄 Updating version from {old_version} to {new_version}")
+    print(f"Updating version from {old_version} to {new_version}")
 
     # Files to update
     files_to_update = [
@@ -102,10 +190,10 @@ def main():
             if update_file_version(file_path, old_version, new_version):
                 updated_count += 1
         else:
-            print(f"⚠️  File not found: {file_path}")
+            print(f"File not found: {file_path}")
 
-    print(f"\n🎉 Updated {updated_count} files")
-    print("📝 Don't forget to:")
+    print(f"\nUpdated {updated_count} files")
+    print("Don't forget to:")
     print("   1. Update CHANGELOG.md with new features/fixes")
     print(
         f"   2. Commit changes: git add . && git commit -m 'Bump version to {new_version}'"

@@ -43,6 +43,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Prepare app image tag
+        id: app_tag
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            ref='${{ github.head_ref }}'
+          else
+            ref='${{ github.ref_name }}'
+          fi
+          sanitized="${ref//\//-}"
+          echo "tag=$sanitized" >> "$GITHUB_OUTPUT"
+
       - name: Build app image (test only)
         uses: docker/build-push-action@v5
         with:
@@ -51,6 +62,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: false
           tags: |
-            ${{ env.REGISTRY }}/princekrroshan01/gunicorn-app:${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || github.ref_name == 'refs/heads/main' && 'main' || github.ref_name == 'refs/heads/develop' && 'develop' || github.ref_name }}
+            ${{ env.REGISTRY }}/princekrroshan01/gunicorn-app:${{ steps.app_tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -17,7 +17,7 @@ This guide explains how to build and publish the Gunicorn Prometheus Exporter si
 docker build -t gunicorn-prometheus-exporter:latest .
 
 # Build with specific version tag
-docker build -t gunicorn-prometheus-exporter:0.2.0 .
+docker build -t gunicorn-prometheus-exporter:0.2.1 .
 ```
 
 ### Build the Sample Application Image
@@ -34,7 +34,7 @@ Replace `princekrroshan01` with your actual Docker Hub username:
 ```bash
 # Tag sidecar image
 docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:latest
-docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:0.2.0
+docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:0.2.1
 
 # Tag application image
 docker tag gunicorn-app:latest princekrroshan01/gunicorn-app:latest
@@ -53,7 +53,7 @@ Enter your Docker Hub username and password when prompted.
 ```bash
 # Push sidecar image
 docker push princekrroshan01/gunicorn-prometheus-exporter:latest
-docker push princekrroshan01/gunicorn-prometheus-exporter:0.2.0
+docker push princekrroshan01/gunicorn-prometheus-exporter:0.2.1
 
 # Push application image
 docker push princekrroshan01/gunicorn-app:latest
@@ -159,7 +159,7 @@ docker buildx create --name multiarch --driver docker-container --use
 # Build for multiple architectures
 docker buildx build --platform linux/amd64,linux/arm64 \
   -t princekrroshan01/gunicorn-prometheus-exporter:latest \
-  -t princekrroshan01/gunicorn-prometheus-exporter:0.2.0 \
+  -t princekrroshan01/gunicorn-prometheus-exporter:0.2.1 \
   --push .
 ```
 
@@ -416,7 +416,7 @@ docker run --rm princekrroshan01/gunicorn-prometheus-exporter:latest --help
 
 ### Version Management
 
-- Use semantic versioning (e.g., 0.2.0)
+- Use semantic versioning (e.g., 0.2.1)
 - Tag releases in Git
 - Maintain compatibility between versions
 - Document breaking changes
