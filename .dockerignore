@@ -45,8 +45,9 @@ build/
 dist/
 *.egg-info/
 
-# System test
+# System test (keep test_app.py for Docker builds)
 system-test/
+!system-test/test_app.py
 example/prometheus-data/
 example/venv/
 
