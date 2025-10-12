@@ -45,11 +45,13 @@ build/
 dist/
 *.egg-info/
 
-# System test (keep test_app.py for Docker builds)
-system-test/
-!system-test/test_app.py
-example/prometheus-data/
-example/venv/
+# System test (keep essential files for Docker builds)
+system-test/prometheus-data/
+system-test/docker-compose*.yml
+system-test/Makefile
+system-test/README.md
+system-test/requirements-dev.txt
+system-test/test_docker_setup.sh
 
 # GitHub workflows (not needed in image)
 .github/
