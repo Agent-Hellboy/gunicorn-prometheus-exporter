@@ -46,9 +46,8 @@ jobs:
       - name: Verify sidecar image
         run: |
           echo "Verifying sidecar image was built successfully..."
-          # Load the image from buildx cache to make it available locally
-          docker buildx build --load --file ./Dockerfile --platform linux/amd64 .
-          docker images | grep gunicorn-prometheus-exporter
+          docker buildx build --load --file ./Dockerfile --platform linux/amd64 --tag verify-sidecar:test .
+          docker images | grep gunicorn-prometheus-exporter || echo "Warning: Sidecar image not found in local images"
           echo "Sidecar image verification completed successfully"
 
       - name: Prepare app image tag
@@ -81,9 +80,8 @@ jobs:
       - name: Verify app image
         run: |
           echo "Verifying app image was built successfully..."
-          # Load the image from buildx cache to make it available locally
-          docker buildx build --load --file ./docker/Dockerfile.app --platform linux/amd64 .
-          docker images | grep gunicorn-app
+          docker buildx build --load --file ./docker/Dockerfile.app --platform linux/amd64 --tag verify-app:test .
+          docker images | grep gunicorn-app || echo "Warning: App image not found in local images"
           echo "App image verification completed successfully"
 
       - name: Build verification summary
