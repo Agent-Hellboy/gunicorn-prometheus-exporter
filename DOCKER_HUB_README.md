@@ -1,8 +1,8 @@
 # Gunicorn Prometheus Exporter
 
-[![Docker Pulls](https://badgen.net/docker/pulls/princekrroshan01/gunicorn-prometheus-exporter)](https://hub.docker.com/repository/docker/princekrroshan01/gunicorn-prometheus-exporter)
-[![Docker Image Size](https://badgen.net/docker/size/princekrroshan01/gunicorn-prometheus-exporter/0.2.1/amd64)](https://hub.docker.com/repository/docker/princekrroshan01/gunicorn-prometheus-exporter)
-[![Docker Stars](https://badgen.net/docker/stars/princekrroshan01/gunicorn-prometheus-exporter)](https://hub.docker.com/repository/docker/princekrroshan01/gunicorn-prometheus-exporter)
+[![Docker Pulls](https://badgen.net/docker/pulls/princekrroshan01/gunicorn-prometheus-exporter)](https://hub.docker.com/r/princekrroshan01/gunicorn-prometheus-exporter)
+[![Docker Image Size](https://badgen.net/docker/size/princekrroshan01/gunicorn-prometheus-exporter/0.2.1/amd64)](https://hub.docker.com/r/princekrroshan01/gunicorn-prometheus-exporter)
+[![Docker Stars](https://badgen.net/docker/stars/princekrroshan01/gunicorn-prometheus-exporter)](https://hub.docker.com/r/princekrroshan01/gunicorn-prometheus-exporter)
 
 Production-ready Prometheus metrics exporter for Gunicorn applications, designed to run as a sidecar container.
 
