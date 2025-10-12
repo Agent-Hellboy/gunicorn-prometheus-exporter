@@ -4,13 +4,13 @@ help: ## Show this help message
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-version-update: ## Update version across all files (usage: make version-update VERSION=0.3.0)
+release-prep: ## Prepare release by updating version across all files (usage: make release-prep VERSION=0.3.0)
 	@if [ -z "$(VERSION)" ]; then \
-		echo "❌ Please specify VERSION. Usage: make version-update VERSION=0.3.0"; \
+		echo "Please specify VERSION. Usage: make release-prep VERSION=0.3.0"; \
 		exit 1; \
 	fi
-	@echo "🔄 Updating version to $(VERSION)..."
-	@python3 scripts/update_version.py $(VERSION)
+	@echo "Preparing release for version $(VERSION)..."
+	@python3 scripts/release_readiness.py $(VERSION)
 
 test: ## Run tests
 	tox
