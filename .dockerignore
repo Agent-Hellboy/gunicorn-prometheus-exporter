@@ -47,20 +47,17 @@ dist/
 
 # System test
 system-test/
-!system-test/system_test_basic.sh
-!system-test/system_test_redis_integ.sh
-!system-test/system_test_yaml_config.sh
-!system-test/test_app.py
-!system-test/test_configs/
-!system-test/gunicorn.yaml.conf.py
-!system-test/prometheus.yml
-!system-test/requirements-dev.txt
 example/prometheus-data/
 example/venv/
 
-# CI/CD
+# GitHub workflows (not needed in image)
 .github/
 
-# Docker
-docker-compose.yml
-docker-compose.*.yml
+# Docker files not needed in build context
+docker-compose*.yml
+Dockerfile*
+!Dockerfile
+!docker/Dockerfile.app
+
+# Coverage reports
+coverage.xml
