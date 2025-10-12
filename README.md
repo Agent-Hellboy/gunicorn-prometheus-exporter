@@ -600,7 +600,11 @@ def when_ready(server):
 - **Docker**: See [Docker Deployment](docs/examples/deployment-guide.md#docker-deployment)
 - **Kubernetes**: See [Kubernetes Deployment](docs/examples/deployment-guide.md#kubernetes-deployment)
 
-### Sidecar Deployment
+### Kubernetes Deployment Options
+
+The exporter supports two main Kubernetes deployment patterns:
+
+#### Sidecar Deployment
 
 Deploy the exporter as a **sidecar container** within the same Kubernetes pod for isolated monitoring:
 
@@ -665,6 +669,74 @@ spec:
 - **Resource Management**: Independent resource limits
 - **Security**: Reduced attack surface
 - **Maintenance**: Update monitoring independently
+
+#### DaemonSet Deployment
+
+Deploy the exporter as a **DaemonSet** for cluster-wide infrastructure monitoring:
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gunicorn-prometheus-exporter-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: gunicorn-prometheus-exporter
+      component: daemonset
+  template:
+    metadata:
+      labels:
+        app: gunicorn-prometheus-exporter
+        component: daemonset
+    spec:
+      hostNetwork: true
+      containers:
+        - name: prometheus-exporter
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+          ports:
+            - containerPort: 9091
+              name: metrics
+          env:
+            - name: PROMETHEUS_METRICS_PORT
+              value: "9091"
+            - name: REDIS_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+```
+
+**Benefits:**
+- **Cluster Coverage**: One pod per node for complete cluster monitoring
+- **Infrastructure Monitoring**: Node-level application insights
+- **Automatic Scaling**: Scales automatically with cluster size
+- **Host Network Access**: Direct access to node-level services
+
+### Deployment Comparison
+
+| Feature | Sidecar Deployment | DaemonSet Deployment |
+|---------|-------------------|---------------------|
+| **Use Case** | Application-specific monitoring | Cluster-wide infrastructure monitoring |
+| **Scaling** | Manual replica scaling | Automatic (one per node) |
+| **Network** | ClusterIP services | Host network access |
+| **Coverage** | Specific applications | All applications on all nodes |
+| **Resource** | Shared across pods | Dedicated per node |
+| **Best For** | Production applications | Infrastructure monitoring, development environments |
+| **Manifest Location** | `k8s/sidecar-deployment.yaml` | `k8s/sidecar-daemonset.yaml` |
+
+### Complete Kubernetes Examples
+
+Find complete Kubernetes manifests in the [`k8s/`](k8s/) directory:
+
+- **Sidecar Deployment**: `k8s/sidecar-deployment.yaml`
+- **DaemonSet Deployment**: `k8s/sidecar-daemonset.yaml`
+- **Services**: `k8s/daemonset-service.yaml`, `k8s/daemonset-metrics-service.yaml`
+- **Network Policies**: `k8s/daemonset-netpol.yaml`
+- **Complete Setup**: See [`k8s/README.md`](k8s/README.md) for full deployment guide
 
 ### Future Deployment Options
 

@@ -179,8 +179,9 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 
 - [Deployment Guide](examples/deployment-guide.md) - Production deployment strategies
 - [Kubernetes Deployment](examples/kubernetes-deployment.md) - Complete K8s sidecar guide
+- [DaemonSet Deployment](examples/daemonset-deployment.md) - Cluster-wide infrastructure monitoring
 - [Docker Sidecar Setup](../docker/README.md) - Docker Compose deployment
-- [K8s Manifests Reference](../k8s/README.md) - Production-ready K8s manifests
+- [Kubernetes Manifests](../k8s/README.md) - Complete K8s manifests
 
 ### Framework Integration
 
