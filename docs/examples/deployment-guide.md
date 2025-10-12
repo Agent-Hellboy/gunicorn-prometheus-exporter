@@ -115,7 +115,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.0
+          image: princekrroshan01/gunicorn-app:0.2.1
           ports:
             - containerPort: 8000
               name: http
@@ -169,14 +169,14 @@ Pre-built Docker images are available on Docker Hub:
 
 ```bash
 # Sidecar exporter image
-docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.0
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.1
 
 # Sample Flask application (for testing)
-docker pull princekrroshan01/gunicorn-app:0.2.0
+docker pull princekrroshan01/gunicorn-app:0.2.1
 
 # Or build locally if the release is not yet available:
-# docker build -t princekrroshan01/gunicorn-prometheus-exporter:0.2.0 .
-# docker build -f docker/Dockerfile.app -t princekrroshan01/gunicorn-app:0.2.0 .
+# docker build -t princekrroshan01/gunicorn-prometheus-exporter:0.2.1 .
+# docker build -f docker/Dockerfile.app -t princekrroshan01/gunicorn-app:0.2.1 .
 ```
 
 Images are automatically built and published for:
@@ -251,7 +251,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.0
+          image: princekrroshan01/gunicorn-app:0.2.1
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -280,7 +280,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.0
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.1
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true

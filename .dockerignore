@@ -45,22 +45,24 @@ build/
 dist/
 *.egg-info/
 
-# System test
-system-test/
-!system-test/system_test_basic.sh
-!system-test/system_test_redis_integ.sh
-!system-test/system_test_yaml_config.sh
-!system-test/test_app.py
-!system-test/test_configs/
-!system-test/gunicorn.yaml.conf.py
-!system-test/prometheus.yml
-!system-test/requirements-dev.txt
-example/prometheus-data/
+# System test (exclude unnecessary files for Docker builds)
+system-test/test_venv/
+system-test/prometheus-data/
+system-test/docker-compose*.yml
+system-test/Makefile
+system-test/README.md
+system-test/requirements-dev.txt
+system-test/test_docker_setup.sh
 example/venv/
 
-# CI/CD
+# GitHub workflows (not needed in image)
 .github/
 
-# Docker
-docker-compose.yml
-docker-compose.*.yml
+# Docker files not needed in build context
+docker-compose*.yml
+Dockerfile*
+!Dockerfile
+!docker/Dockerfile.app
+
+# Coverage reports
+coverage.xml

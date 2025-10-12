@@ -2,7 +2,7 @@
 FROM python:3.11-slim as builder
 
 # Set build arguments
-ARG VERSION=0.2.0
+ARG VERSION=0.2.1
 ARG INSTALL_EXTRAS=all
 
 # Install build dependencies
@@ -29,7 +29,7 @@ FROM python:3.11-slim
 # Set labels for metadata
 LABEL maintainer="Prince Roshan <princekrroshan01@gmail.com>"
 LABEL description="Gunicorn Prometheus Exporter - Sidecar container for monitoring Gunicorn applications"
-LABEL version="0.2.0"
+LABEL version="0.2.1"
 LABEL org.opencontainers.image.source="https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter"
 LABEL org.opencontainers.image.licenses="MIT"
 
