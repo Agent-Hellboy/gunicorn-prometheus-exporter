@@ -64,13 +64,15 @@ main() {
 
     # Step 5: Deploy Redis
     print_status "Deploying Redis DaemonSet..."
+    kubectl apply -f "$TEMP_DIR/redis-pvc.yaml"
     kubectl apply -f "$TEMP_DIR/redis-daemonset.yaml"
 
     print_status "Waiting for Redis to be ready..."
     kubectl wait --for=condition=ready pod -l app=redis --timeout=300s
 
     print_status "Verifying Redis connectivity..."
-    kubectl run redis-test --image=redis:7-alpine --rm -i --restart=Never -- redis-cli -h redis-service ping
+    # For DaemonSet with hostNetwork, test connectivity directly on localhost
+    kubectl run redis-test --image=redis:7-alpine --rm -i --restart=Never -- redis-cli -h 127.0.0.1 ping
 
     # Step 6: Deploy DaemonSet
     print_status "Deploying DaemonSet..."
