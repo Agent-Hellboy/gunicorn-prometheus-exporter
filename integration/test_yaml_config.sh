@@ -442,7 +442,8 @@ EOF
         docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
 
         # Run container in background with the same config as local mode
-        docker run -d \
+        print_status "INFO" "Starting Docker container..."
+        if ! docker run -d \
             --name "$DOCKER_CONTAINER" \
             -p 8089:8089 \
             -p 9094:9094 \
@@ -451,11 +452,22 @@ EOF
             -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/test_app.py:ro" \
             -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py:ro" \
             "$DOCKER_IMAGE" \
-            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
+            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app; then
+            print_status "FAIL" "Failed to start Docker container"
+            exit 1
+        fi
 
         # Wait for services to be ready
         print_status "INFO" "Waiting for services to start..."
         sleep 10
+
+        # Check if container is still running
+        if ! docker ps | grep -q "$DOCKER_CONTAINER"; then
+            print_status "FAIL" "Docker container failed to start or exited immediately"
+            print_status "INFO" "Container logs:"
+            docker logs "$DOCKER_CONTAINER" 2>&1 || echo "No logs available"
+            exit 1
+        fi
 
         # Wait for service to be ready
         if wait_for_service "127.0.0.1" "$GUNICORN_PORT" "Gunicorn"; then
