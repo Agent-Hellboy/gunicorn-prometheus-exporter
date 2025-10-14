@@ -91,7 +91,12 @@ class SidecarMetrics:
         )
 
         # Redis connection metrics (if enabled)
-        if is_redis_enabled():
+        redis_enabled_init = os.getenv("REDIS_ENABLED", "false").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+        if redis_enabled_init:
             self.redis_connected = Gauge(
                 "gunicorn_sidecar_redis_connected",
                 "Redis connection status (1=connected, 0=disconnected)",
@@ -105,7 +110,12 @@ class SidecarMetrics:
 
         # File system metrics only relevant for multiprocess mode (non-Kubernetes)
         # In Kubernetes Redis mode, these metrics are irrelevant
-        if not is_redis_enabled():
+        redis_enabled_check = os.getenv("REDIS_ENABLED", "false").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+        if not redis_enabled_check:
             try:
                 multiproc_path = Path(multiproc_dir)
                 if multiproc_path.exists():
@@ -129,7 +139,7 @@ class SidecarMetrics:
             self.multiproc_files_count.set(0)
 
         # Update Redis metrics if enabled
-        if is_redis_enabled() and hasattr(self, "redis_connected"):
+        if redis_enabled_check and hasattr(self, "redis_connected"):
             try:
                 redis_manager = get_redis_storage_manager()
                 if redis_manager and redis_manager.is_connected():
@@ -152,7 +162,8 @@ def setup_metrics_server(
 
     # Skip multiprocess collector completely in Redis mode (Kubernetes deployments)
     # Redis provides proper multi-container/multi-pod metrics storage
-    if not is_redis_enabled():
+    redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() in ("true", "1", "yes")
+    if not redis_enabled:
         try:
             MultiProcessCollector(registry, multiproc_dir)
             logger.info(
@@ -189,7 +200,8 @@ def signal_handler(signum, frame):
     logger.info(f"Received signal {signum}, shutting down...")
 
     # Cleanup Redis if enabled
-    if is_redis_enabled():
+    redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() in ("true", "1", "yes")
+    if redis_enabled:
         try:
             teardown_redis_metrics()
             logger.info("Redis metrics teardown completed")
@@ -228,13 +240,13 @@ def main():
 
     args = parser.parse_args()
 
+    # Check if Redis is enabled (for Kubernetes mode)
+    redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() in ("true", "1", "yes")
+
     # Set up signal handlers
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
-
-    # Directory validation only needed for multiprocess mode (non-Kubernetes)
-    # In Kubernetes Redis deployments, we don't touch the filesystem
-    if not is_redis_enabled():
+    if not redis_enabled:
         multiproc_path = Path(args.multiproc_dir)
         if not multiproc_path.exists():
             logger.warning(
