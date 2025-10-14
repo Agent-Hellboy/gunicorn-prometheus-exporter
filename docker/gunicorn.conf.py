@@ -29,7 +29,11 @@ from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
 # Basic Gunicorn settings
 bind = "0.0.0.0:8000"
 workers = int(os.getenv("GUNICORN_WORKERS", 2))
+
+# Always use PrometheusWorker for worker-level metrics collection
+# The storage backend (Redis vs multiprocess files) is handled by hooks and sidecar
 worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+
 worker_connections = 1000
 timeout = 30
 keepalive = 2

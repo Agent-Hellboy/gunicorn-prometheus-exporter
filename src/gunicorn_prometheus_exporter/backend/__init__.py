@@ -15,6 +15,7 @@ Design Patterns:
 """
 
 from .core import (
+    RedisMultiProcessCollector,
     RedisStorageClient,
     RedisStorageDict,
     RedisValueClass,
@@ -42,6 +43,7 @@ __all__ = [
     "cleanup_redis_keys",
     "get_redis_collector",
     # Redis Backend
+    "RedisMultiProcessCollector",
     "RedisStorageClient",
     "RedisStorageDict",
     "RedisValueClass",

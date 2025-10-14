@@ -27,11 +27,14 @@ NUM_WORKERS=0  # Just control-plane for sidecar test
 EXPORTER_IMAGE="gunicorn-prometheus-exporter:test"
 APP_IMAGE="gunicorn-app:test"
 
+TEMP_DIR=""
+
 # Cleanup function
 cleanup() {
     echo "Cleaning up..."
     pkill -f "kubectl port-forward" || true
     delete_kind_cluster "$CLUSTER_NAME" || true
+    [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR" || true
 }
 
 trap cleanup EXIT INT TERM

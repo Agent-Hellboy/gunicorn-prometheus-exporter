@@ -159,10 +159,20 @@ def setup_metrics_server(
     # Create registry
     registry = CollectorRegistry()
 
-    # Skip multiprocess collector completely in Redis mode (Kubernetes deployments)
-    # Redis provides proper multi-container/multi-pod metrics storage
+    # Choose appropriate collector based on storage backend
     redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() in ("true", "1", "yes")
-    if not redis_enabled:
+    if redis_enabled:
+        # Use Redis-backed multiprocess collector for Kubernetes deployments
+        try:
+            from gunicorn_prometheus_exporter.backend import RedisMultiProcessCollector
+
+            RedisMultiProcessCollector(registry)
+            logger.info("Redis multiprocess collector initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize Redis multiprocess collector: {e}")
+            # Continue without collector
+    else:
+        # Use traditional multiprocess collector for local/docker deployments
         try:
             MultiProcessCollector(registry, multiproc_dir)
             logger.info(
@@ -171,10 +181,6 @@ def setup_metrics_server(
         except Exception as e:
             logger.error(f"Failed to initialize multiprocess collector: {e}")
             # Continue without multiprocess collector
-    else:
-        logger.info(
-            "Redis storage enabled - multiprocess collector disabled for Kubernetes compatibility"
-        )
 
     # Set up Redis if enabled
     if redis_enabled:
