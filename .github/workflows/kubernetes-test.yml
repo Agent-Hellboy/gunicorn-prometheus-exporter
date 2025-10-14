@@ -1,0 +1,49 @@
+name: Smoke Tests (Kubernetes)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build images locally
+        run: |
+          echo "Building sidecar/DaemonSet exporter image locally..."
+          docker build -t gunicorn-prometheus-exporter:test .
+          echo "✅ Exporter image built successfully"
+
+          echo "Building sample app image locally..."
+          docker build -f docker/Dockerfile.app -t gunicorn-app:test .
+          echo "✅ Sample app image built successfully"
+
+      - name: Test Kubernetes sidecar deployment
+        run: |
+          bash e2e/kubernetes/test_sidecar_deployment.sh
+
+      - name: Test Kubernetes DaemonSet deployment
+        run: |
+          bash e2e/kubernetes/test_daemonset_deployment.sh
+
+      - name: Summary
+        run: |
+          echo "🎉 All Kubernetes tests passed!"
+          echo "✅ Sidecar deployment pattern validated"
+          echo "✅ DaemonSet deployment pattern validated"
+          echo "✅ Redis storage integration verified"
+          echo "✅ Multi-node deployment verified (DaemonSet)"
+          echo "✅ Application and exporter sidecar communication verified"
+          echo "✅ All metrics collected and exposed properly"

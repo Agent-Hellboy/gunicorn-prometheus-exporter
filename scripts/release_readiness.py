@@ -236,10 +236,18 @@ def main():
         "DOCKER_HUB_GUIDE.md",
         "CHANGELOG.md",
         "docs/index.md",
+        "docs/development.md",
+        "docs/contributing.md",
+        "docs/testing.md",
         "docs/examples/kubernetes-deployment.md",
         "docs/examples/deployment-guide.md",
+        "docs/examples/daemonset-deployment.md",
         "docker/README.md",
+        "k8s/README.md",
         "k8s/sidecar-deployment.yaml",
+        "k8s/sidecar-daemonset.yaml",
+        "integration/README.md",
+        "e2e/README.md",
     ]
 
     # Update all files

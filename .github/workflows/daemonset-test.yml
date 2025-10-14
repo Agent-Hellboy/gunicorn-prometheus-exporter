@@ -1,4 +1,4 @@
-name: Smoke Tests - (Linux Docker) DaemonSet
+name: Smoke Tests (Kubernetes)
 
 on:
   push:

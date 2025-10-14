@@ -96,4 +96,4 @@ fi
 docker rmi gunicorn-yaml-test > /dev/null 2>&1 || true
 
 print_status "PASS" "All Docker setup tests passed!"
-print_status "INFO" "You can now run: ./system_test_yaml_config.sh --docker --quick"
+print_status "INFO" "You can now run: ./integration/test_yaml_config.sh --docker --quick"

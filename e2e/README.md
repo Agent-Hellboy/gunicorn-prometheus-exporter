@@ -1,33 +1,145 @@
-# System Test Suite for Gunicorn Prometheus Exporter (Cross-Platform Docker)
+# End-to-End (E2E) Test Suite for Gunicorn Prometheus Exporter
 
-This directory contains a comprehensive system test for the Gunicorn Prometheus Exporter with Redis integration.
+This directory contains comprehensive end-to-end tests for the Gunicorn Prometheus Exporter across different deployment patterns.
 
-## Overview
+## What are E2E Tests?
 
-The system test validates the complete functionality of the Gunicorn Prometheus Exporter, including:
+End-to-end tests sit at the top of the Test Pyramid:
 
-- ✅ **Dependency Installation**: Automatic setup of required packages
-- ✅ **Redis Integration**: Full Redis backend functionality with TTL support
-- ✅ **Gunicorn Server**: Multi-worker setup with Redis storage
+```
+┌─────────────────────────────────────┐
+│  E2E Tests (e2e/)                   │  ← Full deployment testing ⭐ YOU ARE HERE
+├─────────────────────────────────────┤
+│  Integration Tests (integration/)   │  ← Component integration
+├─────────────────────────────────────┤
+│  Unit Tests (tests/)                │  ← Individual functions
+└─────────────────────────────────────┘
+```
+
+*E2E tests verify that the entire system works correctly in production-like environments*, including:
+
+- ✅ **Docker Tests**: Containerized deployment patterns
+- ✅ **Kubernetes Tests**: DaemonSet and sidecar orchestration patterns
+- ✅ **Container Orchestration**: Docker Compose, Kind clusters
+- ✅ **Network Policies**: Service communication, ingress/egress
+- ✅ **Multi-node Deployments**: DaemonSet across multiple nodes
 - ✅ **Metrics Collection**: All metric types (counters, gauges, histograms)
-- ✅ **Request Processing**: Real HTTP request handling and metrics capture
-- ✅ **Prometheus Scraping**: Verification that Prometheus can scrape metrics (15 seconds)
-- ✅ **Redis TTL Testing**: Automatic key expiration and cleanup (30 seconds TTL)
+- ✅ **Request Processing**: Full HTTP request-response cycle
+- ✅ **Backend Storage**: File-based multiprocess and Redis integration
 - ✅ **Signal Handling**: Proper shutdown and cleanup
 - ✅ **CI/CD Ready**: Automated testing for continuous integration
-- ✅ **Cross-Platform**: Works consistently on Mac, Windows, and Linux via Docker
-- ✅ **Self-Contained**: No host machine dependencies
 
-## Files
+## Directory Structure
 
-| File                   | Purpose                                                                                        |
-| ---------------------- | ---------------------------------------------------------------------------------------------- |
-| `system_test.sh`       | **Unified system test** - Complete automated test suite with multiple modes (including Docker) |
-| `Dockerfile`           | **Docker image** - Container definition for consistent testing                                 |
-| `docker-compose.yml`   | **Docker Compose** - Multi-service setup for testing                                           |
-| `Makefile`             | **Build automation** - Easy test execution commands                                            |
-| `requirements-dev.txt` | **Dependencies** - Development and testing packages                                            |
-| `README.md`            | **Documentation** - This file                                                                  |
+```
+e2e/
+├── docker/                          # Docker deployment tests
+│   ├── test_docker_compose.sh      # Docker Compose test
+│   ├── test_sidecar_redis.sh       # Redis integration test
+│   ├── test_standalone_images.sh   # Individual image tests
+│   └── test_setup_validation.sh    # Setup validation
+│
+├── kubernetes/                      # Kubernetes deployment tests
+│   ├── common/                     # Shared utilities
+│   │   ├── setup_kind.sh          # Kind cluster setup
+│   │   └── validate_metrics.sh    # Metrics validation
+│   ├── test_daemonset_deployment.sh  # DaemonSet pattern
+│   └── test_sidecar_deployment.sh    # Sidecar pattern
+│
+├── integration/                     # Integration tests (no containers)
+│   ├── test_basic.sh               # File-based multiprocess
+│   ├── test_redis_integ.sh         # Redis backend integration
+│   └── test_yaml_config.sh         # YAML configuration
+│
+├── fixtures/                        # Test resources
+│   ├── dockerfiles/                # Test Dockerfiles
+│   ├── compose/                    # Docker Compose files
+│   ├── configs/                    # Configuration files
+│   └── apps/                       # Test applications
+│
+├── test_configs/                    # Test configuration files
+├── Makefile                         # Build automation
+└── README.md                        # This file
+```
+
+## Test Categories
+
+### 1. Docker Tests (docker/)
+
+Tests containerized deployments. These verify the Docker images and container orchestration work correctly.
+
+**Docker Compose** (`docker/test_docker_compose.sh`):
+- Multi-container orchestration
+- Sidecar pattern with app + exporter
+- Container networking and communication
+- Prometheus/Grafana stack integration
+
+**Redis integration** (`docker/test_sidecar_redis.sh`):
+- Sidecar container with Redis backend
+- Docker network communication
+- Containerized Redis storage
+
+**Standalone images** (`docker/test_standalone_images.sh`):
+- Image build validation
+- Entrypoint modes (sidecar/standalone/health)
+- Container startup and health checks
+
+### 2. Kubernetes Tests (kubernetes/)
+
+**DaemonSet deployment** (`kubernetes/test_daemonset_deployment.sh`):
+- Multi-node kind cluster setup
+- DaemonSet deployment to all nodes
+- Redis storage integration
+- Comprehensive metrics validation
+- Node-level monitoring verification
+
+**Sidecar deployment** (`kubernetes/test_sidecar_deployment.sh`):
+- Standard K8s deployment pattern
+- Sidecar container communication
+- Service discovery and networking
+
+## What Makes These "E2E" Tests?
+
+These tests are *end-to-end tests* (not unit tests or integration tests) because:
+
+1. **Full Stack Deployment**: They test the entire system deployed in containers or Kubernetes clusters
+
+2. **Production-Like Environment**: They use:
+   - Docker containers
+   - Kubernetes orchestration
+   - Network policies
+   - Service discovery
+   - Multi-node setups
+
+3. **Real Infrastructure**: They deploy:
+   - Real container images
+   - Real Kubernetes manifests
+   - Real Redis instances
+   - Real Prometheus scraping
+   - Real Grafana dashboards
+
+4. **End-to-End Flow**: They validate the complete flow from:
+   - Container image build → Container startup → Service exposure → Metrics collection → Prometheus scraping
+
+5. **Not Just Components**: Unlike integration tests, these test the complete deployment including:
+   - Container orchestration
+   - Network communication
+   - Service discovery
+   - Resource management
+   - Multi-container coordination
+
+## Comparison with Integration Tests
+
+| Aspect | Integration Tests | E2E Tests |
+|--------|------------------|-----------|
+| *Location* | `../integration/` | `e2e/` (this directory) |
+| *Scope* | Component integration | Full deployment |
+| *Containers* | No | Yes (Docker/Kubernetes) |
+| *Speed* | Fast (~30s) | Slower (~2-5min) |
+| *Isolation* | Process-level | Container-level |
+| *Dependencies* | Direct (Redis, Gunicorn) | Containerized |
+| *Purpose* | Verify components work together | Verify deployment works |
+| *Infrastructure* | Host system | Docker/Kubernetes |
 
 ## Quick Start
 

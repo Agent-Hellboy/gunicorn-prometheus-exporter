@@ -750,9 +750,19 @@ We're actively testing and will add support for:
 
 See the [Deployment Guide](docs/examples/deployment-guide.md) for complete deployment options and configurations.
 
-## System Testing
+## Testing
 
-I provide comprehensive system tests to validate the complete functionality of the Gunicorn Prometheus Exporter with Redis integration.
+This project follows the Test Pyramid with comprehensive testing at all levels:
+
+```
+┌─────────────────────────────────────┐
+│  E2E Tests (e2e/)                   │  ← Docker + Kubernetes
+├─────────────────────────────────────┤
+│  Integration Tests (integration/)   │  ← Component integration
+├─────────────────────────────────────┤
+│  Unit Tests (tests/)                │  ← pytest
+└─────────────────────────────────────┘
+```
 
 ### Quick Test (Local Development)
 
@@ -762,7 +772,7 @@ brew services start redis  # macOS
 sudo systemctl start redis  # Linux
 
 # Run quick test
-cd system-test
+cd e2e
 make quick-test
 ```
 
@@ -770,14 +780,14 @@ make quick-test
 
 ```bash
 # Complete automated test (installs everything)
-cd system-test
+cd e2e
 make system-test
 ```
 
 ### Using Make Commands
 
 ```bash
-cd system-test
+cd e2e
 make quick-test    # Fast local testing
 make system-test   # Full automated testing
 make install       # Install dependencies
@@ -786,6 +796,9 @@ make clean         # Clean up
 
 **Test Coverage**:
 
+- ✅ Unit tests (`tests/`) - pytest-based function testing
+- ✅ Integration tests (`integration/`) - Component integration
+- ✅ E2E tests (`e2e/`) - Docker + Kubernetes deployment
 - ✅ Redis integration and storage
 - ✅ Multi-worker Gunicorn setup
 - ✅ All metric types (counters, gauges, histograms)
@@ -793,7 +806,7 @@ make clean         # Clean up
 - ✅ Signal handling and graceful shutdown
 - ✅ CI/CD automation
 
-See [`system-test/README.md`](system-test/README.md) for detailed documentation.
+See [`e2e/README.md`](e2e/README.md) for detailed E2E test documentation.
 
 ## Contributing
 
@@ -805,7 +818,7 @@ Contributions are welcome! Please see our [contributing guide](https://princekrr
 
 ```bash
 # Install dependencies
-cd system-test
+cd e2e
 make install
 
 # Run tests

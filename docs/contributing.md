@@ -15,8 +15,19 @@ Thank you for your interest in contributing to the Gunicorn Prometheus Exporter!
 
 ### **Testing Structure**
 
-- **`tests/conftest.py`**: Shared fixtures and test configuration
-- **`tests/test_*.py`**: Comprehensive test coverage for each module
+Following the Test Pyramid:
+
+- **`tests/`**: Unit tests (pytest-based)
+  - `conftest.py`: Shared fixtures and test configuration
+  - `test_*.py`: Comprehensive test coverage for each module
+- **`integration/`**: Integration tests (component integration)
+  - `test_basic.sh`: File-based storage tests
+  - `test_redis_integ.sh`: Redis storage tests
+  - `test_yaml_config.sh`: YAML configuration tests
+- **`e2e/`**: End-to-end tests (Docker + Kubernetes)
+  - `docker/`: Docker deployment tests
+  - `kubernetes/`: Kubernetes deployment tests
+  - `fixtures/`: Test resources and configurations
 - **`tox.ini`**: Multi-environment testing configuration
 
 ## 🤝 How to Contribute
@@ -209,7 +220,14 @@ This project relies heavily on containerised workflows and infrastructure automa
 
 ### Automation Etiquette
 
-- Run `tox -e docker-test` before opening PRs to catch integration regressions early (mirrors the main CI job).
+- Run E2E tests before opening PRs to catch regressions early:
+  ```bash
+  cd e2e
+  make docker-test        # Docker deployment tests
+  make system-test        # Integration tests with Redis
+  make basic-test         # Integration tests with file storage
+  ```
+- Run unit tests with `tox` or `pytest`
 - Capture diagnostic logs on failure (`docker logs <container>`, `kubectl describe pod/<pod>`). Attach snippets to issues or pull requests.
 - Prefer Infrastructure as Code changes alongside documentation updates so contributors understand new operational steps.
 
@@ -252,10 +270,24 @@ This project relies heavily on containerised workflows and infrastructure automa
 
 ## Testing
 
-### Running Tests
+### Test Pyramid
+
+The project follows the Test Pyramid with three levels of testing:
+
+```
+┌─────────────────────────────────────┐
+│  e2e/                               │  ← Docker + Kubernetes (slowest)
+├─────────────────────────────────────┤
+│  integration/                       │  ← Component integration
+├─────────────────────────────────────┤
+│  tests/                             │  ← Unit tests (fastest)
+└─────────────────────────────────────┘
+```
+
+### Running Unit Tests
 
 ```bash
-# Run all tests
+# Run all unit tests
 tox
 
 # Run specific Python version
@@ -271,14 +303,48 @@ tox -e py312 -- tests/test_metrics.py
 tox -e py312 -- tests/test_metrics.py::test_worker_requests
 ```
 
+### Running Integration Tests
+
+```bash
+cd e2e
+
+# File-based storage test
+make basic-test
+
+# Redis integration test (auto-starts Redis)
+make system-test
+
+# Quick Redis test (requires Redis running)
+make quick-test
+
+# YAML configuration test
+make yaml-test
+```
+
+### Running E2E Tests
+
+```bash
+cd e2e
+
+# Docker deployment tests
+make docker-test
+
+# Or run specific E2E tests
+bash docker/test_docker_compose.sh
+bash docker/test_sidecar_redis.sh
+bash kubernetes/test_daemonset_deployment.sh
+```
+
 ### Writing Tests
 
 Follow these guidelines for writing tests:
 
-1. **Test Structure**: Use pytest fixtures and classes
+1. **Test Structure**: Use pytest fixtures and classes for unit tests
 2. **Test Names**: Descriptive names that explain what is being tested
-3. **Coverage**: Aim for high test coverage
-4. **Mocking**: Use mocks for external dependencies
+3. **Coverage**: Aim for high test coverage (especially for unit tests)
+4. **Mocking**: Use mocks for external dependencies in unit tests
+5. **Real Dependencies**: Use real Redis/Gunicorn in integration tests
+6. **Containers**: Use Docker/K8s in E2E tests
 
 ### Test Coverage
 
