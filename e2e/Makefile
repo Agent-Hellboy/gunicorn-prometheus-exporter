@@ -27,53 +27,53 @@ help:
 
 # Install dependencies
 install:
-	pip install -e .
-	pip install -r e2e/requirements-dev.txt
+	pip install -e ..
+	pip install -r ../requirements-dev.txt
 
 # Run unit tests
 unit-test:
-	python -m pytest tests/ -v
+	python -m pytest ../tests/ -v
 
 # Quick Redis integration test (requires Redis running)
 integration-test-redis-quick:
 	@echo "Running quick Redis integration test..."
 	@echo "Make sure Redis is running: brew services start redis (macOS) or sudo systemctl start redis (Linux)"
-	integration/test_redis_integration.sh --quick --no-redis --force
+	../integration/test_redis_integration.sh --quick --no-redis --force
 
 # Full Redis integration test (starts Redis automatically)
 integration-test-redis-full:
 	@echo "Running full Redis integration test..."
-	integration/test_redis_integration.sh
+	../integration/test_redis_integration.sh
 
 # CI-optimized Redis integration test (timeout-protected, better for CI)
 integration-test-redis-ci:
 	@echo "Running CI-optimized Redis integration test..."
-	integration/test_redis_integration.sh --ci
+	../integration/test_redis_integration.sh --ci
 
 # Force Redis test (kills existing processes)
 integration-test-redis-force:
 	@echo "Running force Redis test (kills existing processes)..."
-	integration/test_redis_integration.sh --force
+	../integration/test_redis_integration.sh --force
 
 # File-based storage integration test
 integration-test-file-storage:
 	@echo "Running file-based storage integration test..."
-	integration/test_file_storage_integration.sh
+	../integration/test_file_storage_integration.sh
 
 # Quick file-based storage integration test
 integration-test-file-storage-quick:
 	@echo "Running quick file-based storage integration test..."
-	integration/test_file_storage_integration.sh --quick
+	../integration/test_file_storage_integration.sh --quick
 
 # YAML configuration integration test
 integration-test-yaml-config:
 	@echo "Running YAML configuration integration test..."
-	integration/test_yaml_config_integration.sh
+	../integration/test_yaml_config_integration.sh
 
 # Quick YAML configuration integration test
 integration-test-yaml-config-quick:
 	@echo "Running quick YAML configuration integration test..."
-	integration/test_yaml_config_integration.sh --quick
+	../integration/test_yaml_config_integration.sh --quick
 
 # Clean up test artifacts
 clean:

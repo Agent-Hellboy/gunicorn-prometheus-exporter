@@ -21,6 +21,7 @@ from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
     default_post_fork,
     default_when_ready,
     default_worker_int,
+    redis_when_ready,
 )
 
 
@@ -41,7 +42,13 @@ loglevel = "info"
 proc_name = "gunicorn-prometheus-exporter-app"
 
 # Use Prometheus exporter hooks
-when_ready = default_when_ready
+# Choose appropriate when_ready hook based on storage backend
+redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() in ("true", "1", "yes")
+if redis_enabled:
+    when_ready = redis_when_ready  # Redis storage setup
+else:
+    when_ready = default_when_ready  # Multiprocess file storage
+
 on_starting = default_on_starting
 worker_int = default_worker_int
 on_exit = default_on_exit

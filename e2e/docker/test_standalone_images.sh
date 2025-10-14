@@ -32,8 +32,8 @@ test_sidecar_image() {
     # Test sidecar help command
     docker run --rm gunicorn-prometheus-exporter:test --help >/dev/null 2>&1
 
-    # Test sidecar health check
-    docker run -d --name test-sidecar-health -p 9091:9091 gunicorn-prometheus-exporter:test
+    # Test sidecar health check (use multiprocess mode for standalone test)
+    docker run -d --name test-sidecar-health -p 9091:9091 -e REDIS_ENABLED=false gunicorn-prometheus-exporter:test
     sleep 10
     docker run --rm --network container:test-sidecar-health gunicorn-prometheus-exporter:test health
     docker stop test-sidecar-health >/dev/null 2>&1
@@ -46,7 +46,7 @@ test_app_image() {
     print_status "Testing sample app image..."
 
     # Start app container
-    timeout 30 docker run --rm -d --name test-app -p 8000:8000 -p 9093:9093 \
+    docker run --rm -d --name test-app -p 8000:8000 -p 9093:9093 \
         -e PROMETHEUS_BIND_ADDRESS=0.0.0.0 \
         -e PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc \
         -e REDIS_ENABLED=false \

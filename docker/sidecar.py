@@ -50,7 +50,6 @@ logger = logging.getLogger(__name__)
 try:
     from gunicorn_prometheus_exporter.backend import (
         get_redis_storage_manager,
-        is_redis_enabled,
         setup_redis_metrics,
         teardown_redis_metrics,
     )
@@ -178,10 +177,20 @@ def setup_metrics_server(
         )
 
     # Set up Redis if enabled
-    if is_redis_enabled():
+    if redis_enabled:
         try:
             setup_redis_metrics()
             logger.info("Redis metrics setup completed")
+
+            # Add Redis collector to registry for reading stored metrics
+            from gunicorn_prometheus_exporter.backend import get_redis_collector
+
+            redis_collector = get_redis_collector()
+            if redis_collector:
+                registry.register(redis_collector)
+                logger.info("Redis collector registered")
+            else:
+                logger.warning("Redis collector not available")
         except Exception as e:
             logger.error(f"Failed to setup Redis metrics: {e}")
 

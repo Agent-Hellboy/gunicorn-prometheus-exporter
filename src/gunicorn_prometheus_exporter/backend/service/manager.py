@@ -158,6 +158,10 @@ class RedisStorageManager:
         """Check if Redis storage is enabled and working."""
         return self._is_initialized and self._redis_client is not None
 
+    def is_connected(self) -> bool:
+        """Check if Redis storage is connected (alias for is_enabled)."""
+        return self.is_enabled()
+
     def get_client(self) -> Optional[RedisClientProtocol]:
         """Get the Redis client instance."""
         return self._redis_client

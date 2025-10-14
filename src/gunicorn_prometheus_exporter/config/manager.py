@@ -389,6 +389,12 @@ def initialize_config(config_file: Optional[str] = None, **kwargs) -> None:
 def get_config() -> ExporterConfig:
     """Get the global configuration instance."""
     manager = get_config_manager()
+
+    # Initialize lazily if not initialized
+    with manager._lock:
+        if manager._state == ConfigState.UNINITIALIZED:
+            manager.initialize()
+
     return manager.get_config()
 
 

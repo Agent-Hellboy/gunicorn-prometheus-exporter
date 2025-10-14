@@ -53,17 +53,15 @@ main() {
     # Step 4: Prepare manifests
     print_status "Preparing manifests..."
     TEMP_DIR=$(mktemp -d)
-    cp -r k8s/*.yaml "$TEMP_DIR/"
+    cp -r ../../k8s/*.yaml "$TEMP_DIR/"
 
     # Update image references
     sed -i -E "s|princekrroshan01/gunicorn-app:[^\"[:space:]]*|$APP_IMAGE|g" "$TEMP_DIR/sidecar-daemonset.yaml"
     sed -i -E "s|princekrroshan01/gunicorn-prometheus-exporter:[^\"[:space:]]*|$EXPORTER_IMAGE|g" "$TEMP_DIR/sidecar-daemonset.yaml"
 
     # Step 5: Deploy Redis
-    print_status "Deploying Redis..."
-    kubectl apply -f "$TEMP_DIR/redis-pvc.yaml"
-    kubectl apply -f "$TEMP_DIR/redis-deployment.yaml"
-    kubectl apply -f "$TEMP_DIR/redis-service.yaml"
+    print_status "Deploying Redis DaemonSet..."
+    kubectl apply -f "$TEMP_DIR/redis-daemonset.yaml"
 
     print_status "Waiting for Redis to be ready..."
     kubectl wait --for=condition=ready pod -l app=redis --timeout=300s

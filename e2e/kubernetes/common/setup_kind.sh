@@ -18,19 +18,43 @@ print_success() {
 # Install kubectl
 install_kubectl() {
     print_status "Installing kubectl..."
-    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    # Detect OS and architecture
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "x86_64" ]; then
+        ARCH="amd64"
+    elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+        ARCH="arm64"
+    fi
+
+    KUBECTL_URL="https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${OS}/${ARCH}/kubectl"
+    print_status "Downloading kubectl from: $KUBECTL_URL"
+
+    curl -LO "$KUBECTL_URL"
     chmod +x kubectl
     sudo mv kubectl /usr/local/bin/
-    print_success "kubectl installed"
+    print_success "kubectl installed for $OS-$ARCH"
 }
 
 # Install kind
 install_kind() {
     print_status "Installing kind..."
-    curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+    # Detect OS and architecture
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "x86_64" ]; then
+        ARCH="amd64"
+    elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+        ARCH="arm64"
+    fi
+
+    KIND_URL="https://kind.sigs.k8s.io/dl/v0.20.0/kind-${OS}-${ARCH}"
+    print_status "Downloading kind from: $KIND_URL"
+
+    curl -Lo ./kind "$KIND_URL"
     chmod +x ./kind
     sudo mv ./kind /usr/local/bin/kind
-    print_success "kind installed"
+    print_success "kind installed for $OS-$ARCH"
 }
 
 # Create kind cluster

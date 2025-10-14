@@ -52,7 +52,7 @@ main() {
     # Step 4: Prepare manifests
     print_status "Preparing manifests..."
     TEMP_DIR=$(mktemp -d)
-    cp -r k8s/*.yaml "$TEMP_DIR/"
+    cp -r ../../k8s/*.yaml "$TEMP_DIR/"
 
     # Update image references
     sed -i -E "s|princekrroshan01/gunicorn-app:[^\"[:space:]]*|$APP_IMAGE|g" "$TEMP_DIR/sidecar-deployment.yaml"

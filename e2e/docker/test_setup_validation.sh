@@ -24,10 +24,10 @@ print_status() {
 
 # Test configuration
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$TEST_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$TEST_DIR/../.." && pwd)"
 # Use PROJECT_ROOT for all file operations
 
-print_status "INFO" "Testing Docker setup for YAML configuration..."
+print_status "INFO" "Testing general Docker environment setup..."
 
 # Check if Docker is available
 if ! command -v docker > /dev/null 2>&1; then
@@ -51,20 +51,16 @@ fi
 
 print_status "PASS" "docker-compose is available"
 
-# Check if required files exist
-required_files=(
-    "Dockerfile.yaml-test"
-    "docker-compose.yaml-test.yml"
-    "test_app.py"
-    "gunicorn.yaml.conf.py"
-    "prometheus.yml"
-    "test_configs/basic.yml"
-    "test_configs/redis.yml"
-    "test_configs/ssl.yml"
+# Check if basic project files exist
+basic_files=(
+    "Dockerfile"
+    "docker-compose.yml"
+    "pyproject.toml"
+    "README.md"
 )
 
-for file in "${required_files[@]}"; do
-    if [ -f "$SYSTEM_TEST_DIR/$file" ]; then
+for file in "${basic_files[@]}"; do
+    if [ -f "$PROJECT_ROOT/$file" ]; then
         print_status "PASS" "Required file exists: $file"
     else
         print_status "FAIL" "Required file missing: $file"
@@ -73,27 +69,37 @@ for file in "${required_files[@]}"; do
 done
 
 # Test Docker build
-print_status "INFO" "Testing Docker build..."
+print_status "INFO" "Testing main Dockerfile build..."
 cd "$PROJECT_ROOT"
-if docker build -f "$SYSTEM_TEST_DIR/Dockerfile.yaml-test" -t gunicorn-yaml-test . > /dev/null 2>&1; then
-    print_status "PASS" "Docker image builds successfully"
+if docker build -t gunicorn-prometheus-exporter:test . > /dev/null 2>&1; then
+    print_status "PASS" "Main Docker image builds successfully"
 else
-    print_status "FAIL" "Docker image build failed"
+    print_status "FAIL" "Main Docker image build failed"
     exit 1
 fi
 
 # Test docker-compose syntax
 print_status "INFO" "Testing docker-compose syntax..."
-cd "$SYSTEM_TEST_DIR"
-if docker-compose -f docker-compose.yaml-test.yml config > /dev/null 2>&1; then
+cd "$PROJECT_ROOT"
+if docker compose config > /dev/null 2>&1; then
     print_status "PASS" "docker-compose configuration is valid"
 else
     print_status "FAIL" "docker-compose configuration is invalid"
     exit 1
 fi
 
-# Cleanup test image
-docker rmi gunicorn-yaml-test > /dev/null 2>&1 || true
+# Test basic container run
+print_status "INFO" "Testing basic container execution..."
+if docker run --rm gunicorn-prometheus-exporter:test --help > /dev/null 2>&1; then
+    print_status "PASS" "Container runs successfully"
+else
+    print_status "FAIL" "Container execution failed"
+    exit 1
+fi
 
-print_status "PASS" "All Docker setup tests passed!"
-print_status "INFO" "You can now run: ../../integration/test_yaml_config_integration.sh --docker --quick"
+# Cleanup test image
+docker rmi gunicorn-prometheus-exporter:test > /dev/null 2>&1 || true
+
+print_status "PASS" "All Docker environment tests passed!"
+print_status "INFO" "Docker environment is ready for E2E testing"
+print_status "INFO" "You can now run the other E2E tests: test_standalone_images.sh, test_docker_compose.sh, test_sidecar_redis.sh"

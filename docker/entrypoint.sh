@@ -46,17 +46,25 @@ run_sidecar() {
     # Set default values from environment or use defaults
     PORT=${PROMETHEUS_METRICS_PORT:-$DEFAULT_PORT}
     BIND=${PROMETHEUS_BIND_ADDRESS:-$DEFAULT_BIND}
-    MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR:-$DEFAULT_MULTIPROC_DIR}
     UPDATE_INTERVAL=${SIDECAR_UPDATE_INTERVAL:-$DEFAULT_UPDATE_INTERVAL}
 
-    # Create multiprocess directory if it doesn't exist
-    mkdir -p "$MULTIPROC_DIR"
+    # Set multiprocess directory only for multiprocess mode
+    if [ "${REDIS_ENABLED:-false}" = "false" ]; then
+        MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR:-$DEFAULT_MULTIPROC_DIR}
+        # Create multiprocess directory if it doesn't exist
+        mkdir -p "$MULTIPROC_DIR"
+    else
+        # In Redis mode, don't use multiprocess directory
+        MULTIPROC_DIR=""
+    fi
 
     # Log configuration
     echo "Configuration:"
     echo "  Port: $PORT"
     echo "  Bind Address: $BIND"
-    echo "  Multiprocess Directory: $MULTIPROC_DIR"
+    if [ "${REDIS_ENABLED:-false}" = "false" ]; then
+        echo "  Multiprocess Directory: $MULTIPROC_DIR"
+    fi
     echo "  Update Interval: $UPDATE_INTERVAL seconds"
     echo "  Redis Enabled: ${REDIS_ENABLED:-false}"
 
@@ -68,11 +76,18 @@ run_sidecar() {
     fi
 
     # Start the sidecar
-    exec python3 /app/sidecar.py \
-        --port "$PORT" \
-        --bind "$BIND" \
-        --multiproc-dir "$MULTIPROC_DIR" \
-        --update-interval "$UPDATE_INTERVAL"
+    if [ "${REDIS_ENABLED:-false}" = "false" ]; then
+        exec python3 /app/sidecar.py \
+            --port "$PORT" \
+            --bind "$BIND" \
+            --multiproc-dir "$MULTIPROC_DIR" \
+            --update-interval "$UPDATE_INTERVAL"
+    else
+        exec python3 /app/sidecar.py \
+            --port "$PORT" \
+            --bind "$BIND" \
+            --update-interval "$UPDATE_INTERVAL"
+    fi
 }
 
 # Function to run standalone mode
