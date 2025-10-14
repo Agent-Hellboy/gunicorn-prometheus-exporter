@@ -227,7 +227,7 @@ start_gunicorn() {
     if [ "$DOCKER_MODE" != true ]; then
         source test_venv/bin/activate
     fi
-    cd ../example
+    cd example
 
     # Use different startup method based on mode
     if [ "$CI_MODE" = true ]; then

@@ -8,7 +8,7 @@ help:
 	@echo "  install           - Install dependencies"
 	@echo "  test              - Run unit tests"
 	@echo "  quick-test        - Run quick Redis system test (requires Redis running)"
-   @echo "  system-test       - Run Redis integration test (auto-starts Redis)"
+	@echo "  system-test       - Run Redis integration test (auto-starts Redis)"
 	@echo "  ci-test           - Run CI-optimized Redis system test"
 	@echo "  force-test        - Run Redis test with force kill of existing processes"
 	@echo "  basic-test        - Run basic file-based system test"

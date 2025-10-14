@@ -20,8 +20,8 @@ spec:
         prometheus.io/port: "9091"
         prometheus.io/path: "/metrics"
     spec:
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: false
+      dnsPolicy: ClusterFirst
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
@@ -38,6 +38,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - name: http
               containerPort: 8000
@@ -81,8 +83,6 @@ spec:
               memory: "512Mi"
               cpu: "500m"
           volumeMounts:
-            - name: prometheus-multiproc
-              mountPath: /tmp/prometheus_multiproc
             - name: tmp
               mountPath: /tmp
           livenessProbe:
@@ -114,9 +114,12 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - name: metrics
               containerPort: 9091
+              hostPort: 9091
               protocol: TCP
           env:
             - name: PROMETHEUS_METRICS_PORT
@@ -157,9 +160,6 @@ spec:
               memory: "256Mi"
               cpu: "200m"
           volumeMounts:
-            - name: prometheus-multiproc
-              mountPath: /tmp/prometheus_multiproc
-              readOnly: true
             - name: tmp
               mountPath: /tmp
               readOnly: true
@@ -181,9 +181,6 @@ spec:
             failureThreshold: 3
 
       volumes:
-        - name: prometheus-multiproc
-          emptyDir:
-            sizeLimit: 1Gi
         - name: tmp
           emptyDir:
             sizeLimit: 1Gi

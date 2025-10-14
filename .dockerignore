@@ -27,6 +27,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+.Trash/
 
 # Python
 __pycache__/
