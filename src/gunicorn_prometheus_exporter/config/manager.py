@@ -130,12 +130,18 @@ class ConfigManager:
     def _validate_required_settings(self) -> None:
         """Validate required configuration settings (delegates to ExporterConfig)."""
         config = self._config
-        # Keep directory readiness check
-        try:
-            os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
-        except Exception as e:
-            self._validation_errors.append(f"Cannot create multiprocess directory: {e}")
-            return
+
+        # Skip multiprocess directory creation when Redis is enabled
+        if not config.redis_enabled:
+            # Keep directory readiness check for multiprocess mode
+            try:
+                os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
+            except Exception as e:
+                self._validation_errors.append(
+                    f"Cannot create multiprocess directory: {e}"
+                )
+                return
+
         # Delegate full validation (port ranges, workers, timeouts, etc.)
         if not config.validate():
             self._validation_errors.append(
