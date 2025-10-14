@@ -382,7 +382,11 @@ verify_multiproc_files() {
 test_basic_yaml_config() {
     print_status "INFO" "Testing basic YAML configuration..."
 
-    # Create test YAML config
+    if [ "$USE_DOCKER" = true ]; then
+        # For Docker mode, use the mounted config files directly
+        print_status "INFO" "Using mounted config files for Docker testing"
+    else
+        # Create test YAML config
     cat > "$PROJECT_ROOT/test_basic_config.yml" << EOF
 exporter:
   prometheus:
@@ -428,6 +432,7 @@ worker_int = default_worker_int
 on_exit = default_on_exit
 post_fork = default_post_fork
 EOF
+    fi
 
     if [ "$USE_DOCKER" = true ]; then
         # Docker-based testing using docker run (like other system tests)
@@ -441,12 +446,12 @@ EOF
             --name "$DOCKER_CONTAINER" \
             -p 8089:8089 \
             -p 9094:9094 \
-            -e PROMETHEUS_CONFIG_FILE="/app/test_basic_config.yml" \
-            -v "$PROJECT_ROOT/e2e/test_configs/basic.yml:/app/test_basic_config.yml:ro" \
-            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/e2e/fixtures/apps/test_app.py" \
-            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/test_basic_gunicorn.conf.py:ro" \
+            -e PROMETHEUS_CONFIG_FILE="/app/config/basic.yml" \
+            -v "$PROJECT_ROOT/e2e/test_configs:/app/config:ro" \
+            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/test_app.py:ro" \
+            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py:ro" \
             "$DOCKER_IMAGE" \
-            gunicorn --config /app/test_basic_gunicorn.conf.py test_app:app
+            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
 
         # Wait for services to be ready
         print_status "INFO" "Waiting for services to start..."
@@ -509,9 +514,11 @@ EOF
         wait $GUNICORN_PID 2>/dev/null || true
     fi
 
-    # Clean up test files
-    rm -f "$PROJECT_ROOT/test_basic_config.yml"
-    rm -f "$PROJECT_ROOT/test_basic_gunicorn.conf.py"
+    # Clean up test files (only for local mode)
+    if [ "$USE_DOCKER" != true ]; then
+        rm -f "$PROJECT_ROOT/test_basic_config.yml"
+        rm -f "$PROJECT_ROOT/test_basic_gunicorn.conf.py"
+    fi
 }
 
 # Function to test YAML configuration with Redis integration (Docker only)
@@ -531,11 +538,11 @@ test_yaml_config_with_redis_docker() {
             -p 8089:8089 \
             -p 9094:9094 \
             -e PROMETHEUS_CONFIG_FILE="/app/config/redis.yml" \
-            -v "$PROJECT_ROOT/e2e/test_configs:/app/config" \
-            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/e2e/fixtures/apps/test_app.py" \
-            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/e2e/fixtures/configs/gunicorn.yaml.conf.py" \
+            -v "$PROJECT_ROOT/e2e/test_configs:/app/config:ro" \
+            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/test_app.py:ro" \
+            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py:ro" \
             "$DOCKER_IMAGE" \
-            gunicorn --config /app/e2e/fixtures/configs/gunicorn.yaml.conf.py test_app:app
+            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
 
         # Wait for services to be ready
         print_status "INFO" "Waiting for services to start..."
@@ -630,11 +637,11 @@ EOF
             -p 9094:9094 \
             -e PROMETHEUS_CONFIG_FILE="/app/config/override.yml" \
             -e PROMETHEUS_METRICS_PORT="9094" \
-            -v "$PROJECT_ROOT/e2e/test_configs:/app/config" \
-            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/e2e/fixtures/apps/test_app.py" \
-            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/e2e/fixtures/configs/gunicorn.yaml.conf.py" \
+            -v "$PROJECT_ROOT/e2e/test_configs:/app/config:ro" \
+            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/test_app.py:ro" \
+            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py:ro" \
             "$DOCKER_IMAGE" \
-            gunicorn --config /app/e2e/fixtures/configs/gunicorn.yaml.conf.py test_app:app
+            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
 
         # Wait for services to start
         print_status "INFO" "Waiting for services to start..."
@@ -730,9 +737,11 @@ EOF
     kill $GUNICORN_PID 2>/dev/null || true
     wait $GUNICORN_PID 2>/dev/null || true
 
-    # Clean up test files
-    rm -f "$PROJECT_ROOT/test_override_config.yml"
-    rm -f "$PROJECT_ROOT/test_override_gunicorn.conf.py"
+    # Clean up test files (only for local mode)
+    if [ "$USE_DOCKER" != true ]; then
+        rm -f "$PROJECT_ROOT/test_override_config.yml"
+        rm -f "$PROJECT_ROOT/test_override_gunicorn.conf.py"
+    fi
 }
 
 # Function to test YAML configuration with Redis
@@ -782,11 +791,11 @@ EOF
             -p 8089:8089 \
             -p 9094:9094 \
             -e PROMETHEUS_CONFIG_FILE="/app/config/redis.yml" \
-            -v "$PROJECT_ROOT/e2e/test_configs:/app/config" \
-            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/e2e/fixtures/apps/test_app.py" \
-            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/e2e/fixtures/configs/gunicorn.yaml.conf.py" \
+            -v "$PROJECT_ROOT/e2e/test_configs:/app/config:ro" \
+            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/test_app.py:ro" \
+            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py:ro" \
             "$DOCKER_IMAGE" \
-            gunicorn --config /app/e2e/fixtures/configs/gunicorn.yaml.conf.py test_app:app
+            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
 
         # Wait for services to start
         print_status "INFO" "Waiting for services to start..."
@@ -902,10 +911,12 @@ EOF
     # Stop Redis server
     redis-cli -p 6380 shutdown || true
 
-    # Clean up test files
-    rm -f "$PROJECT_ROOT/test_redis_config.yml"
-    rm -f "$PROJECT_ROOT/test_redis_gunicorn.conf.py"
-    rm -f /tmp/redis_test.rdb
+    # Clean up test files (only for local mode)
+    if [ "$USE_DOCKER" != true ]; then
+        rm -f "$PROJECT_ROOT/test_redis_config.yml"
+        rm -f "$PROJECT_ROOT/test_redis_gunicorn.conf.py"
+        rm -f /tmp/redis_test.rdb
+    fi
 }
 
 # Function to test invalid YAML configuration
@@ -995,9 +1006,11 @@ EOF
         print_status "FAIL" "Invalid YAML configuration test failed"
     fi
 
-    # Clean up test files
-    rm -f "$PROJECT_ROOT/test_invalid_config.yml"
-    rm -f "$PROJECT_ROOT/test_invalid_gunicorn.conf.py"
+    # Clean up test files (only for local mode)
+    if [ "$USE_DOCKER" != true ]; then
+        rm -f "$PROJECT_ROOT/test_invalid_config.yml"
+        rm -f "$PROJECT_ROOT/test_invalid_gunicorn.conf.py"
+    fi
 }
 
 # Main test execution
