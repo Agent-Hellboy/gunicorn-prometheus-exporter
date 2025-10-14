@@ -18,12 +18,17 @@ kubectl create secret generic grafana-secret \
 #   --from-literal=password="$(openssl rand -base64 32)"
 ```
 
-### 2. Deploy Redis (Required for shared metrics)
+### 2. Deploy Redis (Required)
+
+*Important*: Redis must be deployed before the application to enable shared metrics across workers.
 
 ```bash
 kubectl apply -f redis-pvc.yaml
 kubectl apply -f redis-deployment.yaml
 kubectl apply -f redis-service.yaml
+
+# Wait for Redis to be ready
+kubectl wait --for=condition=ready pod -l app=redis --timeout=60s
 ```
 
 ### 3. Deploy the Application with Sidecar
@@ -37,6 +42,8 @@ kubectl apply -f gunicorn-metrics-service.yaml
 ```
 
 #### Option B: DaemonSet Deployment (For node-level monitoring)
+
+*Important*: Ensure Redis is deployed and ready (step 2) before deploying the DaemonSet.
 
 ```bash
 kubectl apply -f sidecar-daemonset.yaml
@@ -193,6 +200,7 @@ The DaemonSet deployment includes:
 
 - **Host Network**: Uses `hostNetwork: true` for node-level access
 - **Node Information**: Exposes `NODE_NAME`, `POD_NAME`, `POD_NAMESPACE` as environment variables
+- **Redis Integration**: Requires Redis for shared metrics across node-level workers
 - **Redis Key Prefix**: Uses `gunicorn-daemonset` prefix for metrics isolation
 - **Resource Limits**: Optimized for node-level monitoring workloads
 - **Security**: Same security contexts as standard deployment

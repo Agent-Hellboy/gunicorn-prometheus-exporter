@@ -32,9 +32,7 @@ spec:
           port: 8000
     # Allow ingress from other pods in the same namespace
     - from:
-        - namespaceSelector:
-            matchLabels:
-              name: default
+        - podSelector: {}
       ports:
         - protocol: TCP
           port: 8000
