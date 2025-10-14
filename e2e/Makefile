@@ -100,7 +100,7 @@ format:
 # Docker-based Redis system test (works on Mac/Windows/Linux)
 docker-build:
 	@echo "Building Docker image for Redis system test..."
-	docker build -f fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test ..
+	docker build -f e2e/fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test ..
 
 docker-test: docker-build
 	@echo "Running Redis system test in Docker container..."
@@ -115,7 +115,7 @@ docker-test: docker-build
 # Docker-based basic system test (works on Mac/Windows/Linux)
 docker-basic-build:
 	@echo "Building Docker image for basic system test..."
-	docker build -f fixtures/dockerfiles/basic.Dockerfile -t gunicorn-prometheus-exporter-basic-test ..
+	docker build -f e2e/fixtures/dockerfiles/basic.Dockerfile -t gunicorn-prometheus-exporter-basic-test ..
 
 docker-basic-test: docker-basic-build
 	@echo "Running basic file-based system test in Docker container..."
@@ -129,7 +129,7 @@ docker-basic-test: docker-basic-build
 # Docker-based YAML system test (works on Mac/Windows/Linux)
 docker-yaml-build:
 	@echo "Building Docker image for YAML system test..."
-	docker build -f fixtures/dockerfiles/yaml-simple.Dockerfile -t gunicorn-prometheus-exporter-yaml-test ..
+	docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t gunicorn-prometheus-exporter-yaml-test ..
 
 docker-yaml-test: docker-yaml-build
 	@echo "Running YAML configuration integration test in Docker container..."

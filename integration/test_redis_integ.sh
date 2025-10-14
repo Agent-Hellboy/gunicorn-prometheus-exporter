@@ -94,7 +94,7 @@ while [[ $# -gt 0 ]]; do
             # Run the test in Docker container instead of locally
             echo "Running system test in Docker container..."
             cd "$(dirname "$0")/.."  # Change to project root
-            docker build -f ../e2e/fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test . >/dev/null 2>&1
+            docker build -f e2e/fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test . >/dev/null 2>&1
 
             # Set environment variables to pass test mode to Docker container
             DOCKER_ENV_ARGS=""

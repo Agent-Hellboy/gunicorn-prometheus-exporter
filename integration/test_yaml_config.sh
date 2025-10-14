@@ -434,7 +434,7 @@ EOF
         print_status "INFO" "Starting Docker container for YAML testing..."
 
         # Build and run Docker container
-        docker build -f Dockerfile.yaml-simple -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
+        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
 
         # Run container in background with the same config as local mode
         docker run -d \
@@ -523,7 +523,7 @@ test_yaml_config_with_redis_docker() {
         print_status "INFO" "Starting Docker container with Redis for YAML testing..."
 
         # Build and run Docker container with Redis config
-        docker build -f Dockerfile.yaml-simple -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
+        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
 
         # Run container in background with Redis config
         docker run -d \
@@ -621,7 +621,7 @@ EOF
         print_status "INFO" "Starting Docker container with environment variable overrides..."
 
         # Build and run Docker container with override config
-        docker build -f Dockerfile.yaml-simple -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
+        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
 
         # Run container in background with override config
         docker run -d \
@@ -774,7 +774,7 @@ EOF
         print_status "INFO" "Starting Docker container with Redis YAML configuration..."
 
         # Build and run Docker container with Redis config
-        docker build -f Dockerfile.yaml-simple -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
+        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
 
         # Run container in background with Redis config
         docker run -d \
@@ -946,7 +946,7 @@ EOF
         cd "$PROJECT_ROOT"
 
         # Build the image first
-        docker build -f ../e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t test-invalid-yaml .
+        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t test-invalid-yaml .
 
         # Run the test
         if docker run --rm -v "$PROJECT_ROOT/e2e/test_configs:/app/config" -v "$PROJECT_ROOT/gunicorn.invalid.conf.py:/app/gunicorn.invalid.conf.py" test-invalid-yaml python /app/gunicorn.invalid.conf.py; then
