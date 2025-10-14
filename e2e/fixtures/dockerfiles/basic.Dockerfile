@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir -e .
 RUN pip install --no-cache-dir requests psutil gunicorn flask
 
 # Make the integration test script executable
-RUN chmod +x integration/test_basic.sh
+RUN chmod +x integration/test_file_storage_integration.sh
 
 # Create startup script for basic test
 RUN echo '#!/bin/bash\n\
@@ -38,7 +38,7 @@ echo "Created multiprocess directory: $PROMETHEUS_MULTIPROC_DIR"\n\
 cd /app\n\
 # Set environment to skip virtual environment creation\n\
 export SKIP_VENV=true\n\
-./integration/test_basic.sh --ci\n\
+./integration/test_file_storage_integration.sh --ci\n\
 ' > /start_basic_test.sh && chmod +x /start_basic_test.sh
 
 # Default command

@@ -115,18 +115,18 @@ Integration tests verify that components work together correctly without contain
 ```bash
 cd e2e
 
-# File-based storage test
-make basic-test                 # Full test
-make basic-quick-test           # Quick test
+# File-based storage integration test
+make integration-test-file-storage          # Full test
+make integration-test-file-storage-quick    # Quick test
 
 # Redis integration test
-make integration-test                # Redis integration test (auto-starts Redis)
-make quick-test                 # Requires Redis running
-make ci-test                    # CI-optimized
+make integration-test-redis-full            # Redis integration test (auto-starts Redis)
+make integration-test-redis-quick           # Requires Redis running
+make integration-test-redis-ci              # CI-optimized
 
-# YAML configuration test
-make yaml-test                  # Full test
-make yaml-quick-test            # Quick test
+# YAML configuration integration test
+make integration-test-yaml-config           # Full test
+make integration-test-yaml-config-quick     # Quick test
 ```
 
 ### Available Integration Tests

@@ -37,7 +37,7 @@ RUN pip install --no-cache-dir -e .
 RUN pip install --no-cache-dir redis requests psutil gunicorn flask
 
 # Make integration test script executable
-RUN chmod +x integration/test_redis_integ.sh
+RUN chmod +x integration/test_redis_integration.sh
 
 # Set environment variables
 ENV PYTHONPATH=/app/src
@@ -88,9 +88,9 @@ cd /app\n\
 export SKIP_VENV=true\n\
 # Use environment variables to determine test mode\n\
 if [ "$QUICK_MODE" = "true" ]; then\n\
-    ./integration/test_redis_integ.sh --quick --ci --no-redis\n\
+    ./integration/test_redis_integration.sh --quick --ci --no-redis\n\
 else\n\
-    ./integration/test_redis_integ.sh --ci --no-redis\n\
+    ./integration/test_redis_integration.sh --ci --no-redis\n\
 fi\n\
 ' > /start_test.sh && chmod +x /start_test.sh
 

@@ -203,7 +203,7 @@ pytest
 - Use real dependencies (Redis, Gunicorn)
 - Test error handling and edge cases
 - No containers required
-- Run with: `make -f e2e/Makefile quick-test`
+- Run with: `make -f e2e/Makefile integration-test-redis-quick`
 
 ### E2E Tests (`e2e/`)
 

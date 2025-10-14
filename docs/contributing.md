@@ -223,9 +223,9 @@ This project relies heavily on containerised workflows and infrastructure automa
 - Run E2E tests before opening PRs to catch regressions early:
   ```bash
   cd e2e
-  make docker-test        # Docker deployment tests
-  make integration-test        # Redis integration test (auto-starts Redis)
-  make basic-test         # Integration tests with file storage
+  make e2e-test-redis-docker        # Docker deployment tests
+  make integration-test-redis-full        # Redis integration test (auto-starts Redis)
+  make integration-test-file-storage  # Integration tests with file storage
   ```
 - Run unit tests with `tox` or `pytest`
 - Capture diagnostic logs on failure (`docker logs <container>`, `kubectl describe pod/<pod>`). Attach snippets to issues or pull requests.
@@ -308,17 +308,17 @@ tox -e py312 -- tests/test_metrics.py::test_worker_requests
 ```bash
 cd e2e
 
-# File-based storage test
-make basic-test
+# File-based storage integration test
+make integration-test-file-storage
 
 # Redis integration test (auto-starts Redis)
-make integration-test
+make integration-test-redis-full
 
-# Quick Redis test (requires Redis running)
-make quick-test
+# Quick Redis integration test (requires Redis running)
+make integration-test-redis-quick
 
-# YAML configuration test
-make yaml-test
+# YAML configuration integration test
+make integration-test-yaml-config
 ```
 
 ### Running E2E Tests

@@ -1,29 +1,29 @@
 # Makefile for Gunicorn Prometheus Exporter
 
-.PHONY: help install test quick-test integration-test ci-test force-test docker-test docker-build basic-test basic-quick-test docker-basic-test docker-basic-build yaml-test yaml-quick-test docker-yaml-test docker-yaml-build clean lint format
+.PHONY: help install unit-test integration-test-redis-quick integration-test-redis-full integration-test-redis-ci integration-test-redis-force integration-test-file-storage integration-test-file-storage-quick e2e-test-redis-docker e2e-test-redis-build e2e-test-file-storage-docker e2e-test-file-storage-build integration-test-yaml-config integration-test-yaml-config-quick e2e-test-yaml-config-docker e2e-test-yaml-config-build clean lint format
 
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  install           - Install dependencies"
-	@echo "  test              - Run unit tests"
-	@echo "  quick-test        - Run quick Redis integration test (requires Redis running)"
-	@echo "  integration-test  - Run Redis integration test (auto-starts Redis)"
-	@echo "  ci-test           - Run CI-optimized Redis integration test"
-	@echo "  force-test        - Run Redis test with force kill of existing processes"
-	@echo "  basic-test        - Run basic file-based integration test"
-	@echo "  basic-quick-test  - Run quick basic file-based integration test"
-	@echo "  docker-test       - Run Redis integration test in Docker (works on Mac/Windows/Linux)"
-	@echo "  docker-build      - Build Docker image for Redis integration test"
-	@echo "  docker-basic-test - Run basic file-based integration test in Docker"
-	@echo "  docker-basic-build - Build Docker image for basic integration test"
-	@echo "  yaml-test         - Run YAML configuration integration test"
-	@echo "  yaml-quick-test   - Run quick YAML configuration integration test"
-	@echo "  docker-yaml-test  - Run YAML configuration integration test in Docker"
-	@echo "  docker-yaml-build - Build Docker image for YAML integration test"
-	@echo "  clean             - Clean up test artifacts"
-	@echo "  lint              - Run linting"
-	@echo "  format            - Format code"
+	@echo "  install                        - Install dependencies"
+	@echo "  unit-test                       - Run unit tests"
+	@echo "  integration-test-redis-quick   - Run quick Redis integration test (requires Redis running)"
+	@echo "  integration-test-redis-full    - Run full Redis integration test (auto-starts Redis)"
+	@echo "  integration-test-redis-ci      - Run CI-optimized Redis integration test"
+	@echo "  integration-test-redis-force   - Run Redis test with force kill of existing processes"
+	@echo "  integration-test-file-storage  - Run file-based storage integration test"
+	@echo "  integration-test-file-storage-quick - Run quick file-based storage integration test"
+	@echo "  e2e-test-redis-docker          - Run Redis e2e test in Docker (works on Mac/Windows/Linux)"
+	@echo "  e2e-test-redis-build           - Build Docker image for Redis e2e test"
+	@echo "  e2e-test-file-storage-docker    - Run file-based storage e2e test in Docker"
+	@echo "  e2e-test-file-storage-build     - Build Docker image for file-based storage e2e test"
+	@echo "  integration-test-yaml-config   - Run YAML configuration integration test"
+	@echo "  integration-test-yaml-config-quick - Run quick YAML configuration integration test"
+	@echo "  e2e-test-yaml-config-docker     - Run YAML configuration e2e test in Docker"
+	@echo "  e2e-test-yaml-config-build      - Build Docker image for YAML configuration e2e test"
+	@echo "  clean                          - Clean up test artifacts"
+	@echo "  lint                           - Run linting"
+	@echo "  format                         - Format code"
 
 # Install dependencies
 install:
@@ -31,47 +31,47 @@ install:
 	pip install -r e2e/requirements-dev.txt
 
 # Run unit tests
-test:
+unit-test:
 	python -m pytest tests/ -v
 
 # Quick Redis integration test (requires Redis running)
-quick-test:
+integration-test-redis-quick:
 	@echo "Running quick Redis integration test..."
 	@echo "Make sure Redis is running: brew services start redis (macOS) or sudo systemctl start redis (Linux)"
 	integration/test_redis_integration.sh --quick --no-redis --force
 
 # Full Redis integration test (starts Redis automatically)
-integration-test:
+integration-test-redis-full:
 	@echo "Running full Redis integration test..."
 	integration/test_redis_integration.sh
 
 # CI-optimized Redis integration test (timeout-protected, better for CI)
-ci-test:
+integration-test-redis-ci:
 	@echo "Running CI-optimized Redis integration test..."
 	integration/test_redis_integration.sh --ci
 
 # Force Redis test (kills existing processes)
-force-test:
+integration-test-redis-force:
 	@echo "Running force Redis test (kills existing processes)..."
 	integration/test_redis_integration.sh --force
 
-# Basic file-based integration test
-basic-test:
-	@echo "Running basic file-based integration test..."
+# File-based storage integration test
+integration-test-file-storage:
+	@echo "Running file-based storage integration test..."
 	integration/test_file_storage_integration.sh
 
-# Quick basic file-based integration test
-basic-quick-test:
-	@echo "Running quick basic file-based integration test..."
+# Quick file-based storage integration test
+integration-test-file-storage-quick:
+	@echo "Running quick file-based storage integration test..."
 	integration/test_file_storage_integration.sh --quick
 
 # YAML configuration integration test
-yaml-test:
+integration-test-yaml-config:
 	@echo "Running YAML configuration integration test..."
 	integration/test_yaml_config_integration.sh
 
 # Quick YAML configuration integration test
-yaml-quick-test:
+integration-test-yaml-config-quick:
 	@echo "Running quick YAML configuration integration test..."
 	integration/test_yaml_config_integration.sh --quick
 
@@ -97,13 +97,13 @@ format:
 	black src/
 	isort src/
 
-# Docker-based Redis integration test (works on Mac/Windows/Linux)
-docker-build:
-	@echo "Building Docker image for Redis integration test..."
+# Docker-based Redis e2e test (works on Mac/Windows/Linux)
+e2e-test-redis-build:
+	@echo "Building Docker image for Redis e2e test..."
 	docker build -f e2e/fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test .
 
-docker-test: docker-build
-	@echo "Running Redis integration test in Docker container..."
+e2e-test-redis-docker: e2e-test-redis-build
+	@echo "Running Redis e2e test in Docker container..."
 	@echo "This works consistently on Mac, Windows, and Linux!"
 	docker run --rm \
 		--name gunicorn-prometheus-test \
@@ -112,13 +112,13 @@ docker-test: docker-build
 		-p 6379:6379 \
 		gunicorn-prometheus-exporter-test
 
-# Docker-based basic integration test (works on Mac/Windows/Linux)
-docker-basic-build:
-	@echo "Building Docker image for basic integration test..."
+# Docker-based file storage e2e test (works on Mac/Windows/Linux)
+e2e-test-file-storage-build:
+	@echo "Building Docker image for file-based storage e2e test..."
 	docker build -f e2e/fixtures/dockerfiles/basic.Dockerfile -t gunicorn-prometheus-exporter-basic-test .
 
-docker-basic-test: docker-basic-build
-	@echo "Running basic file-based integration test in Docker container..."
+e2e-test-file-storage-docker: e2e-test-file-storage-build
+	@echo "Running file-based storage e2e test in Docker container..."
 	@echo "This works consistently on Mac, Windows, and Linux!"
 	docker run --rm \
 		--name gunicorn-prometheus-basic-test \
@@ -126,13 +126,13 @@ docker-basic-test: docker-basic-build
 		-p 9093:9093 \
 		gunicorn-prometheus-exporter-basic-test
 
-# Docker-based YAML integration test (works on Mac/Windows/Linux)
-docker-yaml-build:
-	@echo "Building Docker image for YAML integration test..."
+# Docker-based YAML e2e test (works on Mac/Windows/Linux)
+e2e-test-yaml-config-build:
+	@echo "Building Docker image for YAML e2e test..."
 	docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t gunicorn-prometheus-exporter-yaml-test .
 
-docker-yaml-test: docker-yaml-build
-	@echo "Running YAML configuration integration test in Docker container..."
+e2e-test-yaml-config-docker: e2e-test-yaml-config-build
+	@echo "Running YAML configuration e2e test in Docker container..."
 	@echo "This works consistently on Mac, Windows, and Linux!"
 	integration/test_yaml_config_integration.sh --docker
 
