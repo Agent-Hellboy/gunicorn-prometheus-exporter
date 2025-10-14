@@ -38,7 +38,7 @@ echo "Created multiprocess directory: $PROMETHEUS_MULTIPROC_DIR"\n\
 cd /app\n\
 # Set environment to skip virtual environment creation\n\
 export SKIP_VENV=true\n\
-./test_basic.sh --ci\n\
+./integration/test_basic.sh --ci\n\
 ' > /start_basic_test.sh && chmod +x /start_basic_test.sh
 
 # Default command

@@ -90,12 +90,12 @@ main() {
 
     # Step 7: Verify deployment
     print_status "Verifying deployment..."
-    deployment_replicas=$(kubectl get deployment gunicorn-app -o jsonpath='{.status.readyReplicas}')
+    deployment_replicas=$(kubectl get deployment gunicorn-app-with-sidecar -o jsonpath='{.status.readyReplicas}')
     echo "Deployment ready replicas: $deployment_replicas"
 
     if [ "$deployment_replicas" -lt 1 ]; then
         print_error "Deployment not ready (expected 1+, got $deployment_replicas)"
-        kubectl get deployment gunicorn-app
+        kubectl get deployment gunicorn-app-with-sidecar
         exit 1
     fi
 

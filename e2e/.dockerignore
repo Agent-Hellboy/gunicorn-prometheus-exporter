@@ -10,7 +10,8 @@ docs/
 # Tests
 tests/
 *_test.py
-!system-test/test_app.py
+!integration/
+!e2e/
 
 # Development
 .tox/

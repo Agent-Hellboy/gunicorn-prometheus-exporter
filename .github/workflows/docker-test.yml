@@ -1,4 +1,4 @@
-name: Smoke Tests (Docker)
+name: E2E Tests (Docker)
 
 on:
   push:
@@ -122,7 +122,7 @@ jobs:
 
       - name: Summary
         run: |
-          echo "🎉 All Docker tests passed!"
+          echo "🎉 All Docker E2E tests passed!"
           echo "✅ Sidecar image builds successfully"
           echo "✅ Sample app image builds successfully"
           echo "✅ Standalone images work correctly"
