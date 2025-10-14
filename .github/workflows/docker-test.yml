@@ -48,10 +48,11 @@ jobs:
           mkdir -p /tmp/test_prometheus_multiproc
           chmod 777 /tmp/test_prometheus_multiproc
 
-          # Start sidecar in background
+          # Start sidecar in background (disable Redis for isolated testing)
           docker run -d \
             --name test-sidecar \
             -p 9091:9091 \
+            -e REDIS_ENABLED=false \
             -v /tmp/test_prometheus_multiproc:/tmp/prometheus_multiproc \
             gunicorn-prometheus-exporter:test
 
