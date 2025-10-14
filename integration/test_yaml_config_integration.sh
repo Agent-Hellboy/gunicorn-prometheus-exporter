@@ -152,7 +152,8 @@ wait_for_service() {
         print_status "INFO" "Attempting to connect to $service_name on $host:$port (attempt $attempt/$max_attempts)..."
 
         # Try to connect and capture the response
-        local response=$(curl -s -w "%{http_code}" -o /dev/null "http://$host:$port" 2>&1)
+        local response
+        response=$(curl -s -w "%{http_code}" -o /dev/null "http://$host:$port" 2>&1)
         local curl_exit_code=$?
 
         if [ $curl_exit_code -eq 0 ] && [ "$response" = "200" ]; then

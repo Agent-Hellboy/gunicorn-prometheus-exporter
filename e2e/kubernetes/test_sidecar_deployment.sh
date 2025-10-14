@@ -78,6 +78,7 @@ main() {
     kubectl apply -f "$TEMP_DIR/sidecar-deployment.yaml"
     kubectl apply -f "$TEMP_DIR/gunicorn-app-service.yaml"
     kubectl apply -f "$TEMP_DIR/gunicorn-metrics-service.yaml"
+    kubectl apply -f "$TEMP_DIR/gunicorn-app-netpol.yaml"
 
     print_status "Waiting for deployment to be ready..."
     if ! kubectl wait --for=condition=ready pod -l app=gunicorn-app --timeout=300s; then

@@ -62,7 +62,7 @@ fi
 while [[ $# -gt 0 ]]; do
     case $1 in
         # Skip script name if it's passed as first argument
-        */test_redis_integration.sh|./test_redis_integration.sh|test_redis_integration.sh)
+        *test_redis_integration.sh)
             shift
             ;;
         --quick)

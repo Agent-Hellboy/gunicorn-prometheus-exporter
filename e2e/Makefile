@@ -1,6 +1,8 @@
 # Makefile for Gunicorn Prometheus Exporter
 
-.PHONY: help install unit-test integration-test-redis-quick integration-test-redis-full integration-test-redis-ci integration-test-redis-force integration-test-file-storage integration-test-file-storage-quick e2e-test-redis-docker e2e-test-redis-build e2e-test-file-storage-docker e2e-test-file-storage-build integration-test-yaml-config integration-test-yaml-config-quick e2e-test-yaml-config-docker e2e-test-yaml-config-build clean lint format
+.PHONY: all help install unit-test integration-test-redis-quick integration-test-redis-full integration-test-redis-ci integration-test-redis-force integration-test-file-storage integration-test-file-storage-quick e2e-test-redis-docker e2e-test-redis-build e2e-test-file-storage-docker e2e-test-file-storage-build integration-test-yaml-config integration-test-yaml-config-quick e2e-test-yaml-config-docker e2e-test-yaml-config-build clean lint format
+
+all: help
 
 # Default target
 help:
