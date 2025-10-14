@@ -42,9 +42,6 @@ spec:
             - name: http
               containerPort: 8000
               protocol: TCP
-            - name: metrics
-              containerPort: 9091
-              protocol: TCP
           env:
             - name: PROMETHEUS_METRICS_PORT
               value: "9091"
