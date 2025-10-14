@@ -124,7 +124,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.1
+          image: princekrroshan01/gunicorn-app:0.2.2
           ports:
             - containerPort: 8000
               name: http
@@ -178,14 +178,14 @@ Pre-built Docker images are available on Docker Hub:
 
 ```bash
 # Sidecar exporter image
-docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.2
 
 # Sample Flask application (for testing)
-docker pull princekrroshan01/gunicorn-app:0.2.1
+docker pull princekrroshan01/gunicorn-app:0.2.2
 
 # Or build locally if the release is not yet available:
-# docker build -t princekrroshan01/gunicorn-prometheus-exporter:0.2.1 .
-# docker build -f docker/Dockerfile.app -t princekrroshan01/gunicorn-app:0.2.1 .
+# docker build -t princekrroshan01/gunicorn-prometheus-exporter:0.2.2 .
+# docker build -f docker/Dockerfile.app -t princekrroshan01/gunicorn-app:0.2.2 .
 ```
 
 Images are automatically built and published for:
@@ -254,7 +254,7 @@ spec:
       hostNetwork: true
       containers:
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
           ports:
             - containerPort: 9091
               name: metrics
@@ -351,7 +351,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.1
+          image: princekrroshan01/gunicorn-app:0.2.2
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -380,7 +380,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true

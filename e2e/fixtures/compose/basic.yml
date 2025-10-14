@@ -15,7 +15,7 @@ services:
     volumes:
       # Mount multiprocess directory for inspection
       - multiproc-data:/tmp/prometheus_multiproc
-    # Command to run the basic system test inside the container
+    # Command to run the basic integration test inside the container
     command: /start_basic_test.sh
 
 volumes:

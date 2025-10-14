@@ -3,7 +3,7 @@
 # Integration test for YAML configuration integration
 # This script tests the YAML configuration functionality with actual Gunicorn processes
 
-set -e
+set -Eeuo pipefail
 
 # Parse command line arguments
 USE_DOCKER=false
@@ -116,6 +116,12 @@ cleanup() {
         docker stop "$DOCKER_CONTAINER" 2>/dev/null || true
         docker rm "$DOCKER_CONTAINER" 2>/dev/null || true
         docker rmi "$DOCKER_IMAGE" 2>/dev/null || true
+
+        # Clean up generated config files
+        rm -f "$PROJECT_ROOT/e2e/test_configs/override.yml"
+        rm -f "$PROJECT_ROOT/gunicorn.override.conf.py"
+        rm -f "$PROJECT_ROOT/gunicorn.redis.conf.py"
+        rm -f "$PROJECT_ROOT/gunicorn.invalid.conf.py"
     else
         # Local cleanup
         pkill -f "gunicorn.*test_app" || true
@@ -143,13 +149,19 @@ wait_for_service() {
     print_status "INFO" "Waiting for $service_name to be ready on $host:$port..."
 
     while [ $attempt -le $max_attempts ]; do
-        if curl -s "http://$host:$port" > /dev/null 2>&1; then
+        print_status "INFO" "Attempting to connect to $service_name on $host:$port (attempt $attempt/$max_attempts)..."
+
+        # Try to connect and capture the response
+        local response=$(curl -s -w "%{http_code}" -o /dev/null "http://$host:$port" 2>&1)
+        local curl_exit_code=$?
+
+        if [ $curl_exit_code -eq 0 ] && [ "$response" = "200" ]; then
             print_status "PASS" "$service_name is ready on $host:$port"
             return 0
         fi
 
         if [ $((attempt % 5)) -eq 0 ]; then
-            print_status "INFO" "Still waiting for $service_name... (attempt $attempt/$max_attempts)"
+            print_status "INFO" "Still waiting for $service_name... (attempt $attempt/$max_attempts, curl exit: $curl_exit_code, response: $response)"
         fi
 
         sleep 1
@@ -285,7 +297,7 @@ generate_test_requests() {
 
     # Generate requests in background
     (
-        for i in $(seq 1 $((duration * 2))); do
+        for _ in $(seq 1 $((duration * 2))); do
             curl -s "http://127.0.0.1:$port/" >/dev/null 2>&1 &
             curl -s "http://127.0.0.1:$port/nonexistent" >/dev/null 2>&1 &
             sleep 0.5
@@ -295,7 +307,7 @@ generate_test_requests() {
     local request_pid=$!
 
     # Show progress
-    for i in $(seq 1 $duration); do
+    for _ in $(seq 1 $duration); do
         sleep 1
         echo -n "."
     done
@@ -435,11 +447,11 @@ EOF
     fi
 
     if [ "$USE_DOCKER" = true ]; then
-        # Docker-based testing using docker run (like other system tests)
+        # Docker-based testing using docker run (like other integration tests)
         print_status "INFO" "Starting Docker container for YAML testing..."
 
         # Build and run Docker container
-        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
+        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" . >/dev/null 2>&1
 
         # Run container in background with the same config as local mode
         print_status "INFO" "Starting Docker container..."
@@ -457,17 +469,24 @@ EOF
             exit 1
         fi
 
-        # Wait for services to be ready
-        print_status "INFO" "Waiting for services to start..."
-        sleep 10
+        # Wait a moment for container to fully initialize
+        print_status "INFO" "Waiting for container to initialize..."
+        sleep 5
 
         # Check if container is still running
         if ! docker ps | grep -q "$DOCKER_CONTAINER"; then
             print_status "FAIL" "Docker container failed to start or exited immediately"
             print_status "INFO" "Container logs:"
             docker logs "$DOCKER_CONTAINER" 2>&1 || echo "No logs available"
+            print_status "INFO" "Container status:"
+            docker ps -a | grep "$DOCKER_CONTAINER" || echo "Container not found"
             exit 1
         fi
+
+        print_status "INFO" "Container is running, checking service availability..."
+        # Wait for service to be ready
+        print_status "INFO" "Waiting for services to start..."
+        sleep 10
 
         # Wait for service to be ready
         if wait_for_service "127.0.0.1" "$GUNICORN_PORT" "Gunicorn"; then
@@ -488,7 +507,12 @@ EOF
             verify_multiproc_files "$DOCKER_CONTAINER"
         else
             print_status "FAIL" "Basic YAML configuration test failed - Gunicorn did not start"
-            docker logs "$DOCKER_CONTAINER"
+            print_status "INFO" "Container status and logs:"
+            docker ps -a | grep "$DOCKER_CONTAINER" || echo "Container not found in docker ps"
+            echo "=== Container Logs ==="
+            docker logs "$DOCKER_CONTAINER" 2>&1 || echo "No logs available"
+            print_status "INFO" "Network connectivity check:"
+            netstat -tuln 2>/dev/null | grep ":$GUNICORN_PORT\|:$METRICS_PORT" || echo "No listening ports found"
         fi
 
         # Show logs for debugging
@@ -538,11 +562,12 @@ test_yaml_config_with_redis_docker() {
     print_status "INFO" "Testing YAML configuration with Redis integration (Docker)..."
 
     if [ "$USE_DOCKER" = true ]; then
-        # Docker-based testing with Redis (simplified like other system tests)
+        # Docker-based testing with Redis (simplified like other integration tests)
         print_status "INFO" "Starting Docker container with Redis for YAML testing..."
 
         # Build and run Docker container with Redis config
-        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
+        cd "$PROJECT_ROOT"
+        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" . >/dev/null 2>&1
 
         # Run container in background with Redis config
         docker run -d \
@@ -622,7 +647,7 @@ EOF
         # Create Gunicorn config that loads YAML and overrides with env vars
         cat > "$PROJECT_ROOT/gunicorn.override.conf.py" << EOF
 import os
-from gunicorn_prometheus_exporter import load_yaml_config, PrometheusWorker
+from gunicorn_prometheus_exporter.hooks import load_yaml_config
 
 # Load YAML configuration
 load_yaml_config("/app/config/override.yml")
@@ -632,7 +657,7 @@ os.environ["PROMETHEUS_METRICS_PORT"] = "9094"
 
 bind = ["0.0.0.0:8089"]
 workers = 1
-worker_class = PrometheusWorker
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 chdir = "/app"
 EOF
 
@@ -640,7 +665,8 @@ EOF
         print_status "INFO" "Starting Docker container with environment variable overrides..."
 
         # Build and run Docker container with override config
-        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
+        cd "$PROJECT_ROOT"
+        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" . >/dev/null 2>&1
 
         # Run container in background with override config
         docker run -d \
@@ -766,7 +792,7 @@ test_yaml_config_with_redis() {
         # Create Gunicorn config that loads Redis YAML config
         cat > "$PROJECT_ROOT/gunicorn.redis.conf.py" << EOF
 import os
-from gunicorn_prometheus_exporter import load_yaml_config, PrometheusWorker
+from gunicorn_prometheus_exporter.hooks import load_yaml_config
 from gunicorn_prometheus_exporter.hooks import (
     default_on_exit,
     default_on_starting,
@@ -780,7 +806,7 @@ load_yaml_config("/app/config/redis.yml")
 
 bind = ["0.0.0.0:8089"]
 workers = 1
-worker_class = PrometheusWorker
+worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
 chdir = "/app"
 
 # Use Redis-enabled hooks
@@ -795,7 +821,8 @@ EOF
         print_status "INFO" "Starting Docker container with Redis YAML configuration..."
 
         # Build and run Docker container with Redis config
-        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" .. >/dev/null 2>&1
+        cd "$PROJECT_ROOT"
+        docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" . >/dev/null 2>&1
 
         # Run container in background with Redis config
         docker run -d \
@@ -952,7 +979,7 @@ EOF
         cat > "$PROJECT_ROOT/gunicorn.invalid.conf.py" << EOF
 import os
 import sys
-from gunicorn_prometheus_exporter import load_yaml_config, PrometheusWorker
+from gunicorn_prometheus_exporter.hooks import load_yaml_config
 
 try:
     # Load invalid YAML configuration
@@ -1027,7 +1054,7 @@ EOF
 
 # Main test execution
 main() {
-    print_status "INFO" "Starting YAML configuration system tests..."
+    print_status "INFO" "Starting YAML configuration integration tests..."
     print_status "INFO" "Project root: $PROJECT_ROOT"
     print_status "INFO" "Integration test dir: $TEST_DIR"
     if [ "$USE_DOCKER" != true ] && [ -n "$VENV_DIR" ]; then
@@ -1063,10 +1090,10 @@ main() {
     print_status "INFO" "Tests failed: $TESTS_FAILED"
 
     if [ $TESTS_FAILED -eq 0 ]; then
-        print_status "PASS" "All YAML configuration system tests passed!"
+        print_status "PASS" "All YAML configuration integration tests passed!"
         exit 0
     else
-        print_status "FAIL" "Some YAML configuration system tests failed!"
+        print_status "FAIL" "Some YAML configuration integration tests failed!"
         exit 1
     fi
 }

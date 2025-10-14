@@ -141,10 +141,10 @@ The published container lives at `princekrroshan01/gunicorn-prometheus-exporter`
 
 ```bash
 # Pull the latest stable exporter image
-docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.2
 
 # Run the exporter standalone
-docker run --rm -p 9091:9091 princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+docker run --rm -p 9091:9091 princekrroshan01/gunicorn-prometheus-exporter:0.2.2
 ```
 
 The container exposes metrics on `0.0.0.0:9091` by default. Override behaviour via environment variables such as `PROMETHEUS_METRICS_PORT`, `PROMETHEUS_BIND_ADDRESS`, and `PROMETHEUS_MULTIPROC_DIR`.
@@ -630,7 +630,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.1
+          image: princekrroshan01/gunicorn-app:0.2.2
           ports:
             - containerPort: 8200
               name: http
@@ -645,7 +645,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
           ports:
             - containerPort: 9091
               name: metrics
@@ -693,7 +693,7 @@ spec:
       hostNetwork: true
       containers:
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
           ports:
             - containerPort: 9091
               name: metrics
@@ -781,7 +781,7 @@ make quick-test
 ```bash
 # Complete automated test (installs everything)
 cd e2e
-make system-test        # Redis integration test (auto-starts Redis)
+make integration-test        # Redis integration test (auto-starts Redis)
 ```
 
 ### Using Make Commands
@@ -789,7 +789,7 @@ make system-test        # Redis integration test (auto-starts Redis)
 ```bash
 cd e2e
 make quick-test    # Fast local testing
-make system-test   # Redis integration test (auto-starts Redis)
+make integration-test   # Redis integration test (auto-starts Redis)
 make install       # Install dependencies
 make clean         # Clean up
 ```

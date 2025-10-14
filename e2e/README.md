@@ -157,7 +157,7 @@ These tests are *end-to-end tests* (not unit tests or integration tests) because
 #### Option 1: Docker-based Testing (Recommended - Works on All Platforms)
 
 ```bash
-# Run complete system test in Docker container
+# Run complete integration test in Docker container
 make docker-test
 
 # Or using docker-compose
@@ -174,8 +174,8 @@ docker run --rm -p 8088:8088 -p 9093:9093 -p 6379:6379 -p 9090:9090 gunicorn-pro
 # Quick test (requires Redis running)
 make quick-test
 
-# Full system test (starts Redis automatically)
-make system-test        # Redis integration test (auto-starts Redis)
+# Full integration test (starts Redis automatically)
+make integration-test        # Redis integration test (auto-starts Redis)
 
 # CI test (timeout-protected)
 make ci-test
@@ -199,7 +199,7 @@ make clean
 # Quick test with force kill (kills existing processes)
 ../integration/test_redis_integ.sh --quick --no-redis --force
 
-# Full system test (starts Redis automatically)
+# Full integration test (starts Redis automatically)
 ../integration/test_redis_integ.sh
 
 # CI test (timeout-protected)
@@ -259,7 +259,7 @@ sudo systemctl start redis  # Linux
 **Usage**:
 
 ```bash
-# Run full system test (no prerequisites needed)
+# Run full integration test (no prerequisites needed)
 ../integration/test_redis_integ.sh
 ```
 
@@ -285,7 +285,7 @@ sudo systemctl start redis  # Linux
 
 ### Docker Mode (`--docker`)
 
-**Purpose**: Run system test in Docker container (cross-platform)
+**Purpose**: Run integration test in Docker container (cross-platform)
 **Duration**: Same as CI mode (30 seconds)
 **Requirements**: Docker installed
 
@@ -372,7 +372,7 @@ GUNICORN_WORKERS=2
 
 ### Prometheus Scraping Verification
 
-The system test now includes comprehensive Prometheus integration testing:
+The integration test now includes comprehensive Prometheus integration testing:
 
 - **Target Health Check**: Verifies Prometheus can reach the metrics endpoint
 - **API Accessibility**: Tests Prometheus API at `http://localhost:9090`
@@ -409,7 +409,7 @@ Advanced Redis key lifecycle management testing:
 
 ## CI/CD Integration
 
-The system test is integrated with GitHub Actions for automated testing:
+The integration test is integrated with GitHub Actions for automated testing:
 
 - **Ubuntu**: Full Redis service integration
 - **macOS**: Homebrew Redis installation

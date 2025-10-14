@@ -203,7 +203,7 @@ pytest
 - Use real dependencies (Redis, Gunicorn)
 - Test error handling and edge cases
 - No containers required
-- Run with: `cd e2e && make quick-test`
+- Run with: `make -f e2e/Makefile quick-test`
 
 ### E2E Tests (`e2e/`)
 
@@ -211,7 +211,7 @@ pytest
 - Docker containers and Kubernetes clusters
 - Test with different worker types
 - Verify metrics collection in production-like environments
-- Run with: `cd e2e && make docker-test` or check `.github/workflows/`
+- Run with: `make -f e2e/Makefile docker-test` or check `.github/workflows/`
 
 ## Code Style
 

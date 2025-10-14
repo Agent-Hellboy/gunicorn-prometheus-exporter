@@ -224,7 +224,7 @@ This project relies heavily on containerised workflows and infrastructure automa
   ```bash
   cd e2e
   make docker-test        # Docker deployment tests
-  make system-test        # Redis integration test (auto-starts Redis)
+  make integration-test        # Redis integration test (auto-starts Redis)
   make basic-test         # Integration tests with file storage
   ```
 - Run unit tests with `tox` or `pytest`
@@ -312,7 +312,7 @@ cd e2e
 make basic-test
 
 # Redis integration test (auto-starts Redis)
-make system-test
+make integration-test
 
 # Quick Redis test (requires Redis running)
 make quick-test

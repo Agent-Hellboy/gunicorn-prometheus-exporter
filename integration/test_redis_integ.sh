@@ -92,7 +92,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --docker)
             # Run the test in Docker container instead of locally
-            echo "Running system test in Docker container..."
+            echo "Running integration test in Docker container..."
             cd "$(dirname "$0")/.."  # Change to project root
             docker build -f e2e/fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test . >/dev/null 2>&1
 

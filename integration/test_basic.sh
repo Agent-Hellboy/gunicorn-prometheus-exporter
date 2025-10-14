@@ -61,7 +61,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --docker)
             # Run the test in Docker container instead of locally
-            echo "Running basic system test in Docker container..."
+            echo "Running basic integration test in Docker container..."
             docker build -f e2e/fixtures/dockerfiles/basic.Dockerfile -t gunicorn-prometheus-exporter-basic-test .. >/dev/null 2>&1
             docker run --rm \
                 --name gunicorn-prometheus-basic-test \

@@ -111,7 +111,7 @@ From the project root:
 # Run integration tests via e2e Makefile
 cd e2e
 make basic-test       # File-based storage integration test
-make system-test      # Redis storage integration test (auto-starts Redis)
+make integration-test      # Redis storage integration test (auto-starts Redis)
 make quick-test       # Quick Redis test (requires Redis running)
 make yaml-test        # YAML configuration integration test
 ```

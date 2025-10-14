@@ -36,7 +36,7 @@ RUN pip install --no-cache-dir -e .
 # Install additional test dependencies
 RUN pip install --no-cache-dir redis requests psutil gunicorn flask
 
-# Make system test script executable
+# Make integration test script executable
 RUN chmod +x integration/test_redis_integ.sh
 
 # Set environment variables
@@ -83,7 +83,7 @@ while ! curl -s http://localhost:9090/-/ready > /dev/null 2>&1; do\n\
     sleep 1\n\
 done\n\
 \n\
-# Run the Redis integration system test (already in Docker, so no --docker flag needed)\n\
+# Run the Redis integration test (already in Docker, so no --docker flag needed)\n\
 cd /app\n\
 export SKIP_VENV=true\n\
 # Use environment variables to determine test mode\n\

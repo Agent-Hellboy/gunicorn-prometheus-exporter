@@ -28,7 +28,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.1
+          image: princekrroshan01/gunicorn-app:0.2.2
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -82,7 +82,7 @@ spec:
               cpu: "500m"
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 8000
             initialDelaySeconds: 30
             periodSeconds: 10
@@ -90,7 +90,7 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 8000
             initialDelaySeconds: 5
             periodSeconds: 5
@@ -99,7 +99,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000

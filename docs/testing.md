@@ -120,7 +120,7 @@ make basic-test                 # Full test
 make basic-quick-test           # Quick test
 
 # Redis integration test
-make system-test                # Redis integration test (auto-starts Redis)
+make integration-test                # Redis integration test (auto-starts Redis)
 make quick-test                 # Requires Redis running
 make ci-test                    # CI-optimized
 

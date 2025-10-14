@@ -27,7 +27,7 @@ jobs:
           echo "✅ Exporter image built successfully"
 
           echo "Building sample app image locally..."
-          docker build -f docker/Dockerfile.app -t gunicorn-app:test .
+          docker build -f e2e/fixtures/apps/Dockerfile -t gunicorn-app:test e2e/fixtures/apps/
           echo "✅ Sample app image built successfully"
 
       - name: Test Kubernetes sidecar deployment
