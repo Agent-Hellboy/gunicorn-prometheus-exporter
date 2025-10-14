@@ -4,7 +4,7 @@ services:
   system-test:
     build:
       context: ..
-      dockerfile: system-test/Dockerfile
+      dockerfile: e2e/fixtures/dockerfiles/default.Dockerfile
     ports:
       - "8088:8088"
       - "9093:9093"

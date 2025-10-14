@@ -22,7 +22,7 @@ RUN pip install -e ".[dev,all]"
 RUN mkdir -p /app/config /app/logs
 
 # Copy test app
-COPY system-test/test_app.py /app/test_app.py
+COPY e2e/fixtures/apps/test_app.py /app/test_app.py
 
 # Set environment variables
 ENV PYTHONPATH=/app

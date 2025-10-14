@@ -2,7 +2,7 @@ services:
   gunicorn-yaml-test:
     build:
       context: ..
-      dockerfile: system-test/Dockerfile.yaml-simple
+      dockerfile: e2e/fixtures/dockerfiles/yaml-simple.Dockerfile
     container_name: gunicorn-yaml-test
     ports:
       - "8089:8089" # Gunicorn app port
