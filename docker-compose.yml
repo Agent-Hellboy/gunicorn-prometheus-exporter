@@ -29,11 +29,7 @@ services:
     environment:
       - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
       - GUNICORN_WORKERS=2
-      - REDIS_ENABLED=true
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
-      - REDIS_KEY_PREFIX=gunicorn
+      - REDIS_ENABLED=false
     volumes:
       - prometheus_data:/tmp/prometheus_multiproc
     shm_size: 1gb # Ensure sufficient shared memory for Gunicorn workers using /dev/shm
@@ -61,17 +57,11 @@ services:
       - PROMETHEUS_BIND_ADDRESS=0.0.0.0
       - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
       - REDIS_ENABLED=false
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_DB=0
-      - REDIS_KEY_PREFIX=gunicorn
       - SIDECAR_UPDATE_INTERVAL=30
     volumes:
       - prometheus_data:/tmp/prometheus_multiproc
     depends_on:
       app:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     networks:
       - gunicorn-network

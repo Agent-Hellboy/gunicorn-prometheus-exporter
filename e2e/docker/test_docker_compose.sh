@@ -60,7 +60,7 @@ main() {
 
     # Trigger worker restart to test master lifecycle metrics
     print_status "🔄 Triggering worker restart to test master lifecycle metrics..."
-    docker exec gunicorn-app kill -HUP 1 || true  # Send SIGHUP to Gunicorn master
+    docker exec gunicorn-app pkill -HUP -f gunicorn || true  # Send SIGHUP to Gunicorn master
     sleep 5  # Wait for restart to complete
 
     # Generate additional requests after restart
