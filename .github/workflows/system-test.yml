@@ -1,4 +1,4 @@
-name: System Tests
+name: Integration Tests
 
 on:
   push:
@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  system-test-redis:
+  redis-integration-test:
     runs-on: ubuntu-latest
-    name: Redis Integration System Test (Ubuntu)
+    name: Redis Integration Test (Ubuntu)
 
     steps:
       - name: Checkout code
@@ -19,7 +19,7 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-docker-action@v3
 
-      - name: Run Redis Integration Docker system test
+      - name: Run Redis Integration Test (Docker)
         run: |
           cd e2e
           chmod +x ../integration/test_redis_integ.sh
@@ -40,14 +40,14 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: redis-test-logs-ubuntu
+          name: redis-integration-logs-ubuntu
           path: |
             *.log
           retention-days: 7
 
-  system-test-basic:
+  basic-integration-test:
     runs-on: ubuntu-latest
-    name: Basic File-based System Test (Ubuntu)
+    name: Basic Integration Test (Ubuntu)
 
     steps:
       - name: Checkout code
@@ -56,7 +56,7 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-docker-action@v3
 
-      - name: Run Basic File-based Docker system test
+      - name: Run Basic Integration Test (Docker)
         run: |
           cd e2e
           chmod +x ../integration/test_basic.sh
@@ -76,14 +76,14 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: basic-test-logs-ubuntu
+          name: basic-integration-logs-ubuntu
           path: |
             *.log
           retention-days: 7
 
-  system-test-yaml:
+  yaml-integration-test:
     runs-on: ubuntu-latest
-    name: YAML Configuration System Test (Ubuntu)
+    name: YAML Configuration Integration Test (Ubuntu)
 
     steps:
       - name: Checkout code
@@ -92,7 +92,7 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-docker-action@v3
 
-      - name: Run YAML Configuration Docker system test
+      - name: Run YAML Configuration Integration Test (Docker)
         run: |
           cd e2e
           chmod +x ../integration/test_yaml_config.sh
@@ -106,7 +106,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: yaml-test-logs-ubuntu
+          name: yaml-integration-logs-ubuntu
           path: |
             *.log
           retention-days: 7
