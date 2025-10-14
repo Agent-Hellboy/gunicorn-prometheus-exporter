@@ -13,7 +13,7 @@
 # - Cleanup
 #
 # Usage:
-#   ./test_redis_integ.sh [--quick] [--ci] [--no-redis] [--force]
+#   ./test_redis_integration.sh [--quick] [--ci] [--no-redis] [--force]
 #   --quick: Quick test (shorter duration, requires Redis running)
 #   --ci: CI mode (timeout protection, auto cleanup)
 #   --no-redis: Skip Redis startup (assume Redis is running)
@@ -62,7 +62,7 @@ fi
 while [[ $# -gt 0 ]]; do
     case $1 in
         # Skip script name if it's passed as first argument
-        */test_redis_integ.sh|./test_redis_integ.sh|test_redis_integ.sh)
+        */test_redis_integration.sh|./test_redis_integration.sh|test_redis_integration.sh)
             shift
             ;;
         --quick)

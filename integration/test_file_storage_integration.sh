@@ -9,7 +9,7 @@
 # - Cleanup
 #
 # Usage:
-#   ./test_basic.sh [--quick] [--ci] [--force]
+#   ./test_file_storage_integration.sh [--quick] [--ci] [--force]
 #   --quick: Quick test (shorter duration)
 #   --ci: CI mode (timeout protection, auto cleanup)
 #   --force: Kill existing processes on ports 8088 and 9093
