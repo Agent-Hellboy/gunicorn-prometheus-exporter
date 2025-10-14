@@ -38,42 +38,42 @@ test:
 quick-test:
 	@echo "Running quick Redis integration test..."
 	@echo "Make sure Redis is running: brew services start redis (macOS) or sudo systemctl start redis (Linux)"
-	integration/test_redis_integ.sh --quick --no-redis --force
+	integration/test_redis_integration.sh --quick --no-redis --force
 
 # Full Redis integration test (starts Redis automatically)
 integration-test:
 	@echo "Running full Redis integration test..."
-	integration/test_redis_integ.sh
+	integration/test_redis_integration.sh
 
 # CI-optimized Redis integration test (timeout-protected, better for CI)
 ci-test:
 	@echo "Running CI-optimized Redis integration test..."
-	integration/test_redis_integ.sh --ci
+	integration/test_redis_integration.sh --ci
 
 # Force Redis test (kills existing processes)
 force-test:
 	@echo "Running force Redis test (kills existing processes)..."
-	integration/test_redis_integ.sh --force
+	integration/test_redis_integration.sh --force
 
 # Basic file-based integration test
 basic-test:
 	@echo "Running basic file-based integration test..."
-	integration/test_basic.sh
+	integration/test_file_storage_integration.sh
 
 # Quick basic file-based integration test
 basic-quick-test:
 	@echo "Running quick basic file-based integration test..."
-	integration/test_basic.sh --quick
+	integration/test_file_storage_integration.sh --quick
 
 # YAML configuration integration test
 yaml-test:
 	@echo "Running YAML configuration integration test..."
-	integration/test_yaml_config.sh
+	integration/test_yaml_config_integration.sh
 
 # Quick YAML configuration integration test
 yaml-quick-test:
 	@echo "Running quick YAML configuration integration test..."
-	integration/test_yaml_config.sh --quick
+	integration/test_yaml_config_integration.sh --quick
 
 # Clean up test artifacts
 clean:
@@ -134,7 +134,7 @@ docker-yaml-build:
 docker-yaml-test: docker-yaml-build
 	@echo "Running YAML configuration integration test in Docker container..."
 	@echo "This works consistently on Mac, Windows, and Linux!"
-	integration/test_yaml_config.sh --docker
+	integration/test_yaml_config_integration.sh --docker
 
 # Development setup
 dev-setup: install

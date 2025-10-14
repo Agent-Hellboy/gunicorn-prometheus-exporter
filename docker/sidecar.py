@@ -2,8 +2,15 @@
 """
 Gunicorn Prometheus Exporter Sidecar
 
-This script runs the Prometheus metrics server as a sidecar container,
-collecting metrics from shared multiprocess files and exposing them via HTTP.
+This script runs the Prometheus metrics server as a sidecar container.
+
+Architecture:
+- Redis mode: Collects metrics from Redis storage (Kubernetes deployments)
+- Multiprocess mode: Collects metrics from shared files (Docker Compose/local development)
+
+Kubernetes deployments MUST use Redis mode - multiprocess files are incompatible
+with containerized, multi-pod architectures due to read-only filesystems and
+lack of shared storage between pods.
 
 Usage:
     python sidecar.py [--port PORT] [--bind ADDRESS] [--multiproc-dir DIR]
@@ -96,22 +103,30 @@ class SidecarMetrics:
         # Update uptime
         self.sidecar_uptime.set(time.time() - self.sidecar_start_time)
 
-        # Update file system metrics
-        try:
-            multiproc_path = Path(multiproc_dir)
-            if multiproc_path.exists():
-                total_size = sum(
-                    f.stat().st_size for f in multiproc_path.rglob("*") if f.is_file()
-                )
-                file_count = len(list(multiproc_path.rglob("*")))
+        # File system metrics only relevant for multiprocess mode (non-Kubernetes)
+        # In Kubernetes Redis mode, these metrics are irrelevant
+        if not is_redis_enabled():
+            try:
+                multiproc_path = Path(multiproc_dir)
+                if multiproc_path.exists():
+                    total_size = sum(
+                        f.stat().st_size
+                        for f in multiproc_path.rglob("*")
+                        if f.is_file()
+                    )
+                    file_count = len(list(multiproc_path.rglob("*")))
 
-                self.multiproc_dir_size.set(total_size)
-                self.multiproc_files_count.set(file_count)
-            else:
-                self.multiproc_dir_size.set(0)
-                self.multiproc_files_count.set(0)
-        except Exception as e:
-            logger.warning(f"Failed to update filesystem metrics: {e}")
+                    self.multiproc_dir_size.set(total_size)
+                    self.multiproc_files_count.set(file_count)
+                else:
+                    self.multiproc_dir_size.set(0)
+                    self.multiproc_files_count.set(0)
+            except Exception as e:
+                logger.warning(f"Failed to update filesystem metrics: {e}")
+        else:
+            # Kubernetes Redis mode - multiprocess files not applicable
+            self.multiproc_dir_size.set(0)
+            self.multiproc_files_count.set(0)
 
         # Update Redis metrics if enabled
         if is_redis_enabled() and hasattr(self, "redis_connected"):
@@ -135,15 +150,21 @@ def setup_metrics_server(
     # Create registry
     registry = CollectorRegistry()
 
-    # Set up multiprocess collector
-    try:
-        MultiProcessCollector(registry, multiproc_dir)
+    # Skip multiprocess collector completely in Redis mode (Kubernetes deployments)
+    # Redis provides proper multi-container/multi-pod metrics storage
+    if not is_redis_enabled():
+        try:
+            MultiProcessCollector(registry, multiproc_dir)
+            logger.info(
+                f"Multiprocess collector initialized with directory: {multiproc_dir}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize multiprocess collector: {e}")
+            # Continue without multiprocess collector
+    else:
         logger.info(
-            f"Multiprocess collector initialized with directory: {multiproc_dir}"
+            "Redis storage enabled - multiprocess collector disabled for Kubernetes compatibility"
         )
-    except Exception as e:
-        logger.error(f"Failed to initialize multiprocess collector: {e}")
-        # Continue without multiprocess collector
 
     # Set up Redis if enabled
     if is_redis_enabled():
@@ -211,12 +232,20 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 
-    # Validate multiprocess directory
-    multiproc_path = Path(args.multiproc_dir)
-    if not multiproc_path.exists():
-        logger.warning(f"Multiprocess directory does not exist: {args.multiproc_dir}")
-        logger.info("Creating multiprocess directory...")
-        multiproc_path.mkdir(parents=True, exist_ok=True)
+    # Directory validation only needed for multiprocess mode (non-Kubernetes)
+    # In Kubernetes Redis deployments, we don't touch the filesystem
+    if not is_redis_enabled():
+        multiproc_path = Path(args.multiproc_dir)
+        if not multiproc_path.exists():
+            logger.warning(
+                f"Multiprocess directory does not exist: {args.multiproc_dir}"
+            )
+            logger.info("Creating multiprocess directory...")
+            multiproc_path.mkdir(parents=True, exist_ok=True)
+    else:
+        logger.info(
+            "Kubernetes Redis mode - filesystem operations disabled for security"
+        )
 
     # Set up metrics server
     try:

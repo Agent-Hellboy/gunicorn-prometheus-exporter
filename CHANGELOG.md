@@ -4,12 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [0.2.2] - 2025-10-14
 
+### Added
 
+- **Kubernetes Redis Mode**: Complete rewrite of sidecar.py for proper Kubernetes compatibility
+- **Redis-Only Architecture**: Sidecar now exclusively uses Redis storage in Kubernetes deployments
+- **Integration Test Renames**: Renamed test files to include 'integration' in names for clarity
 
+### Fixed
+
+- **Kubernetes Deployment Issues**: Fixed read-only filesystem errors by disabling multiprocess collector in Redis mode
+- **Sidecar Architecture**: Proper separation between Redis mode (Kubernetes) and multiprocess mode (local development)
+- **Documentation Updates**: Updated all docs to reflect Redis as primary Kubernetes storage mechanism
 
 ### Changed
 
-- **Version Bump**: Updated to version 0.2.2 to reflect bug fixes
+- **Test File Names**: `test_basic.sh` → `test_file_storage_integration.sh`, `test_redis_integ.sh` → `test_redis_integration.sh`, `test_yaml_config.sh` → `test_yaml_config_integration.sh`
+- **Sidecar Documentation**: Clarified that multiprocess mode is only for local development, Redis mode for Kubernetes
+- **Test Architecture**: Established clear boundaries between unit tests, integration tests, and e2e tests with proper naming conventions and directory structure
 
 ## [0.2.1] - 2025-10-02
 

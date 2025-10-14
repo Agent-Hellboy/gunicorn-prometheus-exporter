@@ -131,7 +131,7 @@ make yaml-quick-test            # Quick test
 
 ### Available Integration Tests
 
-#### 1. File-Based Storage (`integration/test_basic.sh`)
+#### 1. File-Based Storage (`integration/test_file_storage_integration.sh`)
 
 Tests the exporter with file-based multiprocess storage:
 
@@ -143,7 +143,7 @@ Tests the exporter with file-based multiprocess storage:
 
 *Requirements*: None (no Redis needed)
 
-#### 2. Redis Storage (`integration/test_redis_integ.sh`)
+#### 2. Redis Storage (`integration/test_redis_integration.sh`)
 
 Tests the exporter with Redis-based storage:
 
@@ -155,7 +155,7 @@ Tests the exporter with Redis-based storage:
 
 *Requirements*: Redis (auto-started or use `--no-redis`)
 
-#### 3. YAML Configuration (`integration/test_yaml_config.sh`)
+#### 3. YAML Configuration (`integration/test_yaml_config_integration.sh`)
 
 Tests YAML-based configuration:
 
@@ -373,7 +373,7 @@ pytest -v -s tests/test_metrics.py::test_worker_requests
 # Enable verbose mode
 export VERBOSE=1
 cd e2e
-bash ../integration/test_redis_integ.sh
+bash ../integration/test_redis_integration.sh
 
 # Check logs
 cat prometheus.log

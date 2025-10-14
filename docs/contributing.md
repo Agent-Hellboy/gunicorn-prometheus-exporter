@@ -21,9 +21,9 @@ Following the Test Pyramid:
   - `conftest.py`: Shared fixtures and test configuration
   - `test_*.py`: Comprehensive test coverage for each module
 - **`integration/`**: Integration tests (component integration)
-  - `test_basic.sh`: File-based storage tests
-  - `test_redis_integ.sh`: Redis storage tests
-  - `test_yaml_config.sh`: YAML configuration tests
+  - `test_file_storage_integration.sh`: File-based storage tests
+  - `test_redis_integration.sh`: Redis storage tests
+  - `test_yaml_config_integration.sh`: YAML configuration tests
 - **`e2e/`**: End-to-end tests (Docker + Kubernetes)
   - `docker/`: Docker deployment tests
   - `kubernetes/`: Kubernetes deployment tests

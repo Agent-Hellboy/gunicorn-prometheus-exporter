@@ -18,9 +18,9 @@ Integration tests sit in the middle of the Test Pyramid:
 
 *Integration tests verify that multiple components work together correctly*, without the complexity of full containerization or orchestration. They test three different integration patterns:
 
-- ✅ **Redis Storage Integration** (`test_redis_integ.sh`): Exporter + Gunicorn + Redis backend
-- ✅ **File-Based Storage Integration** (`test_basic.sh`): Exporter + Gunicorn + file-based multiprocess storage
-- ✅ **YAML Configuration Integration** (`test_yaml_config.sh`): Configuration parsing and validation with different worker types
+- ✅ **Redis Storage Integration** (`test_redis_integration.sh`): Exporter + Gunicorn + Redis backend
+- ✅ **File-Based Storage Integration** (`test_file_storage_integration.sh`): Exporter + Gunicorn + file-based multiprocess storage
+- ✅ **YAML Configuration Integration** (`test_yaml_config_integration.sh`): Configuration parsing and validation with different worker types
 
 These tests verify:
 - ✅ Exporter + Gunicorn worker integration
@@ -34,7 +34,7 @@ These tests verify:
 
 The integration tests cover three different integration scenarios:
 
-### `test_basic.sh`
+### `test_file_storage_integration.sh`
 
 Tests the exporter with **file-based multiprocess storage integration**.
 
@@ -51,12 +51,12 @@ Tests the exporter with **file-based multiprocess storage integration**.
 
 *Usage:*
 ```bash
-./test_basic.sh              # Full test
-./test_basic.sh --quick      # Quick test (fewer requests)
-./test_basic.sh --ci         # CI-optimized test
+./test_file_storage_integration.sh              # Full test
+./test_file_storage_integration.sh --quick      # Quick test (fewer requests)
+./test_file_storage_integration.sh --ci         # CI-optimized test
 ```
 
-### `test_redis_integ.sh`
+### `test_redis_integration.sh`
 
 Tests the exporter with **Redis-based storage integration**.
 
@@ -74,14 +74,14 @@ Tests the exporter with **Redis-based storage integration**.
 
 *Usage:*
 ```bash
-./test_redis_integ.sh                    # Full test (auto-starts Redis)
-./test_redis_integ.sh --quick            # Quick test
-./test_redis_integ.sh --no-redis         # Use existing Redis
-./test_redis_integ.sh --force            # Kill existing processes
-./test_redis_integ.sh --ci               # CI-optimized test
+./test_redis_integration.sh                    # Full test (auto-starts Redis)
+./test_redis_integration.sh --quick            # Quick test
+./test_redis_integration.sh --no-redis         # Use existing Redis
+./test_redis_integration.sh --force            # Kill existing processes
+./test_redis_integration.sh --ci               # CI-optimized test
 ```
 
-### `test_yaml_config.sh`
+### `test_yaml_config_integration.sh`
 
 Tests **YAML-based configuration integration** parsing and validation.
 
@@ -98,9 +98,9 @@ Tests **YAML-based configuration integration** parsing and validation.
 
 *Usage:*
 ```bash
-./test_yaml_config.sh              # Full test
-./test_yaml_config.sh --quick      # Quick test
-./test_yaml_config.sh --docker     # Run in Docker container
+./test_yaml_config_integration.sh              # Full test
+./test_yaml_config_integration.sh --quick      # Quick test
+./test_yaml_config_integration.sh --docker     # Run in Docker container
 ```
 
 ## Running Integration Tests
@@ -120,9 +120,9 @@ Or run them directly from the integration directory:
 
 ```bash
 cd integration
-./test_basic.sh       # File-based multiprocess storage integration
-./test_redis_integ.sh # Redis storage integration
-./test_yaml_config.sh # YAML configuration integration
+./test_file_storage_integration.sh       # File-based multiprocess storage integration
+./test_redis_integration.sh # Redis storage integration
+./test_yaml_config_integration.sh # YAML configuration integration
 ```
 
 ## CI/CD Integration
@@ -158,7 +158,7 @@ All test scripts support verbose mode via environment variables:
 
 ```bash
 export VERBOSE=1
-./test_redis_integ.sh
+./test_redis_integration.sh
 ```
 
 ### Check Logs
@@ -228,9 +228,9 @@ These tests are *integration tests* (not unit tests or E2E tests) because:
 
 | Test Type | Purpose | Scope | Dependencies | Speed |
 |-----------|---------|-------|--------------|-------|
-| **File-based** (`test_basic.sh`) | File multiprocess storage integration | Exporter + Gunicorn + file storage | Gunicorn, file system | ~30s |
-| **Redis** (`test_redis_integ.sh`) | Redis storage integration | Exporter + Gunicorn + Redis backend | Gunicorn, Redis server | ~60s |
-| **YAML Config** (`test_yaml_config.sh`) | Configuration integration | YAML parsing + worker types | Configuration files | ~45s |
+| **File-based** (`test_file_storage_integration.sh`) | File multiprocess storage integration | Exporter + Gunicorn + file storage | Gunicorn, file system | ~30s |
+| **Redis** (`test_redis_integration.sh`) | Redis storage integration | Exporter + Gunicorn + Redis backend | Gunicorn, Redis server | ~60s |
+| **YAML Config** (`test_yaml_config_integration.sh`) | Configuration integration | YAML parsing + worker types | Configuration files | ~45s |
 | **E2E** (`e2e/`) | Full deployment testing | Complete system in containers/K8s | Docker/Kubernetes | ~2-5min |
 
 ## Contributing
