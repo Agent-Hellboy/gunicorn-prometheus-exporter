@@ -175,7 +175,7 @@ docker run --rm -p 8088:8088 -p 9093:9093 -p 6379:6379 -p 9090:9090 gunicorn-pro
 make quick-test
 
 # Full system test (starts Redis automatically)
-make system-test
+make system-test        # Redis integration test (auto-starts Redis)
 
 # CI test (timeout-protected)
 make ci-test
@@ -191,19 +191,19 @@ make clean
 
 ```bash
 # Docker mode (cross-platform, no host dependencies)
-./system_test.sh --docker
+../integration/test_redis_integ.sh --docker
 
 # Quick test (requires Redis running)
-./system_test.sh --quick --no-redis
+../integration/test_redis_integ.sh --quick --no-redis
 
 # Quick test with force kill (kills existing processes)
-./system_test.sh --quick --no-redis --force
+../integration/test_redis_integ.sh --quick --no-redis --force
 
 # Full system test (starts Redis automatically)
-./system_test.sh
+../integration/test_redis_integ.sh
 
 # CI test (timeout-protected)
-./system_test.sh --ci
+../integration/test_redis_integ.sh --ci
 ```
 
 ## Test Details
@@ -233,7 +233,7 @@ brew services start redis  # macOS
 sudo systemctl start redis  # Linux
 
 # Run quick test
-./system_test.sh --quick --no-redis
+../integration/test_redis_integ.sh --quick --no-redis
 ```
 
 ### Full Mode (default)
@@ -260,7 +260,7 @@ sudo systemctl start redis  # Linux
 
 ```bash
 # Run full system test (no prerequisites needed)
-./system_test.sh
+../integration/test_redis_integ.sh
 ```
 
 ### CI Mode (`--ci`)
@@ -280,7 +280,7 @@ sudo systemctl start redis  # Linux
 
 ```bash
 # CI test (timeout-protected)
-./system_test.sh --ci
+../integration/test_redis_integ.sh --ci
 ```
 
 ### Docker Mode (`--docker`)
@@ -301,10 +301,10 @@ sudo systemctl start redis  # Linux
 
 ```bash
 # Run in Docker mode
-./system_test.sh --docker
+../integration/test_redis_integ.sh --docker
 
 # Docker mode with CI timeout
-./system_test.sh --docker --ci
+../integration/test_redis_integ.sh --docker --ci
 ```
 
 ### Force Mode (`--force`)
@@ -324,13 +324,13 @@ sudo systemctl start redis  # Linux
 
 ```bash
 # Force kill and run quick test
-./system_test.sh --quick --no-redis --force
+../integration/test_redis_integ.sh --quick --no-redis --force
 
 # Force kill and run full test
-./system_test.sh --force
+../integration/test_redis_integ.sh --force
 
 # Force kill and run CI test
-./system_test.sh --ci --force
+../integration/test_redis_integ.sh --ci --force
 ```
 
 ## Test Configuration
@@ -451,7 +451,7 @@ sudo systemctl start redis  # Linux
 pip install gunicorn
 
 # Or use the full system test which installs dependencies
-./system_test.sh
+../integration/test_redis_integ.sh
 ```
 
 #### 4. Permission Denied
@@ -526,15 +526,14 @@ If tests fail, manually verify:
 2. **Add new test scenarios** in the main test functions
 3. **Update expected metrics** list
 4. **Test locally** with `quick_test.sh`
-5. **Validate with CI** using `system_test.sh`
+5. **Validate with CI** using `test_redis_integ.sh`
 
 ### Test Structure
 
 ```bash
-system-test/
-├── system_test.sh      # Full automated test suite
-├── quick_test.sh       # Fast local testing
-├── Makefile           # Build automation
+e2e/
+├── test_redis_integ.sh      # Full automated test suite
+├── Makefile           # Build automation (includes quick tests)
 ├── requirements-dev.txt # Dependencies
 └── README.md          # This documentation
 ```

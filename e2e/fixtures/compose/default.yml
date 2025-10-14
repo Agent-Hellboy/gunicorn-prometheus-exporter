@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  system-test:
+  redis-integration-test:
     build:
       context: ..
       dockerfile: e2e/fixtures/dockerfiles/default.Dockerfile

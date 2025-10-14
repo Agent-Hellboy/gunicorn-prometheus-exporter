@@ -84,7 +84,7 @@ while ! curl -s http://localhost:9090/-/ready > /dev/null 2>&1; do\n\
 done\n\
 \n\
 # Run the Redis integration system test (already in Docker, so no --docker flag needed)\n\
-cd integration\n\
+cd /app\n\
 export SKIP_VENV=true\n\
 # Use environment variables to determine test mode\n\
 if [ "$QUICK_MODE" = "true" ]; then\n\

@@ -142,8 +142,10 @@ build/
 dist/
 *.egg-info/
 
-# System test
-system-test/
+# Test directories
+tests/
+integration/
+e2e/
 example/prometheus-data/
 example/venv/
 ```

@@ -781,7 +781,7 @@ make quick-test
 ```bash
 # Complete automated test (installs everything)
 cd e2e
-make system-test
+make system-test        # Redis integration test (auto-starts Redis)
 ```
 
 ### Using Make Commands
@@ -789,7 +789,7 @@ make system-test
 ```bash
 cd e2e
 make quick-test    # Fast local testing
-make system-test   # Full automated testing
+make system-test   # Redis integration test (auto-starts Redis)
 make install       # Install dependencies
 make clean         # Clean up
 ```

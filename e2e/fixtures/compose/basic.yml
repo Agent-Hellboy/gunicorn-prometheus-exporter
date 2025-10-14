@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  basic-system-test:
+  basic-integration-test:
     build:
       context: ../
       dockerfile: e2e/fixtures/dockerfiles/basic.Dockerfile

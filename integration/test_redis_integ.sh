@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# System Test for Gunicorn Prometheus Exporter with Redis Integration
+# Integration Test for Gunicorn Prometheus Exporter with Redis Integration
 # This script tests the complete functionality including:
 # - Dependency installation
 # - Redis server startup
@@ -13,7 +13,7 @@
 # - Cleanup
 #
 # Usage:
-#   ./system_test.sh [--quick] [--ci] [--no-redis] [--force]
+#   ./test_redis_integ.sh [--quick] [--ci] [--no-redis] [--force]
 #   --quick: Quick test (shorter duration, requires Redis running)
 #   --ci: CI mode (timeout protection, auto cleanup)
 #   --no-redis: Skip Redis startup (assume Redis is running)
@@ -62,7 +62,7 @@ fi
 while [[ $# -gt 0 ]]; do
     case $1 in
         # Skip script name if it's passed as first argument
-        */system_test_redis_integ.sh|./system_test_redis_integ.sh|system_test_redis_integ.sh)
+        */test_redis_integ.sh|./test_redis_integ.sh|test_redis_integ.sh)
             shift
             ;;
         --quick)
@@ -94,7 +94,7 @@ while [[ $# -gt 0 ]]; do
             # Run the test in Docker container instead of locally
             echo "Running system test in Docker container..."
             cd "$(dirname "$0")/.."  # Change to project root
-            docker build -f system-test/Dockerfile -t gunicorn-prometheus-exporter-test . >/dev/null 2>&1
+            docker build -f ../e2e/fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test . >/dev/null 2>&1
 
             # Set environment variables to pass test mode to Docker container
             DOCKER_ENV_ARGS=""
@@ -533,13 +533,13 @@ start_gunicorn() {
 
     # Use different startup method based on mode
     if [ "$CI_MODE" = true ]; then
-        nohup gunicorn --config gunicorn_redis_integration.conf.py app:app > ../system-test/gunicorn.log 2>&1 &
+        nohup gunicorn --config gunicorn_redis_integration.conf.py app:app > ../gunicorn.log 2>&1 &
     else
         gunicorn --config gunicorn_redis_integration.conf.py app:app &
     fi
 
     GUNICORN_PID=$!
-    cd ../system-test
+    cd ../
 
     print_status "Gunicorn started with PID: $GUNICORN_PID"
 

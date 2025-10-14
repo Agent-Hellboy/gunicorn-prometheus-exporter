@@ -16,19 +16,27 @@ Integration tests sit in the middle of the Test Pyramid:
 └─────────────────────────────────────┘
 ```
 
-*Integration tests verify that multiple components work together correctly*, without the complexity of full containerization or orchestration. They test:
+*Integration tests verify that multiple components work together correctly*, without the complexity of full containerization or orchestration. They test three different integration patterns:
 
+- ✅ **Redis Storage Integration** (`test_redis_integ.sh`): Exporter + Gunicorn + Redis backend
+- ✅ **File-Based Storage Integration** (`test_basic.sh`): Exporter + Gunicorn + file-based multiprocess storage
+- ✅ **YAML Configuration Integration** (`test_yaml_config.sh`): Configuration parsing and validation with different worker types
+
+These tests verify:
 - ✅ Exporter + Gunicorn worker integration
-- ✅ Storage backend functionality (file-based or Redis)
+- ✅ Storage backend functionality (Redis or file-based)
 - ✅ Metrics collection and aggregation
 - ✅ Configuration parsing and validation
 - ✅ Multi-worker coordination
+- ✅ Signal handling and cleanup
 
-## Test Files
+## Integration Test Patterns
+
+The integration tests cover three different integration scenarios:
 
 ### `test_basic.sh`
 
-Tests the exporter with *file-based multiprocess storage*.
+Tests the exporter with **file-based multiprocess storage integration**.
 
 *What it tests:*
 - Exporter plugin integration with Gunicorn
@@ -50,7 +58,7 @@ Tests the exporter with *file-based multiprocess storage*.
 
 ### `test_redis_integ.sh`
 
-Tests the exporter with *Redis-based storage*.
+Tests the exporter with **Redis-based storage integration**.
 
 *What it tests:*
 - Exporter plugin integration with Gunicorn
@@ -75,7 +83,7 @@ Tests the exporter with *Redis-based storage*.
 
 ### `test_yaml_config.sh`
 
-Tests *YAML-based configuration* parsing and validation.
+Tests **YAML-based configuration integration** parsing and validation.
 
 *What it tests:*
 - YAML configuration file parsing
@@ -95,37 +103,37 @@ Tests *YAML-based configuration* parsing and validation.
 ./test_yaml_config.sh --docker     # Run in Docker container
 ```
 
-## Running All Integration Tests
+## Running Integration Tests
 
 From the project root:
 
 ```bash
-# Run all integration tests via e2e Makefile
+# Run integration tests via e2e Makefile
 cd e2e
-make basic-test       # File-based storage test
-make system-test      # Redis integration test (auto-starts Redis)
+make basic-test       # File-based storage integration test
+make system-test      # Redis storage integration test (auto-starts Redis)
 make quick-test       # Quick Redis test (requires Redis running)
-make yaml-test        # YAML configuration test
+make yaml-test        # YAML configuration integration test
 ```
 
-Or run them directly:
+Or run them directly from the integration directory:
 
 ```bash
 cd integration
-./test_basic.sh
-./test_redis_integ.sh
-./test_yaml_config.sh
+./test_basic.sh       # File-based multiprocess storage integration
+./test_redis_integ.sh # Redis storage integration
+./test_yaml_config.sh # YAML configuration integration
 ```
 
 ## CI/CD Integration
 
-These tests run automatically in GitHub Actions:
+These integration tests run automatically in GitHub Actions:
 
 - **Workflow**: `.github/workflows/system-test.yml`
 - **Jobs**:
-  - `redis_integration_test` (Redis storage)
-  - `basic_file_based_test` (File storage)
-  - `yaml_config_test` (YAML config)
+  - `redis_integration_test` (Redis storage integration)
+  - `basic_file_based_test` (File-based multiprocess storage integration)
+  - `yaml_config_test` (YAML configuration integration)
 
 ## Test Requirements
 
@@ -164,16 +172,26 @@ Test logs are written to:
 You can run tests step-by-step by examining the test scripts and running commands manually:
 
 ```bash
-# Example: Manual Redis integration test
+# Example: Manual file-based storage integration test
 cd integration
 
+# Install dependencies
+pip install gunicorn flask requests psutil
+
+# Run Gunicorn with exporter (file-based storage)
+gunicorn --config ../example/gunicorn_basic.conf.py app:app
+
+# Test metrics endpoint
+curl http://localhost:9093/metrics
+
+# Cleanup
+pkill gunicorn
+
+# Example: Manual Redis storage integration test
 # Start Redis
 redis-server &
 
-# Install dependencies
-pip install gunicorn flask redis requests psutil
-
-# Run Gunicorn with exporter
+# Run Gunicorn with exporter (Redis storage)
 gunicorn --config ../example/gunicorn_redis_integration.conf.py app:app
 
 # Test metrics endpoint
@@ -206,17 +224,14 @@ These tests are *integration tests* (not unit tests or E2E tests) because:
    - Network policies
    - Production-like deployments
 
-## Comparison with E2E Tests
+## Integration Test Types vs E2E Tests
 
-| Aspect | Integration Tests | E2E Tests |
-|--------|------------------|-----------|
-| *Location* | `integration/` | `e2e/` |
-| *Scope* | Component integration | Full deployment |
-| *Containers* | No | Yes (Docker/Kubernetes) |
-| *Speed* | Fast (~30s) | Slower (~2-5min) |
-| *Isolation* | Process-level | Container-level |
-| *Dependencies* | Direct (Redis, Gunicorn) | Containerized |
-| *Purpose* | Verify components work together | Verify deployment works |
+| Test Type | Purpose | Scope | Dependencies | Speed |
+|-----------|---------|-------|--------------|-------|
+| **File-based** (`test_basic.sh`) | File multiprocess storage integration | Exporter + Gunicorn + file storage | Gunicorn, file system | ~30s |
+| **Redis** (`test_redis_integ.sh`) | Redis storage integration | Exporter + Gunicorn + Redis backend | Gunicorn, Redis server | ~60s |
+| **YAML Config** (`test_yaml_config.sh`) | Configuration integration | YAML parsing + worker types | Configuration files | ~45s |
+| **E2E** (`e2e/`) | Full deployment testing | Complete system in containers/K8s | Docker/Kubernetes | ~2-5min |
 
 ## Contributing
 

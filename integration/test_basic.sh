@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Basic System Test for Gunicorn Prometheus Exporter (File-based Multiprocess)
+# Basic Integration Test for Gunicorn Prometheus Exporter (File-based Multiprocess)
 # This script tests the complete functionality including:
 # - Dependency installation
 # - Gunicorn server startup with file-based multiprocess storage
@@ -9,7 +9,7 @@
 # - Cleanup
 #
 # Usage:
-#   ./system_test_basic.sh [--quick] [--ci] [--force]
+#   ./test_basic.sh [--quick] [--ci] [--force]
 #   --quick: Quick test (shorter duration)
 #   --ci: CI mode (timeout protection, auto cleanup)
 #   --force: Kill existing processes on ports 8088 and 9093
@@ -231,13 +231,13 @@ start_gunicorn() {
 
     # Use different startup method based on mode
     if [ "$CI_MODE" = true ]; then
-        nohup gunicorn --config gunicorn_basic.conf.py app:app > ../system-test/gunicorn.log 2>&1 &
+        nohup gunicorn --config gunicorn_basic.conf.py app:app > ../gunicorn.log 2>&1 &
     else
         gunicorn --config gunicorn_basic.conf.py app:app &
     fi
 
     GUNICORN_PID=$!
-    cd ../system-test
+    cd ../
 
     print_status "Gunicorn started with PID: $GUNICORN_PID"
 

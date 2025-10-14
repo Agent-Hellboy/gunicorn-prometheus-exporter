@@ -35,7 +35,7 @@ mkdir -p "$PROMETHEUS_MULTIPROC_DIR"\n\
 echo "Created multiprocess directory: $PROMETHEUS_MULTIPROC_DIR"\n\
 \n\
 # Run the basic system test\n\
-cd integration\n\
+cd /app\n\
 # Set environment to skip virtual environment creation\n\
 export SKIP_VENV=true\n\
 ./test_basic.sh --ci\n\

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# System test for YAML configuration integration
+# Integration test for YAML configuration integration
 # This script tests the YAML configuration functionality with actual Gunicorn processes
 
 set -e
@@ -61,7 +61,6 @@ print_status() {
 # Test configuration
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$TEST_DIR/.." && pwd)"
-SYSTEM_TEST_DIR="$PROJECT_ROOT/system-test"
 
 # Setup environment based on mode
 if [ "$USE_DOCKER" = true ]; then
@@ -85,12 +84,12 @@ if [ "$USE_DOCKER" = true ]; then
 
 else
     # Check if virtual environment exists
-    if [ -d "$SYSTEM_TEST_DIR/test_venv" ]; then
-        VENV_DIR="$SYSTEM_TEST_DIR/test_venv"
+    if [ -d "$PROJECT_ROOT/test_venv" ]; then
+        VENV_DIR="$PROJECT_ROOT/test_venv"
     elif [ -d "$PROJECT_ROOT/venv" ]; then
         VENV_DIR="$PROJECT_ROOT/venv"
     else
-        print_status "FAIL" "No virtual environment found. Please run 'python -m venv test_venv' in system-test directory"
+        print_status "FAIL" "No virtual environment found. Please run 'python -m venv test_venv' in project root directory"
         exit 1
     fi
 
@@ -384,7 +383,7 @@ test_basic_yaml_config() {
     print_status "INFO" "Testing basic YAML configuration..."
 
     # Create test YAML config
-    cat > "$SYSTEM_TEST_DIR/test_basic_config.yml" << EOF
+    cat > "$PROJECT_ROOT/test_basic_config.yml" << EOF
 exporter:
   prometheus:
     metrics_port: $METRICS_PORT
@@ -401,7 +400,7 @@ exporter:
 EOF
 
     # Create test Gunicorn config
-    cat > "$SYSTEM_TEST_DIR/test_basic_gunicorn.conf.py" << EOF
+    cat > "$PROJECT_ROOT/test_basic_gunicorn.conf.py" << EOF
 import os
 from gunicorn_prometheus_exporter.hooks import load_yaml_config
 
@@ -443,9 +442,9 @@ EOF
             -p 8089:8089 \
             -p 9094:9094 \
             -e PROMETHEUS_CONFIG_FILE="/app/test_basic_config.yml" \
-            -v "$SYSTEM_TEST_DIR/test_configs/basic.yml:/app/test_basic_config.yml:ro" \
-            -v "$SYSTEM_TEST_DIR/test_app.py:/app/test_app.py" \
-            -v "$SYSTEM_TEST_DIR/gunicorn.yaml.conf.py:/app/test_basic_gunicorn.conf.py:ro" \
+            -v "$PROJECT_ROOT/e2e/test_configs/basic.yml:/app/test_basic_config.yml:ro" \
+            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/e2e/fixtures/apps/test_app.py" \
+            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/test_basic_gunicorn.conf.py:ro" \
             "$DOCKER_IMAGE" \
             gunicorn --config /app/test_basic_gunicorn.conf.py test_app:app
 
@@ -486,7 +485,7 @@ EOF
     else
         # Local testing
         print_status "INFO" "Starting Gunicorn with basic YAML configuration..."
-        cd "$SYSTEM_TEST_DIR"
+        cd "$PROJECT_ROOT"
         gunicorn --config test_basic_gunicorn.conf.py test_app:app &
         GUNICORN_PID=$!
 
@@ -511,8 +510,8 @@ EOF
     fi
 
     # Clean up test files
-    rm -f "$SYSTEM_TEST_DIR/test_basic_config.yml"
-    rm -f "$SYSTEM_TEST_DIR/test_basic_gunicorn.conf.py"
+    rm -f "$PROJECT_ROOT/test_basic_config.yml"
+    rm -f "$PROJECT_ROOT/test_basic_gunicorn.conf.py"
 }
 
 # Function to test YAML configuration with Redis integration (Docker only)
@@ -532,11 +531,11 @@ test_yaml_config_with_redis_docker() {
             -p 8089:8089 \
             -p 9094:9094 \
             -e PROMETHEUS_CONFIG_FILE="/app/config/redis.yml" \
-            -v "$SYSTEM_TEST_DIR/test_configs:/app/config" \
-            -v "$SYSTEM_TEST_DIR/test_app.py:/app/test_app.py" \
-            -v "$SYSTEM_TEST_DIR/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py" \
+            -v "$PROJECT_ROOT/e2e/test_configs:/app/config" \
+            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/e2e/fixtures/apps/test_app.py" \
+            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/e2e/fixtures/configs/gunicorn.yaml.conf.py" \
             "$DOCKER_IMAGE" \
-            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
+            gunicorn --config /app/e2e/fixtures/configs/gunicorn.yaml.conf.py test_app:app
 
         # Wait for services to be ready
         print_status "INFO" "Waiting for services to start..."
@@ -585,7 +584,7 @@ test_yaml_config_with_overrides() {
         print_status "INFO" "Testing environment variable overrides with Docker..."
 
         # Create test YAML config with different port
-        cat > "$SYSTEM_TEST_DIR/test_configs/override.yml" << EOF
+        cat > "$PROJECT_ROOT/e2e/test_configs/override.yml" << EOF
 exporter:
   prometheus:
     metrics_port: 9095
@@ -602,7 +601,7 @@ exporter:
 EOF
 
         # Create Gunicorn config that loads YAML and overrides with env vars
-        cat > "$SYSTEM_TEST_DIR/gunicorn.override.conf.py" << EOF
+        cat > "$PROJECT_ROOT/gunicorn.override.conf.py" << EOF
 import os
 from gunicorn_prometheus_exporter import load_yaml_config, PrometheusWorker
 
@@ -631,11 +630,11 @@ EOF
             -p 9094:9094 \
             -e PROMETHEUS_CONFIG_FILE="/app/config/override.yml" \
             -e PROMETHEUS_METRICS_PORT="9094" \
-            -v "$SYSTEM_TEST_DIR/test_configs:/app/config" \
-            -v "$SYSTEM_TEST_DIR/test_app.py:/app/test_app.py" \
-            -v "$SYSTEM_TEST_DIR/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py" \
+            -v "$PROJECT_ROOT/e2e/test_configs:/app/config" \
+            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/e2e/fixtures/apps/test_app.py" \
+            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/e2e/fixtures/configs/gunicorn.yaml.conf.py" \
             "$DOCKER_IMAGE" \
-            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
+            gunicorn --config /app/e2e/fixtures/configs/gunicorn.yaml.conf.py test_app:app
 
         # Wait for services to start
         print_status "INFO" "Waiting for services to start..."
@@ -660,7 +659,7 @@ EOF
     fi
 
     # Create test YAML config
-    cat > "$SYSTEM_TEST_DIR/test_override_config.yml" << EOF
+    cat > "$PROJECT_ROOT/test_override_config.yml" << EOF
 exporter:
   prometheus:
     metrics_port: 9095
@@ -677,12 +676,12 @@ exporter:
 EOF
 
     # Create test Gunicorn config with environment variable overrides
-    cat > "$SYSTEM_TEST_DIR/test_override_gunicorn.conf.py" << EOF
+    cat > "$PROJECT_ROOT/test_override_gunicorn.conf.py" << EOF
 import os
 from gunicorn_prometheus_exporter.hooks import load_yaml_config
 
 # Load YAML configuration
-load_yaml_config("$SYSTEM_TEST_DIR/test_override_config.yml")
+load_yaml_config("$PROJECT_ROOT/test_override_config.yml")
 
 # Override with environment variables
 os.environ["PROMETHEUS_METRICS_PORT"] = "$METRICS_PORT"
@@ -711,7 +710,7 @@ EOF
 
     # Start Gunicorn with YAML config and overrides
     print_status "INFO" "Starting Gunicorn with YAML configuration and environment variable overrides..."
-    cd "$SYSTEM_TEST_DIR"
+    cd "$PROJECT_ROOT"
     gunicorn --config test_override_gunicorn.conf.py test_app:app &
     GUNICORN_PID=$!
 
@@ -732,8 +731,8 @@ EOF
     wait $GUNICORN_PID 2>/dev/null || true
 
     # Clean up test files
-    rm -f "$SYSTEM_TEST_DIR/test_override_config.yml"
-    rm -f "$SYSTEM_TEST_DIR/test_override_gunicorn.conf.py"
+    rm -f "$PROJECT_ROOT/test_override_config.yml"
+    rm -f "$PROJECT_ROOT/test_override_gunicorn.conf.py"
 }
 
 # Function to test YAML configuration with Redis
@@ -744,7 +743,7 @@ test_yaml_config_with_redis() {
         print_status "INFO" "Testing Redis YAML configuration with Docker..."
 
         # Create Gunicorn config that loads Redis YAML config
-        cat > "$SYSTEM_TEST_DIR/gunicorn.redis.conf.py" << EOF
+        cat > "$PROJECT_ROOT/gunicorn.redis.conf.py" << EOF
 import os
 from gunicorn_prometheus_exporter import load_yaml_config, PrometheusWorker
 from gunicorn_prometheus_exporter.hooks import (
@@ -783,11 +782,11 @@ EOF
             -p 8089:8089 \
             -p 9094:9094 \
             -e PROMETHEUS_CONFIG_FILE="/app/config/redis.yml" \
-            -v "$SYSTEM_TEST_DIR/test_configs:/app/config" \
-            -v "$SYSTEM_TEST_DIR/test_app.py:/app/test_app.py" \
-            -v "$SYSTEM_TEST_DIR/gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py" \
+            -v "$PROJECT_ROOT/e2e/test_configs:/app/config" \
+            -v "$PROJECT_ROOT/e2e/fixtures/apps/test_app.py:/app/e2e/fixtures/apps/test_app.py" \
+            -v "$PROJECT_ROOT/e2e/fixtures/configs/gunicorn.yaml.conf.py:/app/e2e/fixtures/configs/gunicorn.yaml.conf.py" \
             "$DOCKER_IMAGE" \
-            gunicorn --config /app/gunicorn.yaml.conf.py test_app:app
+            gunicorn --config /app/e2e/fixtures/configs/gunicorn.yaml.conf.py test_app:app
 
         # Wait for services to start
         print_status "INFO" "Waiting for services to start..."
@@ -825,7 +824,7 @@ EOF
     sleep 2
 
     # Create test YAML config with Redis
-    cat > "$SYSTEM_TEST_DIR/test_redis_config.yml" << EOF
+    cat > "$PROJECT_ROOT/test_redis_config.yml" << EOF
 exporter:
   prometheus:
     metrics_port: $METRICS_PORT
@@ -849,12 +848,12 @@ exporter:
 EOF
 
     # Create test Gunicorn config with Redis
-    cat > "$SYSTEM_TEST_DIR/test_redis_gunicorn.conf.py" << EOF
+    cat > "$PROJECT_ROOT/test_redis_gunicorn.conf.py" << EOF
 import os
 from gunicorn_prometheus_exporter.hooks import load_yaml_config
 
 # Load YAML configuration
-load_yaml_config("$SYSTEM_TEST_DIR/test_redis_config.yml")
+load_yaml_config("$PROJECT_ROOT/test_redis_config.yml")
 
 from gunicorn_prometheus_exporter.hooks import (
     default_on_exit,
@@ -880,7 +879,7 @@ EOF
 
     # Start Gunicorn with Redis YAML config
     print_status "INFO" "Starting Gunicorn with Redis YAML configuration..."
-    cd "$SYSTEM_TEST_DIR"
+    cd "$PROJECT_ROOT"
     gunicorn --config test_redis_gunicorn.conf.py test_app:app &
     GUNICORN_PID=$!
 
@@ -904,8 +903,8 @@ EOF
     redis-cli -p 6380 shutdown || true
 
     # Clean up test files
-    rm -f "$SYSTEM_TEST_DIR/test_redis_config.yml"
-    rm -f "$SYSTEM_TEST_DIR/test_redis_gunicorn.conf.py"
+    rm -f "$PROJECT_ROOT/test_redis_config.yml"
+    rm -f "$PROJECT_ROOT/test_redis_gunicorn.conf.py"
     rm -f /tmp/redis_test.rdb
 }
 
@@ -917,7 +916,7 @@ test_invalid_yaml_config() {
         print_status "INFO" "Testing invalid YAML configuration with Docker..."
 
         # Create invalid YAML config (missing required bind_address)
-        cat > "$SYSTEM_TEST_DIR/test_configs/invalid.yml" << EOF
+        cat > "$PROJECT_ROOT/e2e/test_configs/invalid.yml" << EOF
 exporter:
   prometheus:
     metrics_port: 9094
@@ -927,7 +926,7 @@ exporter:
 EOF
 
         # Create Gunicorn config that tries to load invalid YAML
-        cat > "$SYSTEM_TEST_DIR/gunicorn.invalid.conf.py" << EOF
+        cat > "$PROJECT_ROOT/gunicorn.invalid.conf.py" << EOF
 import os
 import sys
 from gunicorn_prometheus_exporter import load_yaml_config, PrometheusWorker
@@ -947,23 +946,23 @@ EOF
         cd "$PROJECT_ROOT"
 
         # Build the image first
-        docker build -f system-test/Dockerfile.yaml-simple -t test-invalid-yaml .
+        docker build -f ../e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t test-invalid-yaml .
 
         # Run the test
-        if docker run --rm -v "$SYSTEM_TEST_DIR/test_configs:/app/config" -v "$SYSTEM_TEST_DIR/gunicorn.invalid.conf.py:/app/gunicorn.invalid.conf.py" test-invalid-yaml python /app/gunicorn.invalid.conf.py; then
+        if docker run --rm -v "$PROJECT_ROOT/e2e/test_configs:/app/config" -v "$PROJECT_ROOT/gunicorn.invalid.conf.py:/app/gunicorn.invalid.conf.py" test-invalid-yaml python /app/gunicorn.invalid.conf.py; then
             print_status "PASS" "Invalid YAML configuration test passed"
         else
             print_status "FAIL" "Invalid YAML configuration test failed"
         fi
 
         # Clean up test files
-        rm -f "$SYSTEM_TEST_DIR/test_configs/invalid.yml"
-        rm -f "$SYSTEM_TEST_DIR/gunicorn.invalid.conf.py"
+        rm -f "$PROJECT_ROOT/e2e/test_configs/invalid.yml"
+        rm -f "$PROJECT_ROOT/gunicorn.invalid.conf.py"
         return 0
     fi
 
     # Create invalid YAML config
-    cat > "$SYSTEM_TEST_DIR/test_invalid_config.yml" << EOF
+    cat > "$PROJECT_ROOT/test_invalid_config.yml" << EOF
 exporter:
   prometheus:
     metrics_port: 9091
@@ -973,14 +972,14 @@ exporter:
 EOF
 
     # Create test Gunicorn config
-    cat > "$SYSTEM_TEST_DIR/test_invalid_gunicorn.conf.py" << EOF
+    cat > "$PROJECT_ROOT/test_invalid_gunicorn.conf.py" << EOF
 import os
 import sys
 from gunicorn_prometheus_exporter.hooks import load_yaml_config
 
 try:
     # Load invalid YAML configuration
-    load_yaml_config("$SYSTEM_TEST_DIR/test_invalid_config.yml")
+    load_yaml_config("$PROJECT_ROOT/test_invalid_config.yml")
     print("ERROR: Invalid YAML configuration was accepted")
     sys.exit(1)
 except Exception as e:
@@ -989,7 +988,7 @@ except Exception as e:
 EOF
 
     # Test invalid YAML config
-    cd "$SYSTEM_TEST_DIR"
+    cd "$PROJECT_ROOT"
     if python test_invalid_gunicorn.conf.py; then
         print_status "PASS" "Invalid YAML configuration test passed"
     else
@@ -997,21 +996,21 @@ EOF
     fi
 
     # Clean up test files
-    rm -f "$SYSTEM_TEST_DIR/test_invalid_config.yml"
-    rm -f "$SYSTEM_TEST_DIR/test_invalid_gunicorn.conf.py"
+    rm -f "$PROJECT_ROOT/test_invalid_config.yml"
+    rm -f "$PROJECT_ROOT/test_invalid_gunicorn.conf.py"
 }
 
 # Main test execution
 main() {
     print_status "INFO" "Starting YAML configuration system tests..."
     print_status "INFO" "Project root: $PROJECT_ROOT"
-    print_status "INFO" "System test dir: $SYSTEM_TEST_DIR"
+    print_status "INFO" "Integration test dir: $TEST_DIR"
     if [ "$USE_DOCKER" != true ] && [ -n "$VENV_DIR" ]; then
         print_status "INFO" "Virtual environment: $VENV_DIR"
     fi
 
     # Ensure we're in the right directory
-    cd "$SYSTEM_TEST_DIR"
+    cd "$PROJECT_ROOT"
 
     # Cleanup any existing processes
     cleanup

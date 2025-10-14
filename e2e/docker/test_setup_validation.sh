@@ -25,7 +25,7 @@ print_status() {
 # Test configuration
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$TEST_DIR/.." && pwd)"
-SYSTEM_TEST_DIR="$PROJECT_ROOT/system-test"
+# Use PROJECT_ROOT for all file operations
 
 print_status "INFO" "Testing Docker setup for YAML configuration..."
 
