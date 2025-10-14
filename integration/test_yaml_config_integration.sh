@@ -451,6 +451,7 @@ EOF
         print_status "INFO" "Starting Docker container for YAML testing..."
 
         # Build and run Docker container
+        cd "$PROJECT_ROOT"
         docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t "$DOCKER_IMAGE" . >/dev/null 2>&1
 
         # Run container in background with the same config as local mode

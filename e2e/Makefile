@@ -100,7 +100,7 @@ format:
 # Docker-based Redis e2e test (works on Mac/Windows/Linux)
 e2e-test-redis-build:
 	@echo "Building Docker image for Redis e2e test..."
-	docker build -f e2e/fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test .
+	docker build -f fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test ..
 
 e2e-test-redis-docker: e2e-test-redis-build
 	@echo "Running Redis e2e test in Docker container..."
@@ -115,7 +115,7 @@ e2e-test-redis-docker: e2e-test-redis-build
 # Docker-based file storage e2e test (works on Mac/Windows/Linux)
 e2e-test-file-storage-build:
 	@echo "Building Docker image for file-based storage e2e test..."
-	docker build -f e2e/fixtures/dockerfiles/basic.Dockerfile -t gunicorn-prometheus-exporter-basic-test .
+	docker build -f fixtures/dockerfiles/basic.Dockerfile -t gunicorn-prometheus-exporter-basic-test ..
 
 e2e-test-file-storage-docker: e2e-test-file-storage-build
 	@echo "Running file-based storage e2e test in Docker container..."
@@ -129,12 +129,12 @@ e2e-test-file-storage-docker: e2e-test-file-storage-build
 # Docker-based YAML e2e test (works on Mac/Windows/Linux)
 e2e-test-yaml-config-build:
 	@echo "Building Docker image for YAML e2e test..."
-	docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t gunicorn-prometheus-exporter-yaml-test .
+	docker build -f fixtures/dockerfiles/yaml-simple.Dockerfile -t gunicorn-prometheus-exporter-yaml-test ..
 
 e2e-test-yaml-config-docker: e2e-test-yaml-config-build
 	@echo "Running YAML configuration e2e test in Docker container..."
 	@echo "This works consistently on Mac, Windows, and Linux!"
-	integration/test_yaml_config_integration.sh --docker
+	../integration/test_yaml_config_integration.sh --docker
 
 # Development setup
 dev-setup: install

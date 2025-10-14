@@ -82,7 +82,7 @@ test_app_image() {
     fi
 
     # Generate test requests
-    for i in {1..5}; do
+    for _ in {1..5}; do
         curl -s http://localhost:8000/ >/dev/null || true
         curl -s http://localhost:8000/health >/dev/null || true
         sleep 1

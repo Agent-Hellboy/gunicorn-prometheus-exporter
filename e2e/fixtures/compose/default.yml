@@ -4,7 +4,7 @@ services:
   redis-integration-test:
     build:
       context: ..
-      dockerfile: e2e/fixtures/dockerfiles/default.Dockerfile
+      dockerfile: dockerfiles/default.Dockerfile
     ports:
       - "8088:8088"
       - "9093:9093"
