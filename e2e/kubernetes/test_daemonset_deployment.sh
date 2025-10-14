@@ -11,8 +11,11 @@
 
 set -e  # Exit on any error
 
-# Get script directory
+# Get script directory and change to project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
+
 COMMON_DIR="$SCRIPT_DIR/common"
 
 # Source common utilities
@@ -53,7 +56,7 @@ main() {
     # Step 4: Prepare manifests
     print_status "Preparing manifests..."
     TEMP_DIR=$(mktemp -d)
-    cp -r ../../k8s/*.yaml "$TEMP_DIR/"
+    cp -r k8s/*.yaml "$TEMP_DIR/"
 
     # Update image references
     sed -i -E "s|princekrroshan01/gunicorn-app:[^\"[:space:]]*|$APP_IMAGE|g" "$TEMP_DIR/sidecar-daemonset.yaml"
