@@ -1,4 +1,4 @@
-name: Smoke Tests (Kubernetes)
+name: E2E Tests (Kubernetes)
 
 on:
   push:
@@ -32,15 +32,19 @@ jobs:
 
       - name: Test Kubernetes sidecar deployment
         run: |
+          echo "Testing Kubernetes sidecar deployment..."
           bash e2e/kubernetes/test_sidecar_deployment.sh
+          echo "✅ Sidecar deployment test completed"
 
-      - name: Test Kubernetes DaemonSet deployment
+      - name: Test Kubernetes DaemonSet deployment (comprehensive)
         run: |
+          echo "Running comprehensive Kubernetes DaemonSet deployment test..."
           bash e2e/kubernetes/test_daemonset_deployment.sh
+          echo "✅ DaemonSet deployment test completed"
 
       - name: Summary
         run: |
-          echo "🎉 All Kubernetes tests passed!"
+          echo "🎉 All Kubernetes E2E tests passed!"
           echo "✅ Sidecar deployment pattern validated"
           echo "✅ DaemonSet deployment pattern validated"
           echo "✅ Redis storage integration verified"
