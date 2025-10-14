@@ -49,8 +49,6 @@ spec:
               value: "9091"
             - name: PROMETHEUS_BIND_ADDRESS
               value: "0.0.0.0"
-            - name: PROMETHEUS_MULTIPROC_DIR
-              value: "/tmp/prometheus_multiproc"
             - name: REDIS_ENABLED
               value: "true"
             - name: REDIS_HOST
@@ -82,9 +80,6 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
           livenessProbe:
             httpGet:
               path: /
@@ -110,7 +105,7 @@ spec:
             runAsGroup: 1000
             runAsNonRoot: true
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
@@ -126,8 +121,6 @@ spec:
               value: "9091"
             - name: PROMETHEUS_BIND_ADDRESS
               value: "0.0.0.0"
-            - name: PROMETHEUS_MULTIPROC_DIR
-              value: "/tmp/prometheus_multiproc"
             - name: REDIS_ENABLED
               value: "true"
             - name: REDIS_HOST
@@ -159,9 +152,6 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "200m"
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
               readOnly: true
           livenessProbe:
             httpGet:
@@ -179,11 +169,6 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
-
-      volumes:
-        - name: tmp
-          emptyDir:
-            sizeLimit: 1Gi
 
       # Node selection (optional)
       # nodeSelector:

@@ -42,8 +42,6 @@ spec:
               name: http
               protocol: TCP
           env:
-            - name: PROMETHEUS_MULTIPROC_DIR
-              value: "/tmp/prometheus_multiproc"
             - name: GUNICORN_WORKERS
               value: "4"
             - name: REDIS_ENABLED
@@ -79,9 +77,6 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
-          volumeMounts:
-            - name: prometheus-data
-              mountPath: /tmp
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
@@ -90,7 +85,7 @@ spec:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
             runAsUser: 1000
-            readOnlyRootFilesystem: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
@@ -105,8 +100,6 @@ spec:
               value: "9091"
             - name: PROMETHEUS_BIND_ADDRESS
               value: "0.0.0.0"
-            - name: PROMETHEUS_MULTIPROC_DIR
-              value: "/tmp/prometheus_multiproc"
             - name: REDIS_ENABLED
               value: "true"
             - name: REDIS_HOST
@@ -142,13 +135,5 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-          volumeMounts:
-            - name: prometheus-data
-              mountPath: /tmp
-      volumes:
-        - name: prometheus-data
-          emptyDir:
-            medium: Memory # Use tmpfs backed by RAM for better performance
-            sizeLimit: 1Gi # Ensure sufficient shared memory for Gunicorn workers
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
