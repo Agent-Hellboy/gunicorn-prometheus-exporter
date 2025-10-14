@@ -131,16 +131,21 @@ main() {
         sleep 0.5
     done
 
-    print_status "Waiting for metrics to be collected..."
-    sleep 10
+    print_status "Waiting for metrics to be collected (extended wait for CI)..."
+    sleep 20
 
     # Step 11: Fetch and validate metrics
     print_status "Fetching metrics..."
+    print_status "DEBUG: Checking Redis connectivity from pod..."
+    kubectl exec -it deployment/gunicorn-app-with-sidecar -- sh -c "echo 'Testing Redis connectivity...' && nc -z redis-service 6379 && echo 'Redis reachable' || echo 'Redis NOT reachable'" || true
     metrics_response=$(curl -f --max-time 10 http://localhost:9091/metrics 2>/dev/null)
 
     if [ -z "$metrics_response" ]; then
         print_error "No metrics response from sidecar metrics endpoint"
-        kubectl logs -l app=gunicorn-app -c prometheus-exporter --tail=200 || true
+        print_status "DEBUG: Checking sidecar logs..."
+        kubectl logs -l app=gunicorn-app -c prometheus-exporter --tail=50 || true
+        print_status "DEBUG: Checking app logs..."
+        kubectl logs -l app=gunicorn-app -c app --tail=50 || true
         kill $PF_APP_PID $PF_METRICS_PID || true
         exit 1
     fi

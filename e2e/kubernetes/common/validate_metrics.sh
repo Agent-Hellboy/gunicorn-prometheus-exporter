@@ -35,6 +35,10 @@ validate_worker_metrics() {
 
     # gunicorn_worker_requests_total
     echo "Checking for gunicorn_worker_requests_total..."
+    echo "DEBUG: Metrics response length: ${#metrics_response}"
+    echo "DEBUG: First few lines of metrics:"
+    echo "$metrics_response" | head -10
+    echo "DEBUG: Checking for gunicorn_worker_requests_total pattern..."
     if echo "$metrics_response" | grep -q "gunicorn_worker_requests_total.*[0-9]"; then
         request_count=$(echo "$metrics_response" | grep "gunicorn_worker_requests_total" | wc -l)
         print_success "Found gunicorn_worker_requests_total ($request_count counters)"
