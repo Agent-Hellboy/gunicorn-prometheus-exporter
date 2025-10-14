@@ -20,11 +20,11 @@ jobs:
         uses: docker/setup-docker-action@v3
 
       - name: Run Redis Integration Test (Docker)
+        working-directory: e2e
         run: |
-          cd e2e
           chmod +x ../integration/test_redis_integ.sh
           # Build Docker image for Redis integration test
-          docker build -f e2e/fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test ..
+          docker build -f fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test ..
           # Run with proper resource limits
           docker run --rm \
             --name gunicorn-prometheus-test \
@@ -57,11 +57,11 @@ jobs:
         uses: docker/setup-docker-action@v3
 
       - name: Run Basic Integration Test (Docker)
+        working-directory: e2e
         run: |
-          cd e2e
           chmod +x ../integration/test_basic.sh
           # Build Docker image for basic file-based integration test
-          docker build -f e2e/fixtures/dockerfiles/basic.Dockerfile -t gunicorn-prometheus-exporter-basic-test ..
+          docker build -f fixtures/dockerfiles/basic.Dockerfile -t gunicorn-prometheus-exporter-basic-test ..
           # Run with proper resource limits
           docker run --rm \
             --name gunicorn-prometheus-basic-test \
@@ -93,11 +93,11 @@ jobs:
         uses: docker/setup-docker-action@v3
 
       - name: Run YAML Configuration Integration Test (Docker)
+        working-directory: e2e
         run: |
-          cd e2e
           chmod +x ../integration/test_yaml_config.sh
           # Build Docker image for YAML configuration integration test
-          docker build -f e2e/fixtures/dockerfiles/yaml-simple.Dockerfile -t gunicorn-prometheus-exporter-yaml-test ..
+          docker build -f fixtures/dockerfiles/yaml-simple.Dockerfile -t gunicorn-prometheus-exporter-yaml-test ..
           # Run YAML configuration integration tests
           ../integration/test_yaml_config.sh --docker --quick
         timeout-minutes: 15
