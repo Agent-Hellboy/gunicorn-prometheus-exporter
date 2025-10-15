@@ -95,8 +95,11 @@ main() {
         # Continue if at least one pod is ready
         ready_pods=$(kubectl get pods -l app=redis --field-selector=status.phase=Running --no-headers | wc -l)
         if [ "$ready_pods" -lt 1 ]; then
-            print_warning "No Redis pods are running - continuing test"
-            # Don't exit 1 - CI timing may affect Redis startup
+            print_error "No Redis pods are running"
+            kubectl get pods -l app=redis
+            kubectl describe pods -l app=redis
+            print_error "This is a genuine failure - Redis should be running"
+            exit 1
         fi
         print_status "Continuing with $ready_pods Redis pods running"
     }
@@ -118,14 +121,15 @@ main() {
 
     print_status "Waiting for DaemonSet pods to be ready..."
     if ! kubectl wait --for=condition=ready pod -l app=gunicorn-prometheus-exporter,component=daemonset --timeout=300s; then
-        print_warning "DaemonSet pods failed to become ready - continuing test"
+        print_error "DaemonSet pods failed to become ready"
         kubectl get pods -l app=gunicorn-prometheus-exporter,component=daemonset
         kubectl describe pods -l app=gunicorn-prometheus-exporter,component=daemonset
         echo "--- App container logs ---"
         kubectl logs -l app=gunicorn-prometheus-exporter,component=daemonset -c app --tail=200 || true
         echo "--- Prometheus exporter sidecar logs ---"
         kubectl logs -l app=gunicorn-prometheus-exporter,component=daemonset -c prometheus-exporter --tail=200 || true
-        # Don't exit 1 - CI timing may affect DaemonSet readiness
+        print_error "This is a genuine failure - DaemonSet pods should be ready"
+        exit 1
     fi
 
     # Step 7: Verify DaemonSet deployment
@@ -136,10 +140,16 @@ main() {
     echo "DaemonSet desired pods: $ds_desired"
     echo "DaemonSet ready pods: $ds_ready"
 
-    if [ "$ds_ready" -lt 2 ]; then
-        print_warning "DaemonSet not deployed to sufficient nodes (expected 2+, got $ds_ready) - continuing test"
+    if [ "$ds_ready" -lt 1 ]; then
+        print_error "DaemonSet not deployed to any nodes (expected 1+, got $ds_ready)"
         kubectl get daemonset gunicorn-prometheus-exporter-daemonset
-        # Don't exit 1 - CI timing may affect DaemonSet deployment
+        kubectl describe daemonset gunicorn-prometheus-exporter-daemonset
+        print_error "This is a genuine failure - DaemonSet should deploy to at least 1 node"
+        exit 1
+    elif [ "$ds_ready" -lt 2 ]; then
+        print_warning "DaemonSet deployed to fewer nodes than expected (expected 2+, got $ds_ready) - continuing test"
+        kubectl get daemonset gunicorn-prometheus-exporter-daemonset
+        # This is acceptable - single node clusters are valid
     fi
 
     print_success "DaemonSet successfully deployed to $ds_ready nodes"
@@ -155,11 +165,24 @@ main() {
 
     # Step 9: Test application health
     print_status "Testing application health..."
-    if ! curl -f --max-time 10 http://localhost:8000/health; then
-        print_warning "Application health check failed - continuing test"
+    # Retry health check with exponential backoff
+    print_status "Testing application health (with retries)..."
+    health_check_passed=false
+    for attempt in 1 2 3; do
+        if curl -f --max-time 10 http://localhost:8000/health; then
+            health_check_passed=true
+            break
+        fi
+        print_status "Health check attempt $attempt failed, retrying in $((attempt * 5)) seconds..."
+        sleep $((attempt * 5))
+    done
+
+    if [ "$health_check_passed" = false ]; then
+        print_error "Application health check failed after 3 attempts"
         kubectl logs -l app=gunicorn-prometheus-exporter,component=daemonset -c app --tail=200 || true
         kill $PF_APP_PID $PF_METRICS_PID || true
-        # Don't exit 1 - CI timing may affect health check
+        print_error "This is a genuine failure - application should be healthy"
+        exit 1
     fi
     print_success "Application is healthy"
 
@@ -175,14 +198,24 @@ main() {
     sleep 10
 
     # Step 11: Fetch and validate metrics
-    print_status "Fetching metrics..."
-    metrics_response=$(curl -f --max-time 10 http://localhost:9091/metrics 2>/dev/null)
+    # Retry metrics fetch with exponential backoff
+    print_status "Fetching metrics (with retries)..."
+    metrics_response=""
+    for attempt in 1 2 3; do
+        metrics_response=$(curl -f --max-time 10 http://localhost:9091/metrics 2>/dev/null)
+        if [ -n "$metrics_response" ]; then
+            break
+        fi
+        print_status "Metrics fetch attempt $attempt failed, retrying in $((attempt * 5)) seconds..."
+        sleep $((attempt * 5))
+    done
 
     if [ -z "$metrics_response" ]; then
-        print_warning "No metrics response from DaemonSet metrics endpoint - continuing test"
+        print_error "No metrics response from DaemonSet metrics endpoint after 3 attempts"
         kubectl logs -l app=gunicorn-prometheus-exporter,component=daemonset -c prometheus-exporter --tail=200 || true
         kill $PF_APP_PID $PF_METRICS_PID || true
-        # Don't exit 1 - CI timing may affect metrics availability
+        print_error "This is a genuine failure - metrics should be available"
+        exit 1
     fi
 
     # Step 12: Validate all metrics

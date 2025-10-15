@@ -121,9 +121,11 @@ main() {
     echo "Deployment ready replicas: $deployment_replicas"
 
     if [ "$deployment_replicas" -lt 1 ]; then
-        print_warning "Deployment not ready (expected 1+, got $deployment_replicas) - continuing test"
+        print_error "Deployment not ready (expected 1+, got $deployment_replicas)"
         kubectl get deployment gunicorn-app-with-sidecar
-        # Don't exit 1 - CI timing may affect deployment readiness
+        kubectl describe deployment gunicorn-app-with-sidecar
+        print_error "This is a genuine failure - deployment should have at least 1 replica"
+        exit 1
     fi
 
     print_success "Deployment successfully created with $deployment_replicas replicas"
@@ -139,11 +141,24 @@ main() {
 
     # Step 10: Test application health
     print_status "Testing application health..."
-    if ! curl -f --max-time 10 http://localhost:8000/health; then
-        print_warning "Application health check failed - continuing test"
+    # Retry health check with exponential backoff
+    print_status "Testing application health (with retries)..."
+    health_check_passed=false
+    for attempt in 1 2 3; do
+        if curl -f --max-time 10 http://localhost:8000/health; then
+            health_check_passed=true
+            break
+        fi
+        print_status "Health check attempt $attempt failed, retrying in $((attempt * 5)) seconds..."
+        sleep $((attempt * 5))
+    done
+
+    if [ "$health_check_passed" = false ]; then
+        print_error "Application health check failed after 3 attempts"
         kubectl logs -l app=gunicorn-app -c app --tail=200 || true
         kill $PF_APP_PID $PF_METRICS_PID || true
-        # Don't exit 1 - CI timing may affect health check
+        print_error "This is a genuine failure - application should be healthy"
+        exit 1
     fi
     print_success "Application is healthy"
 
@@ -159,19 +174,30 @@ main() {
     sleep 20
 
     # Step 12: Fetch and validate metrics
-    print_status "Fetching metrics..."
     print_status "DEBUG: Checking Redis connectivity from sidecar pod..."
     kubectl exec -it deployment/gunicorn-app-with-sidecar -c prometheus-exporter -- sh -c "echo 'Testing Redis connectivity...' && nc -z redis-service 6379 && echo 'Redis reachable' || echo 'Redis NOT reachable'" || true
-    metrics_response=$(curl -f --max-time 10 http://localhost:9091/metrics 2>/dev/null)
+
+    # Retry metrics fetch with exponential backoff
+    print_status "Fetching metrics (with retries)..."
+    metrics_response=""
+    for attempt in 1 2 3; do
+        metrics_response=$(curl -f --max-time 10 http://localhost:9091/metrics 2>/dev/null)
+        if [ -n "$metrics_response" ]; then
+            break
+        fi
+        print_status "Metrics fetch attempt $attempt failed, retrying in $((attempt * 5)) seconds..."
+        sleep $((attempt * 5))
+    done
 
     if [ -z "$metrics_response" ]; then
-        print_warning "No metrics response from sidecar metrics endpoint - continuing test"
+        print_error "No metrics response from sidecar metrics endpoint after 3 attempts"
         print_status "DEBUG: Checking sidecar logs..."
         kubectl logs -l app=gunicorn-app -c prometheus-exporter --tail=50 || true
         print_status "DEBUG: Checking app logs..."
         kubectl logs -l app=gunicorn-app -c app --tail=50 || true
         kill $PF_APP_PID $PF_METRICS_PID || true
-        # Don't exit 1 - CI timing may affect metrics availability
+        print_error "This is a genuine failure - metrics should be available"
+        exit 1
     fi
 
     # Step 13: Validate all metrics
