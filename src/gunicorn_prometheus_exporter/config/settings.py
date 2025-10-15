@@ -86,8 +86,7 @@ class ExporterConfig:
             "yes",
         )
         if redis_enabled:
-            return "/tmp"  # Valid path for Redis mode
-            # nosec B108
+            return "/tmp"  # nosec B108 # Valid path for Redis mode
         return os.environ.get(
             self.ENV_PROMETHEUS_MULTIPROC_DIR, self.PROMETHEUS_MULTIPROC_DIR
         )
