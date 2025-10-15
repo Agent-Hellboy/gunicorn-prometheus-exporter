@@ -2,6 +2,8 @@
 
 import os
 
+from pathlib import Path
+
 
 class TestSidecarBasic:
     """Test basic sidecar functionality."""
@@ -32,26 +34,30 @@ class TestSidecarBasic:
 
     def test_sidecar_script_exists(self):
         """Test that sidecar.py script exists."""
-        sidecar_path = "/Users/proshan/gunicorn-prometheus-exporter/docker/sidecar.py"
+        # Get the project root directory (two levels up from this test file)
+        project_root = Path(__file__).parent.parent.parent
+        sidecar_path = project_root / "docker" / "sidecar.py"
         assert os.path.exists(sidecar_path)
 
     def test_entrypoint_script_exists(self):
         """Test that entrypoint.sh script exists."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (two levels up from this test file)
+        project_root = Path(__file__).parent.parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
         assert os.path.exists(entrypoint_path)
 
     def test_dockerfile_sidecar_exists(self):
         """Test that Dockerfile.sidecar exists."""
-        dockerfile_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/Dockerfile.sidecar"
-        )
+        # Get the project root directory (two levels up from this test file)
+        project_root = Path(__file__).parent.parent.parent
+        dockerfile_path = project_root / "docker" / "Dockerfile.sidecar"
         assert os.path.exists(dockerfile_path)
 
     def test_sidecar_script_content(self):
         """Test that sidecar.py contains expected functions."""
-        sidecar_path = "/Users/proshan/gunicorn-prometheus-exporter/docker/sidecar.py"
+        # Get the project root directory (two levels up from this test file)
+        project_root = Path(__file__).parent.parent.parent
+        sidecar_path = project_root / "docker" / "sidecar.py"
 
         with open(sidecar_path, "r") as f:
             content = f.read()
@@ -70,9 +76,9 @@ class TestSidecarBasic:
 
     def test_entrypoint_script_content(self):
         """Test that entrypoint.sh contains expected functions."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (two levels up from this test file)
+        project_root = Path(__file__).parent.parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
 
         with open(entrypoint_path, "r") as f:
             content = f.read()
@@ -92,9 +98,9 @@ class TestSidecarBasic:
 
     def test_dockerfile_sidecar_content(self):
         """Test that Dockerfile.sidecar contains expected content."""
-        dockerfile_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/Dockerfile.sidecar"
-        )
+        # Get the project root directory (two levels up from this test file)
+        project_root = Path(__file__).parent.parent.parent
+        dockerfile_path = project_root / "docker" / "Dockerfile.sidecar"
 
         with open(dockerfile_path, "r") as f:
             content = f.read()

@@ -2,6 +2,7 @@
 
 import os
 
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 
@@ -34,9 +35,9 @@ class TestEntrypointScript:
 
     def test_entrypoint_script_exists(self):
         """Test that entrypoint.sh script exists and is executable."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (one level up from this test file)
+        project_root = Path(__file__).parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
         assert os.path.exists(entrypoint_path)
         assert os.access(entrypoint_path, os.X_OK)
 
@@ -78,9 +79,9 @@ class TestEntrypointScript:
 
     def test_entrypoint_script_content(self):
         """Test that entrypoint.sh contains expected functions."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (one level up from this test file)
+        project_root = Path(__file__).parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
 
         with open(entrypoint_path, "r") as f:
             content = f.read()
@@ -89,7 +90,8 @@ class TestEntrypointScript:
         assert "run_sidecar()" in content
         assert "run_standalone()" in content
         assert "run_health()" in content
-        assert "main()" in content
+        # Check for main script logic (case statement instead of main function)
+        assert 'case "$MODE" in' in content
 
         # Check for Redis handling
         assert "REDIS_ENABLED" in content
@@ -101,9 +103,9 @@ class TestEntrypointScript:
 
     def test_entrypoint_environment_variables(self):
         """Test that entrypoint.sh handles environment variables correctly."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (one level up from this test file)
+        project_root = Path(__file__).parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
 
         with open(entrypoint_path, "r") as f:
             content = f.read()
@@ -120,9 +122,9 @@ class TestEntrypointScript:
 
     def test_entrypoint_redis_mode_handling(self):
         """Test that entrypoint.sh handles Redis mode correctly."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (one level up from this test file)
+        project_root = Path(__file__).parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
 
         with open(entrypoint_path, "r") as f:
             content = f.read()
@@ -138,9 +140,9 @@ class TestEntrypointScript:
 
     def test_entrypoint_error_handling(self):
         """Test that entrypoint.sh has proper error handling."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (one level up from this test file)
+        project_root = Path(__file__).parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
 
         with open(entrypoint_path, "r") as f:
             content = f.read()
@@ -152,9 +154,9 @@ class TestEntrypointScript:
 
     def test_entrypoint_logging(self):
         """Test that entrypoint.sh has proper logging."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (one level up from this test file)
+        project_root = Path(__file__).parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
 
         with open(entrypoint_path, "r") as f:
             content = f.read()
@@ -165,9 +167,9 @@ class TestEntrypointScript:
 
     def test_entrypoint_help_functionality(self):
         """Test that entrypoint.sh has help functionality."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (one level up from this test file)
+        project_root = Path(__file__).parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
 
         with open(entrypoint_path, "r") as f:
             content = f.read()
@@ -177,9 +179,9 @@ class TestEntrypointScript:
 
     def test_entrypoint_default_values(self):
         """Test that entrypoint.sh has proper default values."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (one level up from this test file)
+        project_root = Path(__file__).parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
 
         with open(entrypoint_path, "r") as f:
             content = f.read()
@@ -192,9 +194,9 @@ class TestEntrypointScript:
 
     def test_entrypoint_signal_handling(self):
         """Test that entrypoint.sh has signal handling."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (one level up from this test file)
+        project_root = Path(__file__).parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
 
         with open(entrypoint_path, "r") as f:
             content = f.read()
@@ -217,9 +219,9 @@ class TestEntrypointScript:
 
     def test_entrypoint_cleanup_functionality(self):
         """Test that entrypoint.sh has cleanup functionality."""
-        entrypoint_path = (
-            "/Users/proshan/gunicorn-prometheus-exporter/docker/entrypoint.sh"
-        )
+        # Get the project root directory (one level up from this test file)
+        project_root = Path(__file__).parent.parent
+        entrypoint_path = project_root / "docker" / "entrypoint.sh"
 
         with open(entrypoint_path, "r") as f:
             content = f.read()
