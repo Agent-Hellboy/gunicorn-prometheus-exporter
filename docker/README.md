@@ -372,6 +372,83 @@ docker-compose logs -f
 3. **Update Intervals**: Tune metrics update intervals based on requirements
 4. **Redis Configuration**: Optimize Redis settings for your use case
 
+## Security Best Practices
+
+### 1. Use Specific Base Images
+
+Always use specific version tags instead of `latest`:
+
+```dockerfile
+# Use specific version instead of latest
+FROM python:3.11.7-slim
+```
+
+### 2. Run as Non-Root User
+
+The container runs with a dedicated non-root user:
+
+```dockerfile
+# Create non-root user
+RUN groupadd -r gunicorn && useradd -r -g gunicorn gunicorn
+
+# Switch to non-root user
+USER gunicorn
+```
+
+### 3. Use Multi-Stage Builds
+
+Multi-stage builds reduce image size and security exposure:
+
+```dockerfile
+# Build stage
+FROM python:3.11-slim as builder
+# ... build dependencies
+
+# Production stage
+FROM python:3.11-slim
+# ... copy only necessary files
+```
+
+### 4. Scan Images for Vulnerabilities
+
+```bash
+# Install Trivy
+curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+
+# Scan image
+trivy image gunicorn-prometheus-exporter:latest
+```
+
+## Image Optimization
+
+### 1. Minimize Layers
+
+Combine RUN commands to reduce image layers:
+
+```dockerfile
+# Combine RUN commands
+RUN apt-get update && \
+    apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
+```
+
+### 2. Use .dockerignore
+
+Exclude unnecessary files to reduce build context size and improve build performance.
+
+### 3. Optimize Caching
+
+Order Dockerfile commands to maximize cache hits:
+
+```dockerfile
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy source code last (changes frequently)
+COPY src/ ./src/
+```
+
 ## Contributing
 
 1. Fork the repository
