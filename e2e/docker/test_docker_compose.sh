@@ -44,7 +44,7 @@ docker_compose() {
 # Cleanup function
 cleanup() {
     print_status "Cleaning up Docker Compose services..."
- --remove-orphans || true
+    docker_compose down --remove-orphans || true
 }
 
 # Set up cleanup trap

@@ -162,7 +162,7 @@ MODE=${1:-$DEFAULT_MODE}
 echo "DEBUG: Mode determined as: $MODE. Remaining arguments before shift: $@"
 
 # Check for help flags before shifting
-if [ "$MODE" = "help" ] || [ "$MODE" = "-h" ] || [ "$MODE" = "--help" ] || [ "$2" = "--help" ] || [ "$2" = "-h" ]; then
+if [ "$MODE" = "help" ] || [ "$MODE" = "-h" ] || [ "$MODE" = "--help" ] || [ "${2:-}" = "--help" ] || [ "${2:-}" = "-h" ]; then
     usage
     exit 0
 fi
