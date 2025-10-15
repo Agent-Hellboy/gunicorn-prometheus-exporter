@@ -1264,11 +1264,16 @@ class TestMetricsServerManagerComprehensive(unittest.TestCase):
         manager = MetricsServerManager(mock_logger)
 
         with (
+            patch("gunicorn_prometheus_exporter.config.initialize_config"),
             patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config,
             patch(
                 "gunicorn_prometheus_exporter.utils.get_multiprocess_dir"
             ) as mock_get_dir,
+            patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": "/tmp/test"}),
         ):
+            # Ensure the multiprocess directory exists
+            os.makedirs("/tmp/test", exist_ok=True)
+
             cfg = MagicMock()
             cfg.prometheus_metrics_port = 9091
             cfg.redis_enabled = False

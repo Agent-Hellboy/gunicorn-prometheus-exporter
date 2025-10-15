@@ -108,6 +108,10 @@ nav:
       - Installation: installation.md
       - Configuration: components/config/configuration.md
       - Metrics: components/metrics/index.md
+  - Development:
+      - Setup: setup.md
+      - Testing: testing.md
+      - Development Guide: development.md
   - Examples:
       - Django Integration: examples/django-integration.md
       - FastAPI Integration: examples/fastapi-integration.md

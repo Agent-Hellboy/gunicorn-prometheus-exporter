@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # Redis for shared metrics storage (optional)
   redis:
@@ -27,15 +25,14 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
       - GUNICORN_WORKERS=2
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
       - REDIS_KEY_PREFIX=gunicorn
-    volumes:
-      - prometheus_data:/tmp/prometheus_multiproc
+      # Disable multiprocess directory for Redis mode
+      - PROMETHEUS_MULTIPROC_DIR=
     shm_size: 1gb # Ensure sufficient shared memory for Gunicorn workers using /dev/shm
     depends_on:
       redis:
@@ -59,19 +56,16 @@ services:
     environment:
       - PROMETHEUS_METRICS_PORT=9091
       - PROMETHEUS_BIND_ADDRESS=0.0.0.0
-      - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
-      - REDIS_ENABLED=false
+      - REDIS_ENABLED=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
       - REDIS_KEY_PREFIX=gunicorn
       - SIDECAR_UPDATE_INTERVAL=30
-    volumes:
-      - prometheus_data:/tmp/prometheus_multiproc
+      # Disable multiprocess directory for Redis mode
+      - PROMETHEUS_MULTIPROC_DIR=
     depends_on:
       app:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     networks:
       - gunicorn-network
@@ -121,7 +115,6 @@ services:
 
 volumes:
   redis_data:
-  prometheus_data:
   prometheus_data_server:
   grafana_data:
 

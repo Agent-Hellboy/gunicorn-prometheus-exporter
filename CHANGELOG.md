@@ -2,12 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2025-10-14
+
+### Added
+
+- **Kubernetes Redis Mode**: Complete rewrite of sidecar.py for proper Kubernetes compatibility
+- **Redis-Only Architecture**: Sidecar now exclusively uses Redis storage in Kubernetes deployments
+- **Integration Test Renames**: Renamed test files to include 'integration' in names for clarity
+
+### Fixed
+
+- **Kubernetes Deployment Issues**: Fixed read-only filesystem errors by disabling multiprocess collector in Redis mode
+- **Sidecar Architecture**: Proper separation between Redis mode (Kubernetes) and multiprocess mode (local development)
+- **Documentation Updates**: Updated all docs to reflect Redis as primary Kubernetes storage mechanism
+
+### Changed
+
+- **Test File Names**: `test_basic.sh` → `test_file_storage_integration.sh`, `test_redis_integ.sh` → `test_redis_integration.sh`, `test_yaml_config.sh` → `test_yaml_config_integration.sh`
+- **Sidecar Documentation**: Clarified that multiprocess mode is only for local development, Redis mode for Kubernetes
+- **Test Architecture**: Established clear boundaries between unit tests, integration tests, and e2e tests with proper naming conventions and directory structure
+
 ## [0.2.1] - 2025-10-02
 
 ### Added
 
 - **Docs & Badges**: Added Docker Hub badges and updated deployment guides with Docker Hub build instructions
-- **Signal Test Resilience**: Hardened system tests for signal metrics in CI Docker runs
+- **Signal Test Resilience**: Hardened integration tests for signal metrics in CI Docker runs
 
 ### Changed
 
@@ -54,7 +74,7 @@ All notable changes to this project will be documented in this file.
   - **API Reference Updates**: Updated hooks and configuration API references with YAML support
   - **Setup Guide Updates**: Added YAML configuration as recommended option
   - **Migration Guide**: Step-by-step migration from environment variables to YAML
-- **System Testing Enhancements**: Docker-based system tests for YAML configuration validation
+- **Integration Testing Enhancements**: Docker-based integration tests for YAML configuration validation
   - **YAML System Tests**: Complete end-to-end testing of YAML configuration loading
   - **Docker Integration**: Docker-based testing for consistent environment validation
   - **CI/CD Integration**: GitHub Actions workflow for automated YAML configuration testing
@@ -151,7 +171,7 @@ All notable changes to this project will be documented in this file.
 - **Worker Metrics**: Changed gauge metrics to use `multiprocess_mode="all"` for per-worker visibility
 - **Key Structure**: Implemented structured Redis keys with embedded multiprocess modes
 - **Documentation**: Updated all documentation to reflect current Redis storage implementation
-- **System Tests**: Enhanced system tests with detailed Prometheus metrics verification
+- **Integration Tests**: Enhanced integration tests with detailed Prometheus metrics verification
 - **Request Object Extraction**: Refactored to use robust attribute-based detection instead of fragile positional arguments
 - **Code Architecture**: Eliminated duplicate endpoint normalization logic with helper methods
 - **Worker Implementation**: Unified all worker types to use consistent `_generic_handle_request` method
@@ -161,7 +181,7 @@ All notable changes to this project will be documented in this file.
 - **Worker Restart Metrics**: Fixed `gunicorn_worker_restart_total` and `gunicorn_worker_restart_count_total` metrics
   - Added proper imports for `WORKER_RESTART_REASON` and `WORKER_RESTART_COUNT`
   - Implemented worker restart tracking in `_generic_handle_quit` and `_generic_handle_abort` methods
-  - Added comprehensive worker-specific signal testing (QUIT/ABRT) in system tests
+  - Added comprehensive worker-specific signal testing (QUIT/ABRT) in integration tests
 - **Request Object Detection**: Improved robustness across different worker types and method signatures
 - **Code Duplication**: Eliminated duplicate endpoint normalization logic with `_extract_request_info()` helper method
 - **Return Value Handling**: Fixed return value propagation in signal handlers and request methods

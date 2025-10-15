@@ -4,6 +4,7 @@ FROM python:3.11-slim
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app directory
@@ -13,8 +14,12 @@ WORKDIR /app
 COPY docker/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install gunicorn-prometheus-exporter
-RUN pip install --no-cache-dir "gunicorn-prometheus-exporter[all]"
+# Install gunicorn-prometheus-exporter from source
+COPY src/ ./src/
+COPY pyproject.toml .
+COPY README.md .
+COPY LICENSE .
+RUN pip install --no-cache-dir -e .[all]
 
 # Copy application code
 COPY docker/app.py .

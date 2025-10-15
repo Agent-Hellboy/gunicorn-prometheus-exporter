@@ -1,0 +1,106 @@
+name: E2E Tests (Kubernetes)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install required dependencies
+        run: |
+          echo "Installing required dependencies..."
+          sudo apt-get update -qq
+
+          # Add Docker's official GPG key and repository
+          sudo apt-get install -y ca-certificates curl gnupg
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+          # Add Docker repository
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update -qq
+
+          # Install Docker Compose plugin and other dependencies
+          sudo apt-get install -y docker-compose-plugin curl jq redis-tools python3-pip netcat-openbsd
+
+          # Install Python packages
+          pip3 install PyYAML
+
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+          # Install kind
+          curl -Lo ./kind "https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64"
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+          # Verify Docker Compose installation
+          if docker compose version > /dev/null 2>&1; then
+            echo "✅ Docker Compose plugin installed successfully"
+            docker compose version
+          elif docker-compose version > /dev/null 2>&1; then
+            echo "✅ Docker Compose standalone installed successfully"
+            docker-compose version
+          else
+            echo "❌ Docker Compose installation failed"
+            exit 1
+          fi
+
+          # Verify other tools
+          curl --version | head -1
+          jq --version
+          redis-cli --version
+          nc -h | head -1
+          python3 --version
+          python3 -c "import yaml; print('PyYAML version:', yaml.__version__)"
+          kind version
+          kubectl version --client
+          echo "✅ All dependencies installed successfully"
+
+      - name: Build images locally
+        run: |
+          echo "Building sidecar/DaemonSet exporter image locally..."
+          docker build -t gunicorn-prometheus-exporter:test .
+          echo "✅ Exporter image built successfully"
+
+          echo "Building sample app image locally..."
+          docker build -f e2e/fixtures/apps/Dockerfile -t gunicorn-app:test e2e/fixtures/apps/
+          echo "✅ Sample app image built successfully"
+
+      - name: Test Kubernetes sidecar deployment
+        run: |
+          echo "Testing Kubernetes sidecar deployment..."
+          bash e2e/kubernetes/test_sidecar_deployment.sh
+          echo "✅ Sidecar deployment test completed"
+
+      - name: Test Kubernetes DaemonSet deployment (comprehensive)
+        run: |
+          echo "Running comprehensive Kubernetes DaemonSet deployment test..."
+          bash e2e/kubernetes/test_daemonset_deployment.sh
+          echo "✅ DaemonSet deployment test completed"
+
+      - name: Summary
+        run: |
+          echo "🎉 All Kubernetes E2E tests passed!"
+          echo "✅ Sidecar deployment pattern validated"
+          echo "✅ DaemonSet deployment pattern validated"
+          echo "✅ Redis storage integration verified"
+          echo "✅ Multi-node deployment verified (DaemonSet)"
+          echo "✅ Application and exporter sidecar communication verified"
+          echo "✅ All metrics collected and exposed properly"

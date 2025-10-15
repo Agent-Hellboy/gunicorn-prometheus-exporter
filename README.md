@@ -141,10 +141,10 @@ The published container lives at `princekrroshan01/gunicorn-prometheus-exporter`
 
 ```bash
 # Pull the latest stable exporter image
-docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.2
 
 # Run the exporter standalone
-docker run --rm -p 9091:9091 princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+docker run --rm -p 9091:9091 princekrroshan01/gunicorn-prometheus-exporter:0.2.2
 ```
 
 The container exposes metrics on `0.0.0.0:9091` by default. Override behaviour via environment variables such as `PROMETHEUS_METRICS_PORT`, `PROMETHEUS_BIND_ADDRESS`, and `PROMETHEUS_MULTIPROC_DIR`.
@@ -600,7 +600,11 @@ def when_ready(server):
 - **Docker**: See [Docker Deployment](docs/examples/deployment-guide.md#docker-deployment)
 - **Kubernetes**: See [Kubernetes Deployment](docs/examples/deployment-guide.md#kubernetes-deployment)
 
-### Sidecar Deployment
+### Kubernetes Deployment Options
+
+The exporter supports two main Kubernetes deployment patterns:
+
+#### Sidecar Deployment
 
 Deploy the exporter as a **sidecar container** within the same Kubernetes pod for isolated monitoring:
 
@@ -626,7 +630,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.1
+          image: princekrroshan01/gunicorn-app:0.2.2
           ports:
             - containerPort: 8200
               name: http
@@ -641,7 +645,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
           ports:
             - containerPort: 9091
               name: metrics
@@ -666,6 +670,74 @@ spec:
 - **Security**: Reduced attack surface
 - **Maintenance**: Update monitoring independently
 
+#### DaemonSet Deployment
+
+Deploy the exporter as a **DaemonSet** for cluster-wide infrastructure monitoring:
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gunicorn-prometheus-exporter-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: gunicorn-prometheus-exporter
+      component: daemonset
+  template:
+    metadata:
+      labels:
+        app: gunicorn-prometheus-exporter
+        component: daemonset
+    spec:
+      hostNetwork: true
+      containers:
+        - name: prometheus-exporter
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
+          ports:
+            - containerPort: 9091
+              name: metrics
+          env:
+            - name: PROMETHEUS_METRICS_PORT
+              value: "9091"
+            - name: REDIS_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+```
+
+**Benefits:**
+- **Cluster Coverage**: One pod per node for complete cluster monitoring
+- **Infrastructure Monitoring**: Node-level application insights
+- **Automatic Scaling**: Scales automatically with cluster size
+- **Host Network Access**: Direct access to node-level services
+
+### Deployment Comparison
+
+| Feature | Sidecar Deployment | DaemonSet Deployment |
+|---------|-------------------|---------------------|
+| **Use Case** | Application-specific monitoring | Cluster-wide infrastructure monitoring |
+| **Scaling** | Manual replica scaling | Automatic (one per node) |
+| **Network** | ClusterIP services | Host network access |
+| **Coverage** | Specific applications | All applications on all nodes |
+| **Resource** | Shared across pods | Dedicated per node |
+| **Best For** | Production applications | Infrastructure monitoring, development environments |
+| **Manifest Location** | `k8s/sidecar-deployment.yaml` | `k8s/sidecar-daemonset.yaml` |
+
+### Complete Kubernetes Examples
+
+Find complete Kubernetes manifests in the [`k8s/`](k8s/) directory:
+
+- **Sidecar Deployment**: `k8s/sidecar-deployment.yaml`
+- **DaemonSet Deployment**: `k8s/sidecar-daemonset.yaml`
+- **Services**: `k8s/daemonset-service.yaml`, `k8s/daemonset-metrics-service.yaml`
+- **Network Policies**: `k8s/daemonset-netpol.yaml`
+- **Complete Setup**: See [`k8s/README.md`](k8s/README.md) for full deployment guide
+
 ### Future Deployment Options
 
 We're actively testing and will add support for:
@@ -678,9 +750,19 @@ We're actively testing and will add support for:
 
 See the [Deployment Guide](docs/examples/deployment-guide.md) for complete deployment options and configurations.
 
-## System Testing
+## Testing
 
-I provide comprehensive system tests to validate the complete functionality of the Gunicorn Prometheus Exporter with Redis integration.
+This project follows the Test Pyramid with comprehensive testing at all levels:
+
+```
+┌─────────────────────────────────────┐
+│  E2E Tests (e2e/)                   │  ← Docker + Kubernetes
+├─────────────────────────────────────┤
+│  Integration Tests (integration/)   │  ← Component integration
+├─────────────────────────────────────┤
+│  Unit Tests (tests/)                │  ← pytest
+└─────────────────────────────────────┘
+```
 
 ### Quick Test (Local Development)
 
@@ -690,7 +772,7 @@ brew services start redis  # macOS
 sudo systemctl start redis  # Linux
 
 # Run quick test
-cd system-test
+cd e2e
 make quick-test
 ```
 
@@ -698,22 +780,25 @@ make quick-test
 
 ```bash
 # Complete automated test (installs everything)
-cd system-test
-make system-test
+cd e2e
+make integration-test        # Redis integration test (auto-starts Redis)
 ```
 
 ### Using Make Commands
 
 ```bash
-cd system-test
+cd e2e
 make quick-test    # Fast local testing
-make system-test   # Full automated testing
+make integration-test   # Redis integration test (auto-starts Redis)
 make install       # Install dependencies
 make clean         # Clean up
 ```
 
 **Test Coverage**:
 
+- ✅ Unit tests (`tests/`) - pytest-based function testing
+- ✅ Integration tests (`integration/`) - Component integration
+- ✅ E2E tests (`e2e/`) - Docker + Kubernetes deployment
 - ✅ Redis integration and storage
 - ✅ Multi-worker Gunicorn setup
 - ✅ All metric types (counters, gauges, histograms)
@@ -721,7 +806,7 @@ make clean         # Clean up
 - ✅ Signal handling and graceful shutdown
 - ✅ CI/CD automation
 
-See [`system-test/README.md`](system-test/README.md) for detailed documentation.
+See [`e2e/README.md`](e2e/README.md) for detailed E2E test documentation.
 
 ## Contributing
 
@@ -733,7 +818,7 @@ Contributions are welcome! Please see our [contributing guide](https://princekrr
 
 ```bash
 # Install dependencies
-cd system-test
+cd e2e
 make install
 
 # Run tests

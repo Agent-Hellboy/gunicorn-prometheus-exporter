@@ -4,6 +4,8 @@ set -e
 # Gunicorn Prometheus Exporter Sidecar Entrypoint
 # This script handles the container startup and provides different modes
 
+echo "DEBUG: entrypoint.sh started with arguments: $@"
+
 # Default values
 DEFAULT_MODE="sidecar"
 DEFAULT_PORT=9091
@@ -41,22 +43,32 @@ usage() {
 
 # Function to run sidecar mode
 run_sidecar() {
+    echo "DEBUG: Entering run_sidecar function with arguments: $@"
     echo "Starting Gunicorn Prometheus Exporter in sidecar mode..."
 
     # Set default values from environment or use defaults
     PORT=${PROMETHEUS_METRICS_PORT:-$DEFAULT_PORT}
     BIND=${PROMETHEUS_BIND_ADDRESS:-$DEFAULT_BIND}
-    MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR:-$DEFAULT_MULTIPROC_DIR}
     UPDATE_INTERVAL=${SIDECAR_UPDATE_INTERVAL:-$DEFAULT_UPDATE_INTERVAL}
 
-    # Create multiprocess directory if it doesn't exist
-    mkdir -p "$MULTIPROC_DIR"
+    # Set multiprocess directory only for multiprocess mode
+    if [ "${REDIS_ENABLED:-false}" = "false" ]; then
+        MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR:-$DEFAULT_MULTIPROC_DIR}
+        # Create multiprocess directory if it doesn't exist
+        mkdir -p "$MULTIPROC_DIR"
+    else
+        # In Redis mode, disable multiprocess directory entirely
+        export PROMETHEUS_MULTIPROC_DIR=""
+        MULTIPROC_DIR=""
+    fi
 
     # Log configuration
     echo "Configuration:"
     echo "  Port: $PORT"
     echo "  Bind Address: $BIND"
-    echo "  Multiprocess Directory: $MULTIPROC_DIR"
+    if [ "${REDIS_ENABLED:-false}" = "false" ]; then
+        echo "  Multiprocess Directory: $MULTIPROC_DIR"
+    fi
     echo "  Update Interval: $UPDATE_INTERVAL seconds"
     echo "  Redis Enabled: ${REDIS_ENABLED:-false}"
 
@@ -68,15 +80,25 @@ run_sidecar() {
     fi
 
     # Start the sidecar
-    exec python3 /app/sidecar.py \
-        --port "$PORT" \
-        --bind "$BIND" \
-        --multiproc-dir "$MULTIPROC_DIR" \
-        --update-interval "$UPDATE_INTERVAL"
+    if [ "${REDIS_ENABLED:-false}" = "false" ]; then
+        echo "DEBUG: Executing python3 /app/sidecar.py with multiproc-dir. Arguments: sidecar --port \"$PORT\" --bind \"$BIND\" --multiproc-dir \"$MULTIPROC_DIR\" --update-interval \"$UPDATE_INTERVAL\" $@"
+        exec python3 /app/sidecar.py sidecar \
+            --port "$PORT" \
+            --bind "$BIND" \
+            --multiproc-dir "$MULTIPROC_DIR" \
+            --update-interval "$UPDATE_INTERVAL" $@ # Pass additional arguments
+    else
+        echo "DEBUG: Executing python3 /app/sidecar.py without multiproc-dir. Arguments: sidecar --port \"$PORT\" --bind \"$BIND\" --update-interval \"$UPDATE_INTERVAL\" $@"
+        exec python3 /app/sidecar.py sidecar \
+            --port "$PORT" \
+            --bind "$BIND" \
+            --update-interval "$UPDATE_INTERVAL" $@ # Pass additional arguments
+    fi
 }
 
 # Function to run standalone mode
 run_standalone() {
+    echo "DEBUG: Entering run_standalone function with arguments: $@"
     echo "Starting Gunicorn Prometheus Exporter in standalone mode..."
 
     # Parse additional arguments for standalone mode
@@ -91,11 +113,12 @@ run_standalone() {
     echo "Metrics available at: http://$BIND:$PORT/metrics"
 
     # Start the sidecar in standalone mode
-    exec python3 /app/sidecar.py \
+    echo "DEBUG: Executing python3 /app/sidecar.py for standalone mode. Arguments: standalone --port \"$PORT\" --bind \"$BIND\" --multiproc-dir \"$MULTIPROC_DIR\" --update-interval 10 $@"
+    exec python3 /app/sidecar.py standalone \
         --port "$PORT" \
         --bind "$BIND" \
         --multiproc-dir "$MULTIPROC_DIR" \
-        --update-interval 10
+        --update-interval 10 $@ # Pass additional arguments
 }
 
 # Function to run health check
@@ -136,14 +159,25 @@ wait_for_dependencies() {
 # Main script logic
 MODE=${1:-$DEFAULT_MODE}
 
+echo "DEBUG: Mode determined as: $MODE. Remaining arguments before shift: $@"
+
+# Check for help flags before shifting
+if [ "$MODE" = "help" ] || [ "$MODE" = "-h" ] || [ "$MODE" = "--help" ] || [ "${2:-}" = "--help" ] || [ "${2:-}" = "-h" ]; then
+    usage
+    exit 0
+fi
+
+shift # Shift past the mode argument
+echo "DEBUG: Remaining arguments after shift: $@"
+
 case "$MODE" in
     "sidecar")
         wait_for_dependencies
-        run_sidecar
+        run_sidecar "$@"
         ;;
     "standalone")
-        wait_for_dependencies
-        run_standalone
+        # Standalone mode doesn't need Redis dependencies
+        run_standalone "$@"
         ;;
     "health")
         run_health

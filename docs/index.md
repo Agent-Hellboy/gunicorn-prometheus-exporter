@@ -104,8 +104,8 @@ cd gunicorn-prometheus-exporter
 docker-compose up --build
 
 # Or pull pre-built images (pin versions for reproducibility)
-docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.1
-docker pull princekrroshan01/gunicorn-app:0.2.1
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.2
+docker pull princekrroshan01/gunicorn-app:0.2.2
 ```
 
 **Available Services:**
@@ -120,7 +120,7 @@ docker pull princekrroshan01/gunicorn-app:0.2.1
 - Automated CI/CD with GitHub Actions
 - Complete monitoring stack included
 
-> *Production recommendation*: Use Redis-backed storage (`REDIS_ENABLED=true`) for all multi-worker or multi-pod deployments. The provided Docker Compose and Kubernetes manifests enable Redis by default.
+> *Production requirement*: Redis-backed storage (`REDIS_ENABLED=true` and `PROMETHEUS_MULTIPROC_DIR=""`) is **required** for all containerized deployments. The provided Docker Compose and Kubernetes manifests use Redis-only mode by default. Multiprocess files are incompatible with containerized environments.
 
 See [Docker README](../docker/README.md) and [Kubernetes Guide](../k8s/README.md) for deployment details.
 
@@ -179,8 +179,9 @@ When deploying with Gunicorn Prometheus Exporter, you'll work with three distinc
 
 - [Deployment Guide](examples/deployment-guide.md) - Production deployment strategies
 - [Kubernetes Deployment](examples/kubernetes-deployment.md) - Complete K8s sidecar guide
+- [DaemonSet Deployment](examples/daemonset-deployment.md) - Cluster-wide infrastructure monitoring
 - [Docker Sidecar Setup](../docker/README.md) - Docker Compose deployment
-- [K8s Manifests Reference](../k8s/README.md) - Production-ready K8s manifests
+- [Kubernetes Manifests](../k8s/README.md) - Complete K8s manifests
 
 ### Framework Integration
 

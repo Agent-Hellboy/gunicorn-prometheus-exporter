@@ -119,14 +119,33 @@ gunicorn-prometheus-exporter/
 │       ├── metrics.py         # Metrics collection
 │       ├── plugin.py          # Gunicorn plugin
 │       └── utils.py           # Utility functions
-├── tests/                     # Test files
+├── tests/                     # Unit tests (pytest)
+├── integration/               # Integration tests
+├── e2e/                       # End-to-end tests (Docker + K8s)
 ├── docs/                      # Documentation
 ├── example/                   # Example applications
-├── system-test/               # System integration tests
 ├── pyproject.toml            # Project configuration
 ├── tox.ini                   # Tox configuration
 └── README.md
 ```
+
+### Test Structure
+
+Following the Test Pyramid:
+
+```
+┌─────────────────────────────────────┐
+│  e2e/                               │  ← Docker + Kubernetes
+├─────────────────────────────────────┤
+│  integration/                       │  ← Component integration
+├─────────────────────────────────────┤
+│  tests/                             │  ← Unit tests (pytest)
+└─────────────────────────────────────┘
+```
+
+- *tests/*: Unit tests using pytest
+- *integration/*: Component integration tests (exporter + Gunicorn + storage)
+- *e2e/*: End-to-end tests with Docker and Kubernetes deployments
 
 ## Adding New Features
 
@@ -170,25 +189,29 @@ pytest
 
 ## Testing Guidelines
 
-### Unit Tests
+### Unit Tests (`tests/`)
 
 - Test individual functions and methods
 - Mock external dependencies
 - Use descriptive test names
 - Follow AAA pattern (Arrange, Act, Assert)
+- Run with: `pytest` or `tox`
 
-### Integration Tests
+### Integration Tests (`integration/`)
 
-- Test component interactions
-- Use real dependencies where appropriate
+- Test component interactions (exporter + Gunicorn + storage)
+- Use real dependencies (Redis, Gunicorn)
 - Test error handling and edge cases
+- No containers required
+- Run with: `make -f e2e/Makefile integration-test-redis-quick`
 
-### System Tests
+### E2E Tests (`e2e/`)
 
-- Test complete workflows
-- Use the `system-test/` directory
+- Test complete deployment workflows
+- Docker containers and Kubernetes clusters
 - Test with different worker types
-- Verify metrics collection
+- Verify metrics collection in production-like environments
+- Run with: `make -f e2e/Makefile docker-test` or check `.github/workflows/`
 
 ## Code Style
 

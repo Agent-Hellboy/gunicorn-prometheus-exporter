@@ -26,7 +26,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.1
+          image: princekrroshan01/gunicorn-app:0.2.2
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -35,15 +35,19 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 8000
               name: http
               protocol: TCP
           env:
-            - name: PROMETHEUS_MULTIPROC_DIR
-              value: "/tmp/prometheus_multiproc"
             - name: GUNICORN_WORKERS
               value: "4"
+            - name: PROMETHEUS_BIND_ADDRESS
+              value: "0.0.0.0"
+            - name: PROMETHEUS_METRICS_PORT
+              value: "9091"
             - name: REDIS_ENABLED
               value: "true"
             - name: REDIS_HOST
@@ -54,6 +58,8 @@ spec:
               value: "0"
             - name: REDIS_KEY_PREFIX
               value: "gunicorn"
+            - name: YAML_CONFIG_PATH
+              value: ""
           resources:
             requests:
               memory: "256Mi"
@@ -77,13 +83,10 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
-          volumeMounts:
-            - name: prometheus-data
-              mountPath: /tmp/prometheus_multiproc
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -92,6 +95,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           ports:
             - containerPort: 9091
               name: metrics
@@ -101,8 +106,6 @@ spec:
               value: "9091"
             - name: PROMETHEUS_BIND_ADDRESS
               value: "0.0.0.0"
-            - name: PROMETHEUS_MULTIPROC_DIR
-              value: "/tmp/prometheus_multiproc"
             - name: REDIS_ENABLED
               value: "true"
             - name: REDIS_HOST
@@ -115,6 +118,11 @@ spec:
               value: "gunicorn"
             - name: SIDECAR_UPDATE_INTERVAL
               value: "30"
+            - name: YAML_CONFIG_PATH
+              value: ""
+            # Disable multiprocess directory for Redis-only mode
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: ""
           resources:
             requests:
               memory: "128Mi"
@@ -138,13 +146,5 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-          volumeMounts:
-            - name: prometheus-data
-              mountPath: /tmp/prometheus_multiproc
-      volumes:
-        - name: prometheus-data
-          emptyDir:
-            medium: Memory # Use tmpfs backed by RAM for better performance
-            sizeLimit: 1Gi # Ensure sufficient shared memory for Gunicorn workers
       restartPolicy: Always
       terminationGracePeriodSeconds: 30

@@ -491,6 +491,42 @@ def redis_when_ready(_server: Any) -> None:
     _setup_redis_storage_if_enabled(context.logger)
 
 
+def redis_sidecar_when_ready(_server: Any) -> None:
+    """Redis sidecar mode when_ready hook - only sets up Redis storage.
+
+    In sidecar mode, the app container should NOT start its own metrics server.
+    The sidecar container handles all metrics serving.
+    """
+    from .config import initialize_config
+
+    # Initialize configuration if not already done
+    try:
+        initialize_config()
+    except RuntimeError:
+        # Configuration already initialized, that's fine
+        pass
+
+    context = HookContext(server=_server, logger=_get_hook_manager().get_logger())
+
+    # Setup Redis metrics storage if enabled
+    if get_config().redis_enabled:
+        from .backend import get_redis_storage_manager
+
+        manager = get_redis_storage_manager()
+        if manager.setup():
+            context.logger.info(
+                "Redis metrics storage enabled for sidecar mode - app container"
+                " will not serve metrics"
+            )
+        else:
+            context.logger.warning(
+                "Failed to setup Redis metrics, falling back to file-based storage"
+            )
+
+    # DO NOT setup metrics server in sidecar mode - sidecar handles this
+    context.logger.info("Sidecar mode: skipping metrics server setup in app container")
+
+
 def _setup_redis_storage_if_enabled(logger: logging.Logger) -> None:
     """Setup Redis storage if enabled in configuration."""
     from .config import initialize_config

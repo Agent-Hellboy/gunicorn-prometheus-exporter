@@ -1,0 +1,216 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gunicorn-prometheus-exporter-daemonset
+  labels:
+    app: gunicorn-prometheus-exporter
+    component: daemonset
+spec:
+  selector:
+    matchLabels:
+      app: gunicorn-prometheus-exporter
+      component: daemonset
+  template:
+    metadata:
+      labels:
+        app: gunicorn-prometheus-exporter
+        component: daemonset
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+        - name: wait-for-redis
+          image: redis:7-alpine
+          command:
+            [
+              "sh",
+              "-c",
+              'until redis-cli -h redis-service ping; do echo "Waiting for Redis..."; sleep 2; done',
+            ]
+      containers:
+        # Main application container
+        - name: app
+          image: gunicorn-app:test
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: REDIS_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_DB
+              value: "0"
+            - name: REDIS_KEY_PREFIX
+              value: "gunicorn-daemonset"
+            - name: SIDECAR_UPDATE_INTERVAL
+              value: "30"
+            - name: YAML_CONFIG_PATH
+              value: ""
+            # Disable multiprocess directory for Redis-only mode
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: ""
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+        # Prometheus exporter sidecar
+        - name: prometheus-exporter
+          image: gunicorn-prometheus-exporter-sidecar:test
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - name: metrics
+              containerPort: 9091
+              hostPort: 9091
+              protocol: TCP
+          env:
+            - name: PROMETHEUS_METRICS_PORT
+              value: "9091"
+            - name: PROMETHEUS_BIND_ADDRESS
+              value: "0.0.0.0"
+            - name: REDIS_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_DB
+              value: "0"
+            - name: REDIS_KEY_PREFIX
+              value: "gunicorn-daemonset"
+            - name: SIDECAR_UPDATE_INTERVAL
+              value: "30"
+            - name: YAML_CONFIG_PATH
+              value: ""
+            # Disable multiprocess directory for Redis-only mode
+            - name: PROMETHEUS_MULTIPROC_DIR
+              value: ""
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9091
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9091
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: prometheus-multiproc
+              mountPath: /tmp/prometheus_multiproc
+
+      volumes:
+        - name: prometheus-multiproc
+          emptyDir: {}
+
+      # Node selection (optional)
+      # nodeSelector:
+      #   kubernetes.io/os: linux
+
+      # Tolerations for master nodes (optional)
+      # tolerations:
+      # - key: node-role.kubernetes.io/master
+      #   operator: Exists
+      #   effect: NoSchedule
+      # - key: node-role.kubernetes.io/control-plane
+      #   operator: Exists
+      #   effect: NoSchedule
+
+      # Affinity rules (optional)
+      # affinity:
+      #   nodeAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       nodeSelectorTerms:
+      #       - matchExpressions:
+      #         - key: kubernetes.io/os
+      #           operator: In
+      #           values:
+      #           - linux

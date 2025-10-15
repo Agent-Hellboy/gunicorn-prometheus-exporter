@@ -27,6 +27,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+.Trash/
 
 # Python
 __pycache__/
@@ -45,14 +46,14 @@ build/
 dist/
 *.egg-info/
 
-# System test (exclude unnecessary files for Docker builds)
-system-test/test_venv/
-system-test/prometheus-data/
-system-test/docker-compose*.yml
-system-test/Makefile
-system-test/README.md
-system-test/requirements-dev.txt
-system-test/test_docker_setup.sh
+# Test directories (exclude unnecessary files for Docker builds)
+integration/test_venv/
+e2e/prometheus-data/
+e2e/docker-compose*.yml
+e2e/Makefile
+e2e/README.md
+e2e/requirements-dev.txt
+e2e/test_docker_setup.sh
 example/venv/
 
 # GitHub workflows (not needed in image)

@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: redis-daemonset
+  labels:
+    app: redis
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      securityContext:
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: redis
+          image: redis:7-alpine
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999 # Redis default user ID
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 6379
+              name: redis
+              protocol: TCP
+          env:
+            # Note: REDIS_PASSWORD should be set via secret for production
+            # For development/testing, Redis runs without password
+            # To enable password protection, create redis-secret.yaml:
+            # kubectl create secret generic redis-secret --from-literal=password='your-password'
+            # - name: REDIS_PASSWORD
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: redis-secret
+            #       key: password
+          command:
+            - redis-server
+            - --appendonly
+            # Password protection disabled for development
+            # To enable: add --requirepass $(REDIS_PASSWORD) after creating secret
+            - "yes"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-pvc
+      restartPolicy: Always

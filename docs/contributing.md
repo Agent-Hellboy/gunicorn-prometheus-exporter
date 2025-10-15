@@ -15,8 +15,19 @@ Thank you for your interest in contributing to the Gunicorn Prometheus Exporter!
 
 ### **Testing Structure**
 
-- **`tests/conftest.py`**: Shared fixtures and test configuration
-- **`tests/test_*.py`**: Comprehensive test coverage for each module
+Following the Test Pyramid:
+
+- **`tests/`**: Unit tests (pytest-based)
+  - `conftest.py`: Shared fixtures and test configuration
+  - `test_*.py`: Comprehensive test coverage for each module
+- **`integration/`**: Integration tests (component integration)
+  - `test_file_storage_integration.sh`: File-based storage tests
+  - `test_redis_integration.sh`: Redis storage tests
+  - `test_yaml_config_integration.sh`: YAML configuration tests
+- **`e2e/`**: End-to-end tests (Docker + Kubernetes)
+  - `docker/`: Docker deployment tests
+  - `kubernetes/`: Kubernetes deployment tests
+  - `fixtures/`: Test resources and configurations
 - **`tox.ini`**: Multi-environment testing configuration
 
 ## 🤝 How to Contribute
@@ -179,20 +190,24 @@ This project relies heavily on containerised workflows and infrastructure automa
 
 ### Local Container Tooling
 
-- **Docker images**: The sidecar and sample app live under `Dockerfile` and `docker/Dockerfile.app`. Rebuild them with `docker build -t gunicorn-prometheus-exporter:test .` and `docker build -f docker/Dockerfile.app -t gunicorn-app:test .` before running integration tests.
+- **Docker images**: The sidecar and sample app live under `Dockerfile.sidecar` and `docker/Dockerfile.app`. Rebuild them with `docker build -f docker/Dockerfile.sidecar -t gunicorn-prometheus-exporter-sidecar:test .` and `docker build -f docker/Dockerfile.app -t gunicorn-app:test .` before running integration tests.
 - **Docker Compose stack**: `docker-compose.yml` wires Redis, Gunicorn, the exporter, Prometheus, and Grafana. Use `docker compose up -d --build` for end-to-end smoke tests and `docker compose down` for cleanup.
-- **Shared memory requirements**: Gunicorn expects `/dev/shm` ≥ 1 GiB. Compose already sets `shm_size: 1gb`; if you run `docker run` manually, append `--shm-size=1g`.
+- **Shared memory requirements**: Gunicorn expects `/dev/shm` = 1 GiB. Compose already sets `shm_size: 1gb`; if you run `docker run` manually, append `--shm-size=1g`.
 
 ### Kubernetes Hands-on
 
 - **kind (Kubernetes in Docker)**: The CI workflow spins up a throwaway cluster. Install it locally with `brew install kind` and create a cluster via `kind create cluster --name test-cluster --wait 300s`.
-- **kubectl essentials**: You will apply manifests from `k8s/`, wait for pods, and port-forward services. Common commands:
+- **kubectl essentials**: You will apply manifests from `e2e/kubernetes/`, wait for pods, and port-forward services. Common commands:
   ```bash
-  kubectl apply -f k8s/sidecar-deployment.yaml
+  # For DaemonSet deployment
+  kubectl apply -f e2e/kubernetes/test-daemonset.yaml
+  kubectl wait --for=condition=ready pod -l app=gunicorn-prometheus-exporter,component=daemonset --timeout=300s
+  # For Deployment with Sidecar
+  kubectl apply -f e2e/kubernetes/test-sidecar-deployment.yaml
   kubectl wait --for=condition=ready pod -l app=gunicorn-app --timeout=300s
-  kubectl port-forward service/gunicorn-metrics-service 9091:9091
+  kubectl port-forward service/gunicorn-metrics-service 9092:9092
   ```
-- **Temporary manifest rewrites**: In CI we copy `k8s/*.yaml` into `/tmp/k8s-test/` and `sed` the image tags to `gunicorn-app:test` and `gunicorn-prometheus-exporter:test`. Mirror this when testing locally so the cluster uses your freshly built images.
+- **Separate Test Manifests**: Test-specific Kubernetes manifests are located in `e2e/kubernetes/` (e.g., `test-daemonset.yaml`, `test-sidecar-deployment.yaml`). These manifests are pre-configured with local test image tags (`:test`) and do not require runtime modification.
 - **Cleanup discipline**: Delete port-forward processes (`pkill -f "kubectl port-forward"`) and clusters (`kind delete cluster --name test-cluster`) to avoid resource leaks.
 
 ### Observability Stack
@@ -209,7 +224,14 @@ This project relies heavily on containerised workflows and infrastructure automa
 
 ### Automation Etiquette
 
-- Run `tox -e docker-test` before opening PRs to catch integration regressions early (mirrors the main CI job).
+- Run E2E tests before opening PRs to catch regressions early:
+  ```bash
+  cd e2e
+  make e2e-test-redis-docker        # Docker deployment tests
+  make integration-test-redis-full        # Redis integration test (auto-starts Redis)
+  make integration-test-file-storage  # Integration tests with file storage
+  ```
+- Run unit tests with `tox` or `pytest`
 - Capture diagnostic logs on failure (`docker logs <container>`, `kubectl describe pod/<pod>`). Attach snippets to issues or pull requests.
 - Prefer Infrastructure as Code changes alongside documentation updates so contributors understand new operational steps.
 
@@ -252,10 +274,24 @@ This project relies heavily on containerised workflows and infrastructure automa
 
 ## Testing
 
-### Running Tests
+### Test Pyramid
+
+The project follows the Test Pyramid with three levels of testing:
+
+```
+┌─────────────────────────────────────┐
+│  e2e/                               │  ← Docker + Kubernetes (slowest)
+├─────────────────────────────────────┤
+│  integration/                       │  ← Component integration
+├─────────────────────────────────────┤
+│  tests/                             │  ← Unit tests (fastest)
+└─────────────────────────────────────┘
+```
+
+### Running Unit Tests
 
 ```bash
-# Run all tests
+# Run all unit tests
 tox
 
 # Run specific Python version
@@ -271,14 +307,49 @@ tox -e py312 -- tests/test_metrics.py
 tox -e py312 -- tests/test_metrics.py::test_worker_requests
 ```
 
+### Running Integration Tests
+
+```bash
+cd e2e
+
+# File-based storage integration test
+make integration-test-file-storage
+
+# Redis integration test (auto-starts Redis)
+make integration-test-redis-full
+
+# Quick Redis integration test (requires Redis running)
+make integration-test-redis-quick
+
+# YAML configuration integration test
+make integration-test-yaml-config
+```
+
+### Running E2E Tests
+
+```bash
+cd e2e/kubernetes/
+
+# Docker deployment tests
+./test_docker_compose.sh
+
+# Sidecar deployment tests
+./test_sidecar_deployment.sh
+
+# DaemonSet deployment tests
+./test_daemonset_deployment.sh
+```
+
 ### Writing Tests
 
 Follow these guidelines for writing tests:
 
-1. **Test Structure**: Use pytest fixtures and classes
+1. **Test Structure**: Use pytest fixtures and classes for unit tests
 2. **Test Names**: Descriptive names that explain what is being tested
-3. **Coverage**: Aim for high test coverage
-4. **Mocking**: Use mocks for external dependencies
+3. **Coverage**: Aim for high test coverage (especially for unit tests)
+4. **Mocking**: Use mocks for external dependencies in unit tests
+5. **Real Dependencies**: Use real Redis/Gunicorn in integration tests
+6. **Containers**: Use Docker/K8s in E2E tests
 
 ### Test Coverage
 

@@ -6,7 +6,68 @@ This guide covers deploying Gunicorn Prometheus Exporter in production environme
 
 ## Docker Deployment
 
-### Basic Docker Setup
+### Redis-Only Mode (Recommended for Containers)
+
+For containerized deployments (Docker Compose and Kubernetes), Redis-only mode is **required**:
+
+```yaml
+# docker-compose.yml - Redis-only mode
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_ENABLED=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_KEY_PREFIX=gunicorn
+      # Disable multiprocess files for Redis-only mode
+      - PROMETHEUS_MULTIPROC_DIR=
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9091:9091"
+    environment:
+      - REDIS_ENABLED=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_KEY_PREFIX=gunicorn
+      # Disable multiprocess files for Redis-only mode
+      - PROMETHEUS_MULTIPROC_DIR=
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+```
+
+**Benefits of Redis-only mode:**
+- No shared filesystem required
+- Works with read-only containers
+- Scales across multiple pods/nodes
+- Production-ready for Kubernetes
+
+### Basic Docker Setup (Local Development)
 
 **Dockerfile:**
 
@@ -34,6 +95,7 @@ ENV PROMETHEUS_METRICS_PORT=9091
 ENV PROMETHEUS_BIND_ADDRESS=0.0.0.0
 ENV PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
 ENV GUNICORN_WORKERS=4
+ENV REDIS_ENABLED=false
 
 # Start with gunicorn
 CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]
@@ -45,6 +107,20 @@ CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]
 version: "3.8"
 
 services:
+  # Redis for shared metrics storage (required for containerized deployments)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   app:
     build: .
     ports:
@@ -55,6 +131,10 @@ services:
       - PROMETHEUS_BIND_ADDRESS=0.0.0.0
       - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
       - GUNICORN_WORKERS=4
+      - REDIS_ENABLED=false
+    depends_on:
+      redis:
+        condition: service_healthy
     volumes:
       - prometheus_data:/tmp/prometheus_multiproc
 
@@ -71,6 +151,7 @@ services:
 
 volumes:
   prometheus_data:
+  redis_data:
   prometheus_storage:
 ```
 
@@ -90,7 +171,16 @@ scrape_configs:
 
 ## Kubernetes Deployment
 
-### Basic Kubernetes Setup
+The Gunicorn Prometheus Exporter supports two main Kubernetes deployment patterns:
+
+### Deployment Patterns
+
+| Pattern | Use Case | Scaling | Network | Best For |
+|---------|----------|---------|---------|----------|
+| **Deployment** | Application-specific monitoring | Manual replica scaling | ClusterIP services | Production applications |
+| **DaemonSet** | Cluster-wide infrastructure monitoring | Automatic (one per node) | Host network access | Infrastructure monitoring, development environments |
+
+### Basic Kubernetes Setup (Deployment)
 
 **deployment.yaml:**
 
@@ -115,7 +205,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.1
+          image: princekrroshan01/gunicorn-app:0.2.2
           ports:
             - containerPort: 8000
               name: http
@@ -169,14 +259,14 @@ Pre-built Docker images are available on Docker Hub:
 
 ```bash
 # Sidecar exporter image
-docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.2
 
 # Sample Flask application (for testing)
-docker pull princekrroshan01/gunicorn-app:0.2.1
+docker pull princekrroshan01/gunicorn-app:0.2.2
 
 # Or build locally if the release is not yet available:
-# docker build -t princekrroshan01/gunicorn-prometheus-exporter:0.2.1 .
-# docker build -f docker/Dockerfile.app -t princekrroshan01/gunicorn-app:0.2.1 .
+# docker build -t princekrroshan01/gunicorn-prometheus-exporter:0.2.2 .
+# docker build -f docker/Dockerfile.app -t princekrroshan01/gunicorn-app:0.2.2 .
 ```
 
 Images are automatically built and published for:
@@ -206,25 +296,116 @@ docker-compose up --build
 
 See [docker/README.md](../../docker/README.md) for detailed Docker Compose documentation.
 
-### Kubernetes Sidecar Deployment
+#### DaemonSet Deployment
 
-For a complete Kubernetes deployment with Redis, Prometheus, and Grafana:
+For cluster-wide infrastructure monitoring across all nodes:
 
 **Quick Deploy:**
+
+```bash
+# Deploy DaemonSet for cluster-wide monitoring
+kubectl apply -f k8s/sidecar-daemonset.yaml
+kubectl apply -f k8s/daemonset-service.yaml
+kubectl apply -f k8s/daemonset-metrics-service.yaml
+kubectl apply -f k8s/daemonset-netpol.yaml
+
+# Check DaemonSet status
+kubectl get daemonset gunicorn-prometheus-exporter-daemonset
+kubectl get pods -l app=gunicorn-prometheus-exporter,component=daemonset -o wide
+```
+
+**DaemonSet Example:**
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gunicorn-prometheus-exporter-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: gunicorn-prometheus-exporter
+      component: daemonset
+  template:
+    metadata:
+      labels:
+        app: gunicorn-prometheus-exporter
+        component: daemonset
+    spec:
+      hostNetwork: true
+      containers:
+        - name: prometheus-exporter
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
+          ports:
+            - containerPort: 9091
+              name: metrics
+          env:
+            - name: PROMETHEUS_METRICS_PORT
+              value: "9091"
+            - name: REDIS_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+```
+
+**DaemonSet Benefits:**
+
+- **Cluster Coverage**: One pod per node for complete cluster monitoring
+- **Infrastructure Monitoring**: Node-level application insights
+- **Automatic Scaling**: Scales automatically with cluster size
+- **Host Network Access**: Direct access to node-level services
+- **Multi-Application Support**: Monitor multiple applications per node
+
+**Use Cases:**
+
+- Development environments with multiple applications
+- Infrastructure monitoring across all nodes
+- Cluster-wide observability
+- Multi-tenant application monitoring
+
+### Complete Kubernetes Examples
+
+Find complete Kubernetes manifests in the [`k8s/`](../../k8s/) directory:
+
+- **Standard Deployment**: `k8s/sidecar-deployment.yaml`
+- **DaemonSet Deployment**: `k8s/sidecar-daemonset.yaml`
+- **Services**: `k8s/daemonset-service.yaml`, `k8s/daemonset-metrics-service.yaml`
+- **Network Policies**: `k8s/daemonset-netpol.yaml`
+- **Complete Setup**: See [`k8s/README.md`](../../k8s/README.md) for full deployment guide
+
+**Quick Deploy (Standard Deployment):**
 
 ```bash
 # Create required secrets
 kubectl create secret generic grafana-secret \
   --from-literal=admin-password="$(openssl rand -base64 32)"
 
-# Deploy everything
-kubectl apply -f k8s/
+# Deploy standard sidecar deployment
+kubectl apply -f k8s/sidecar-deployment.yaml
+kubectl apply -f k8s/gunicorn-app-service.yaml
+kubectl apply -f k8s/gunicorn-metrics-service.yaml
 
 # Access services via port-forwarding
 kubectl port-forward service/gunicorn-app-service 8000:8000
 kubectl port-forward service/gunicorn-metrics-service 9091:9091
-kubectl port-forward service/prometheus-service 9090:9090
-kubectl port-forward service/grafana-service 3000:3000
+```
+
+**Quick Deploy (DaemonSet):**
+
+```bash
+# Deploy DaemonSet for cluster-wide monitoring
+kubectl apply -f k8s/sidecar-daemonset.yaml
+kubectl apply -f k8s/daemonset-service.yaml
+kubectl apply -f k8s/daemonset-metrics-service.yaml
+kubectl apply -f k8s/daemonset-netpol.yaml
+
+# Check DaemonSet status
+kubectl get daemonset gunicorn-prometheus-exporter-daemonset
+kubectl get pods -l app=gunicorn-prometheus-exporter,component=daemonset -o wide
 ```
 
 **Minimal Sidecar Example:**
@@ -251,7 +432,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.1
+          image: princekrroshan01/gunicorn-app:0.2.2
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -280,7 +461,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.1
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true

@@ -18,20 +18,38 @@ kubectl create secret generic grafana-secret \
 #   --from-literal=password="$(openssl rand -base64 32)"
 ```
 
-### 2. Deploy Redis (Required for shared metrics)
+### 2. Deploy Redis (Required)
+
+*Important*: Redis must be deployed before the application to enable shared metrics across workers.
 
 ```bash
 kubectl apply -f redis-pvc.yaml
 kubectl apply -f redis-deployment.yaml
 kubectl apply -f redis-service.yaml
+
+# Wait for Redis to be ready
+kubectl wait --for=condition=ready pod -l app=redis --timeout=60s
 ```
 
 ### 3. Deploy the Application with Sidecar
+
+#### Option A: Standard Deployment (Recommended for most use cases)
 
 ```bash
 kubectl apply -f sidecar-deployment.yaml
 kubectl apply -f gunicorn-app-service.yaml
 kubectl apply -f gunicorn-metrics-service.yaml
+```
+
+#### Option B: DaemonSet Deployment (For node-level monitoring)
+
+*Important*: Ensure Redis is deployed and ready (step 2) before deploying the DaemonSet.
+
+```bash
+kubectl apply -f sidecar-daemonset.yaml
+kubectl apply -f daemonset-service.yaml
+kubectl apply -f daemonset-metrics-service.yaml
+kubectl apply -f daemonset-netpol.yaml
 ```
 
 ### 4. Deploy Prometheus (Optional)
@@ -158,6 +176,43 @@ The included Grafana dashboard provides:
 - CPU usage per worker
 - Request duration percentiles
 
+## Deployment Patterns
+
+### Standard Deployment vs DaemonSet
+
+#### Standard Deployment (`sidecar-deployment.yaml`)
+- **Use Case**: Application-level monitoring
+- **Scaling**: Horizontal scaling based on application needs
+- **Resource Management**: Shared resources across pods
+- **Network**: ClusterIP services for internal communication
+- **Best For**: Web applications, APIs, microservices
+
+#### DaemonSet (`sidecar-daemonset.yaml`)
+- **Use Case**: Node-level monitoring and infrastructure observability
+- **Scaling**: One pod per node (automatic)
+- **Resource Management**: Dedicated resources per node
+- **Network**: Host network for node-level access
+- **Best For**: Infrastructure monitoring, log collection, security monitoring
+
+### DaemonSet Features
+
+The DaemonSet deployment includes:
+
+- **Host Network**: Uses `hostNetwork: true` for node-level access
+- **Node Information**: Exposes `NODE_NAME`, `POD_NAME`, `POD_NAMESPACE` as environment variables
+- **Redis Integration**: Requires Redis for shared metrics across node-level workers
+- **Redis Key Prefix**: Uses `gunicorn-daemonset` prefix for metrics isolation
+- **Resource Limits**: Optimized for node-level monitoring workloads
+- **Security**: Same security contexts as standard deployment
+
+### DaemonSet Use Cases
+
+1. **Infrastructure Monitoring**: Monitor all nodes in the cluster
+2. **Log Collection**: Collect logs from all nodes
+3. **Security Monitoring**: Monitor security events across all nodes
+4. **System Metrics**: Collect system-level metrics from each node
+5. **Network Monitoring**: Monitor network traffic at node level
+
 ## Scaling
 
 ### Horizontal Pod Autoscaling
@@ -221,12 +276,19 @@ spec:
 ### Debug Commands
 
 ```bash
-# Check pod status
+# Check pod status (Standard Deployment)
 kubectl get pods -l app=gunicorn-app
 
-# Check pod logs
+# Check pod status (DaemonSet)
+kubectl get pods -l app=gunicorn-prometheus-exporter,component=daemonset
+
+# Check pod logs (Standard Deployment)
 kubectl logs -l app=gunicorn-app -c app
 kubectl logs -l app=gunicorn-app -c prometheus-exporter
+
+# Check pod logs (DaemonSet)
+kubectl logs -l app=gunicorn-prometheus-exporter,component=daemonset -c app
+kubectl logs -l app=gunicorn-prometheus-exporter,component=daemonset -c prometheus-exporter
 
 # Check services
 kubectl get services
@@ -236,16 +298,28 @@ kubectl get pv,pvc
 
 # Check events
 kubectl get events --sort-by=.metadata.creationTimestamp
+
+# Check DaemonSet status
+kubectl get daemonset gunicorn-prometheus-exporter-daemonset
+
+# Check which nodes have DaemonSet pods
+kubectl get pods -l app=gunicorn-prometheus-exporter,component=daemonset -o wide
 ```
 
 ### Logs
 
 ```bash
-# Application logs
+# Application logs (Standard Deployment)
 kubectl logs -f deployment/gunicorn-app-with-sidecar -c app
 
-# Sidecar logs
+# Sidecar logs (Standard Deployment)
 kubectl logs -f deployment/gunicorn-app-with-sidecar -c prometheus-exporter
+
+# Application logs (DaemonSet)
+kubectl logs -f daemonset/gunicorn-prometheus-exporter-daemonset -c app
+
+# Sidecar logs (DaemonSet)
+kubectl logs -f daemonset/gunicorn-prometheus-exporter-daemonset -c prometheus-exporter
 
 # Redis logs
 kubectl logs -f deployment/redis

@@ -1,0 +1,238 @@
+name: Integration Tests (Docker)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  redis-integration-test:
+    runs-on: ubuntu-latest
+    name: Redis Integration Test (Ubuntu)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v3
+
+      - name: Install required dependencies
+        run: |
+          echo "Installing required dependencies..."
+          sudo apt-get update -qq
+
+          # Add Docker's official GPG key and repository
+          sudo apt-get install -y ca-certificates curl gnupg
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+          # Add Docker repository
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update -qq
+
+          # Install Docker Compose plugin and other dependencies
+          sudo apt-get install -y docker-compose-plugin curl jq redis-tools python3-pip netcat-openbsd
+
+          # Install Python packages
+          pip3 install PyYAML
+
+          # Verify Docker Compose installation
+          if docker compose version > /dev/null 2>&1; then
+            echo "✅ Docker Compose plugin installed successfully"
+            docker compose version
+          elif docker-compose version > /dev/null 2>&1; then
+            echo "✅ Docker Compose standalone installed successfully"
+            docker-compose version
+          else
+            echo "❌ Docker Compose installation failed"
+            exit 1
+          fi
+
+          # Verify other tools
+          curl --version | head -1
+          jq --version
+          redis-cli --version
+          nc -h | head -1
+          python3 --version
+          python3 -c "import yaml; print('PyYAML version:', yaml.__version__)"
+          echo "✅ All dependencies installed successfully"
+
+      - name: Run Redis Integration Test (Docker)
+        working-directory: e2e
+        run: |
+          chmod +x ../integration/test_redis_integration.sh
+          # Build Docker image for Redis integration test
+          docker build -f fixtures/dockerfiles/default.Dockerfile -t gunicorn-prometheus-exporter-test ..
+          # Run with proper resource limits
+          docker run --rm \
+            --name gunicorn-prometheus-test \
+            --memory=1g \
+            --cpus=2 \
+            -p 8088:8088 \
+            -p 9093:9093 \
+            -p 6379:6379 \
+            gunicorn-prometheus-exporter-test
+        timeout-minutes: 10
+
+      - name: Upload Redis test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: redis-integration-logs-ubuntu
+          path: |
+            *.log
+          retention-days: 7
+
+  basic-integration-test:
+    runs-on: ubuntu-latest
+    name: Basic Integration Test (Ubuntu)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v3
+
+      - name: Install required dependencies
+        run: |
+          echo "Installing required dependencies..."
+          sudo apt-get update -qq
+
+          # Add Docker's official GPG key and repository
+          sudo apt-get install -y ca-certificates curl gnupg
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+          # Add Docker repository
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update -qq
+
+          # Install Docker Compose plugin and other dependencies
+          sudo apt-get install -y docker-compose-plugin curl jq redis-tools python3-pip netcat-openbsd
+
+          # Install Python packages
+          pip3 install PyYAML
+
+          # Verify Docker Compose installation
+          if docker compose version > /dev/null 2>&1; then
+            echo "✅ Docker Compose plugin installed successfully"
+            docker compose version
+          elif docker-compose version > /dev/null 2>&1; then
+            echo "✅ Docker Compose standalone installed successfully"
+            docker-compose version
+          else
+            echo "❌ Docker Compose installation failed"
+            exit 1
+          fi
+
+          # Verify other tools
+          curl --version | head -1
+          jq --version
+          redis-cli --version
+          nc -h | head -1
+          python3 --version
+          python3 -c "import yaml; print('PyYAML version:', yaml.__version__)"
+          echo "✅ All dependencies installed successfully"
+
+      - name: Run Basic Integration Test (Docker)
+        working-directory: e2e
+        run: |
+          chmod +x ../integration/test_file_storage_integration.sh
+          # Build Docker image for basic file-based integration test
+          docker build -f fixtures/dockerfiles/basic.Dockerfile -t gunicorn-prometheus-exporter-basic-test ..
+          # Run with proper resource limits
+          docker run --rm \
+            --name gunicorn-prometheus-basic-test \
+            --memory=1g \
+            --cpus=2 \
+            -p 8088:8088 \
+            -p 9093:9093 \
+            gunicorn-prometheus-exporter-basic-test
+        timeout-minutes: 10
+
+      - name: Upload Basic test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: basic-integration-logs-ubuntu
+          path: |
+            *.log
+          retention-days: 7
+
+  yaml-integration-test:
+    runs-on: ubuntu-latest
+    name: YAML Configuration Integration Test (Ubuntu)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v3
+
+      - name: Install required dependencies
+        run: |
+          echo "Installing required dependencies..."
+          sudo apt-get update -qq
+
+          # Add Docker's official GPG key and repository
+          sudo apt-get install -y ca-certificates curl gnupg
+          sudo install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+          # Add Docker repository
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update -qq
+
+          # Install Docker Compose plugin and other dependencies
+          sudo apt-get install -y docker-compose-plugin curl jq redis-tools python3-pip netcat-openbsd
+
+          # Install Python packages
+          pip3 install PyYAML
+
+          # Verify Docker Compose installation
+          if docker compose version > /dev/null 2>&1; then
+            echo "✅ Docker Compose plugin installed successfully"
+            docker compose version
+          elif docker-compose version > /dev/null 2>&1; then
+            echo "✅ Docker Compose standalone installed successfully"
+            docker-compose version
+          else
+            echo "❌ Docker Compose installation failed"
+            exit 1
+          fi
+
+          # Verify other tools
+          curl --version | head -1
+          jq --version
+          redis-cli --version
+          nc -h | head -1
+          python3 --version
+          python3 -c "import yaml; print('PyYAML version:', yaml.__version__)"
+          echo "✅ All dependencies installed successfully"
+
+      - name: Run YAML Configuration Integration Test (Docker)
+        working-directory: e2e
+        run: |
+          chmod +x ../integration/test_yaml_config_integration.sh
+          # Build Docker image for YAML configuration integration test
+          docker build -f fixtures/dockerfiles/yaml-simple.Dockerfile -t gunicorn-prometheus-exporter-yaml-test ..
+          # Run YAML configuration integration tests
+          ../integration/test_yaml_config_integration.sh --docker --quick
+        timeout-minutes: 15
+
+      - name: Upload YAML test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yaml-integration-logs-ubuntu
+          path: |
+            *.log
+          retention-days: 7

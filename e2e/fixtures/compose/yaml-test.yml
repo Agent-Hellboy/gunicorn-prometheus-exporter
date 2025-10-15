@@ -1,0 +1,64 @@
+services:
+  gunicorn-yaml-test:
+    build:
+      context: ..
+      dockerfile: dockerfiles/yaml-simple.Dockerfile
+    container_name: gunicorn-yaml-test
+    ports:
+      - "8089:8089" # Gunicorn app port
+      - "9094:9094" # Prometheus metrics port
+    volumes:
+      - ./test_app.py:/app/test_app.py:ro
+      - ./test_configs:/app/config:ro
+      - ./gunicorn.yaml.conf.py:/app/gunicorn.yaml.conf.py:ro
+      - prometheus_data:/tmp/prometheus_multiproc
+    environment:
+      - PYTHONPATH=/app
+      - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
+      - PROMETHEUS_CONFIG_FILE=/app/config/basic.yml
+    networks:
+      - yaml-test-network
+    command:
+      ["gunicorn", "--config", "/app/gunicorn.yaml.conf.py", "test_app:app"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9094/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-yaml-test
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - yaml-test-network
+    command: redis-server --appendonly yes
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-yaml-test
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - yaml-test-network
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
+
+volumes:
+  prometheus_data:
+  redis_data:
+
+networks:
+  yaml-test-network:
+    driver: bridge
