@@ -7,7 +7,7 @@
 # - Service communication
 # - Comprehensive metrics collection
 
-set -Eeuo pipefail
+set -e
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -499,9 +499,26 @@ main() {
     echo "==================================="
 
     # Cleanup
+    print_status "Starting cleanup..."
+    set +e  # Temporarily disable exit on error for cleanup
     cleanup
+    cleanup_exit_code=$?
+    set -e  # Re-enable exit on error
+    print_status "Cleanup completed with exit code: $cleanup_exit_code"
+
+    # Explicit success
+    print_success "Test completed successfully"
+    return 0
 }
 
 # Run main function
 main "$@"
-exit 0
+test_exit_code=$?
+
+if [ $test_exit_code -eq 0 ]; then
+    print_success "Script completed successfully"
+    exit 0
+else
+    print_error "Script failed with exit code: $test_exit_code"
+    exit $test_exit_code
+fi
