@@ -131,7 +131,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /metrics
-              port: 9091
+              port: 9092
             initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 10
@@ -139,7 +139,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /metrics
-              port: 9091
+              port: 9092
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5
