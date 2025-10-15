@@ -47,9 +47,6 @@ cleanup() {
     docker_compose down --remove-orphans || true
 }
 
-# Set up cleanup trap
-trap cleanup EXIT INT TERM
-
 main() {
     print_status "=========================================="
     print_status "Docker Compose Full Stack Test (Redis + Prometheus + Grafana)"
@@ -498,6 +495,9 @@ main() {
     print_success "Sidecar pattern validated"
     print_success "All critical metrics present"
     echo "==================================="
+
+    # Cleanup
+    cleanup
 }
 
 # Run main function

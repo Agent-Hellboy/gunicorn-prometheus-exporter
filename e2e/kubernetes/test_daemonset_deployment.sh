@@ -45,8 +45,6 @@ cleanup() {
     docker rmi "$EXPORTER_IMAGE" "$APP_IMAGE" "gunicorn-prometheus-exporter-sidecar:test" --force 2>/dev/null || true
 }
 
-trap cleanup EXIT INT TERM
-
 main() {
     print_status "=========================================="
     print_status "Kubernetes DaemonSet Deployment Test"
@@ -514,6 +512,9 @@ EOF
 
     # Cleanup temp directory
     rm -rf "$TEMP_DIR"
+
+    # Cleanup
+    cleanup
 }
 
 # Run main function

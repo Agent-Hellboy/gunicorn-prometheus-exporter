@@ -46,8 +46,6 @@ cleanup() {
     docker rmi "$EXPORTER_IMAGE" "$APP_IMAGE" --force 2>/dev/null || true
 }
 
-trap cleanup EXIT INT TERM
-
 main() {
     print_status "=========================================="
     print_status "Kubernetes Sidecar Deployment Test"
@@ -494,6 +492,9 @@ EOF
 
     # Cleanup temp directory
     rm -rf "$TEMP_DIR"
+
+    # Cleanup
+    cleanup
 }
 
 # Run main function
