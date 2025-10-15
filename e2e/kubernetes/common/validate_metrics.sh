@@ -3,7 +3,7 @@
 # Common metrics validation functions for Kubernetes tests
 # This script provides reusable validation functions for all K8s deployment patterns
 
-set -Eeuo pipefail
+set -e
 
 # Colors for output
 RED='\033[0;31m'

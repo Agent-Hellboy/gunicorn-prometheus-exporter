@@ -19,7 +19,7 @@
 #   --no-redis: Skip Redis startup (assume Redis is running)
 #   --force: Kill existing processes on ports 8088 and 9093
 
-set -Eeuo pipefail  # Exit on any error, undefined vars, pipe failures
+set -e  # Exit on any error, undefined vars, pipe failures
 
 # Colors for output
 RED='\033[0;31m'

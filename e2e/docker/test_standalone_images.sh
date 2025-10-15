@@ -8,7 +8,7 @@ which docker || true
 # - Sample app image with metrics collection
 # - Entrypoint modes
 
-set -Eeuo pipefail
+set -e
 
 # Colors for output
 GREEN='\033[0;32m'

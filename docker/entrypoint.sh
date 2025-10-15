@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeuo pipefail
+set -e
 
 # Gunicorn Prometheus Exporter Sidecar Entrypoint
 # This script handles the container startup and provides different modes

@@ -358,11 +358,10 @@ EOF
                 print_success "✓ $query ($value_count values)"
                 # Show sample values for restart metrics
                 if [ "$query" = "gunicorn_master_worker_restart_total" ]; then
-                    echo "$result" | jq -r '.data.result[0].value[1]' 2>/dev/null | while read -r value; do
-                        if [ -n "$value" ] && [ "$value" != "null" ]; then
-                            print_success "  └─ Total restarts: $value"
-                        fi
-                    done
+                    value=$(echo "$result" | jq -r '.data.result[0].value[1]' 2>/dev/null || echo "")
+                    if [ -n "$value" ] && [ "$value" != "null" ]; then
+                        print_success "  └─ Total restarts: $value"
+                    fi
                 fi
             else
                 print_warning "⚠ $query (0 values - may not be present during normal operation)"
