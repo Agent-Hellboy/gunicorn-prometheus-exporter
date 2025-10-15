@@ -31,18 +31,21 @@ APP_IMAGE="gunicorn-app:test"
 # Cleanup function
 cleanup() {
     echo "Cleaning up..."
-    pkill -f "kubectl port-forward" || true
+    pkill -f "kubectl port-forward" 2>/dev/null || true
 
     # Clean up Prometheus and Kibana resources
-    kubectl delete deployment prometheus kibana elasticsearch redis-deployment --ignore-not-found=true || true
-    kubectl delete service prometheus-service kibana-service elasticsearch-service --ignore-not-found=true || true
-    kubectl delete configmap prometheus-config --ignore-not-found=true || true
-    kubectl delete pvc redis-pvc --ignore-not-found=true || true
+    kubectl delete deployment prometheus kibana elasticsearch redis-deployment --ignore-not-found=true 2>/dev/null || true
+    kubectl delete service prometheus-service kibana-service elasticsearch-service --ignore-not-found=true 2>/dev/null || true
+    kubectl delete configmap prometheus-config --ignore-not-found=true 2>/dev/null || true
+    kubectl delete pvc redis-pvc --ignore-not-found=true 2>/dev/null || true
 
-    delete_kind_cluster "$CLUSTER_NAME" || true
+    delete_kind_cluster "$CLUSTER_NAME" 2>/dev/null || true
 
     # Clean up Docker images
     docker rmi "$EXPORTER_IMAGE" "$APP_IMAGE" "gunicorn-prometheus-exporter-sidecar:test" --force 2>/dev/null || true
+
+    # Ensure cleanup always succeeds
+    return 0
 }
 
 main() {
