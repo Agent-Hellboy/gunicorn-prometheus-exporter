@@ -34,13 +34,13 @@ test_sidecar_image() {
     # Test sidecar help command
     docker run --rm gunicorn-prometheus-exporter-sidecar:test sidecar --help >/dev/null 2>&1
 
-    # Test sidecar health check (simple test without complex networking)
-    # Note: Health check runs indefinitely, so we just test that it starts successfully
-    docker run --rm -e REDIS_ENABLED=false gunicorn-prometheus-exporter-sidecar:test health --port 9091 &
-    HEALTH_PID=$!
+    # Test sidecar standalone mode (quick test)
+    # Start standalone mode in background and kill it after 3 seconds
+    docker run --rm -e REDIS_ENABLED=false gunicorn-prometheus-exporter-sidecar:test standalone --port 9091 >/dev/null 2>&1 &
+    STANDALONE_PID=$!
     sleep 3
-    kill $HEALTH_PID 2>/dev/null || true
-    wait $HEALTH_PID 2>/dev/null || true
+    kill $STANDALONE_PID 2>/dev/null || true
+    wait $STANDALONE_PID 2>/dev/null || true
 
     print_success "Sidecar image test passed"
 }
@@ -129,6 +129,12 @@ main() {
     print_status "=========================================="
     echo ""
 
+    # Build Docker images
+    print_status "Building Docker images..."
+    docker build -t gunicorn-prometheus-exporter-sidecar:test .
+    docker build -f docker/Dockerfile.app -t gunicorn-app:test .
+    print_success "Docker images built successfully"
+
     test_sidecar_image
     test_app_image
     test_entrypoint_modes
@@ -141,6 +147,12 @@ main() {
     print_success "Sample app image working"
     print_success "All entrypoint modes working"
     echo "==================================="
+
+    # Cleanup Docker images
+    print_status "Cleaning up Docker images..."
+    docker rmi gunicorn-prometheus-exporter-sidecar:test || true
+    docker rmi gunicorn-app:test || true
+    print_success "Docker images cleaned up"
 }
 
 # Run main function

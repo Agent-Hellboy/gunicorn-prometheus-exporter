@@ -160,6 +160,13 @@ wait_for_dependencies() {
 MODE=${1:-$DEFAULT_MODE}
 
 echo "DEBUG: Mode determined as: $MODE. Remaining arguments before shift: $@"
+
+# Check for help flags before shifting
+if [ "$MODE" = "help" ] || [ "$MODE" = "-h" ] || [ "$MODE" = "--help" ] || [ "$2" = "--help" ] || [ "$2" = "-h" ]; then
+    usage
+    exit 0
+fi
+
 shift # Shift past the mode argument
 echo "DEBUG: Remaining arguments after shift: $@"
 
@@ -169,7 +176,7 @@ case "$MODE" in
         run_sidecar "$@"
         ;;
     "standalone")
-        wait_for_dependencies
+        # Standalone mode doesn't need Redis dependencies
         run_standalone "$@"
         ;;
     "health")
