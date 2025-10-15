@@ -41,6 +41,9 @@ cleanup() {
 
     delete_kind_cluster "$CLUSTER_NAME" || true
     [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR" || true
+
+    # Clean up Docker images
+    docker rmi "$EXPORTER_IMAGE" "$APP_IMAGE" --force 2>/dev/null || true
 }
 
 trap cleanup EXIT INT TERM
@@ -58,10 +61,16 @@ main() {
     # Step 2: Create Kind cluster
     create_kind_cluster "$CLUSTER_NAME" "$NUM_WORKERS"
 
-    # Step 3: Load images
+    # Step 3: Build Docker images
+    print_status "Building Docker images..."
+    docker build -t "$EXPORTER_IMAGE" .
+    docker build -f docker/Dockerfile.app -t "$APP_IMAGE" .
+    print_success "Docker images built successfully"
+
+    # Step 4: Load images
     load_images_to_kind "$CLUSTER_NAME" "$EXPORTER_IMAGE" "$APP_IMAGE"
 
-    # Step 4: Prepare manifests
+    # Step 5: Prepare manifests
     print_status "Preparing manifests..."
     TEMP_DIR=$(mktemp -d)
     cp "$SCRIPT_DIR/test-sidecar-deployment.yaml" "$TEMP_DIR/sidecar-deployment.yaml"
@@ -74,7 +83,7 @@ main() {
 
     # No need to update image references with sed, as test-sidecar-deployment.yaml already has the correct tags.
 
-    # Step 5: Deploy Redis
+    # Step 6: Deploy Redis
     print_status "Deploying Redis..."
     kubectl apply -f "$TEMP_DIR/redis-pvc.yaml"
     kubectl apply -f "$TEMP_DIR/redis-deployment.yaml"
@@ -86,7 +95,7 @@ main() {
     print_status "Verifying Redis connectivity..."
     kubectl run redis-test --image=redis:7-alpine --rm -i --restart=Never -- redis-cli -h redis-service ping
 
-    # Step 6: Deploy sidecar application
+    # Step 7: Deploy sidecar application
     print_status "Deploying sidecar application..."
     kubectl apply -f "$TEMP_DIR/sidecar-deployment.yaml"
     kubectl apply -f "$TEMP_DIR/gunicorn-app-service.yaml"
@@ -105,7 +114,7 @@ main() {
         exit 1
     fi
 
-    # Step 7: Verify deployment
+    # Step 8: Verify deployment
     print_status "Verifying deployment..."
     deployment_replicas=$(kubectl get deployment gunicorn-app-with-sidecar -o jsonpath='{.status.readyReplicas}')
     echo "Deployment ready replicas: $deployment_replicas"
@@ -118,16 +127,16 @@ main() {
 
     print_success "Deployment successfully created with $deployment_replicas replicas"
 
-    # Step 8: Set up port forwarding
+    # Step 9: Set up port forwarding
     print_status "Setting up port forwarding..."
     kubectl port-forward service/gunicorn-app-service 8000:8000 &
     PF_APP_PID=$!
-    kubectl port-forward service/gunicorn-metrics-service 9092:9092 &
+    kubectl port-forward service/gunicorn-metrics-service 9091:9091 &
     PF_METRICS_PID=$!
 
     sleep 15
 
-    # Step 9: Test application health
+    # Step 10: Test application health
     print_status "Testing application health..."
     if ! curl -f --max-time 10 http://localhost:8000/health; then
         print_error "Application health check failed"
@@ -137,7 +146,7 @@ main() {
     fi
     print_success "Application is healthy"
 
-    # Step 10: Generate requests
+    # Step 11: Generate requests
     print_status "Generating test requests..."
     for _ in {1..10}; do
         curl -s http://localhost:8000/ > /dev/null || true
@@ -148,11 +157,11 @@ main() {
     print_status "Waiting for metrics to be collected (extended wait for CI)..."
     sleep 20
 
-    # Step 11: Fetch and validate metrics
+    # Step 12: Fetch and validate metrics
     print_status "Fetching metrics..."
     print_status "DEBUG: Checking Redis connectivity from sidecar pod..."
     kubectl exec -it deployment/gunicorn-app-with-sidecar -c prometheus-exporter -- sh -c "echo 'Testing Redis connectivity...' && nc -z redis-service 6379 && echo 'Redis reachable' || echo 'Redis NOT reachable'" || true
-    metrics_response=$(curl -f --max-time 10 http://localhost:9092/metrics 2>/dev/null)
+    metrics_response=$(curl -f --max-time 10 http://localhost:9091/metrics 2>/dev/null)
 
     if [ -z "$metrics_response" ]; then
         print_error "No metrics response from sidecar metrics endpoint"
@@ -164,14 +173,14 @@ main() {
         exit 1
     fi
 
-    # Step 12: Validate all metrics
+    # Step 13: Validate all metrics
     validate_all_metrics "$metrics_response"
     if [ $? -ne 0 ]; then
         print_error "Metrics validation failed"
         exit 1
     fi
 
-    # Step 13: Verify Redis integration
+    # Step 14: Verify Redis integration
     echo ""
     echo "=== Verifying Redis Integration ==="
     redis_keys=$(kubectl run redis-check --image=redis:7-alpine --rm -i --restart=Never -- \
@@ -185,7 +194,7 @@ main() {
         print_warning "Limited Redis keys found ($redis_keys)"
     fi
 
-    # Step 13.5: Deploy Prometheus for testing
+    # Step 15: Deploy Prometheus for testing
     print_status "Deploying Prometheus for testing..."
     kubectl apply -f - <<EOF
 apiVersion: v1
@@ -200,7 +209,7 @@ data:
     scrape_configs:
       - job_name: 'gunicorn-sidecar'
         static_configs:
-          - targets: ['gunicorn-metrics-service:9092']
+          - targets: ['gunicorn-metrics-service:9091']
         scrape_interval: 10s
         metrics_path: '/metrics'
 EOF
@@ -262,7 +271,7 @@ EOF
     PF_PROMETHEUS_PID=$!
     sleep 10
 
-    # Step 13.6: Test Prometheus PromQL queries
+    # Step 16: Test Prometheus PromQL queries
     print_status "Testing Prometheus PromQL queries..."
     sleep 20  # Wait for Prometheus to scrape metrics
 
@@ -320,7 +329,7 @@ EOF
 
     print_success "✅ PROMETHEUS VALIDATION PASSED"
 
-    # Step 13.7: Deploy Kibana for testing
+    # Step 17: Deploy Kibana for testing
     print_status "Deploying Kibana for testing..."
     kubectl apply -f - <<EOF
 apiVersion: apps/v1
@@ -412,7 +421,7 @@ EOF
     PF_KIBANA_PID=$!
     sleep 15
 
-    # Step 13.8: Test Kibana queries
+    # Step 18: Test Kibana queries
     print_status "Testing Kibana functionality..."
 
     # Test Kibana health
@@ -443,7 +452,7 @@ EOF
     # Clean up port forwarding
     kill $PF_PROMETHEUS_PID $PF_KIBANA_PID || true
 
-    # Step 14: Verify sidecar-specific features
+    # Step 19: Verify sidecar-specific features
     echo ""
     echo "=== Verifying Sidecar Communication ==="
 

@@ -34,11 +34,15 @@ cleanup() {
     pkill -f "kubectl port-forward" || true
 
     # Clean up Prometheus and Kibana resources
-    kubectl delete deployment prometheus kibana elasticsearch --ignore-not-found=true || true
+    kubectl delete deployment prometheus kibana elasticsearch redis-deployment --ignore-not-found=true || true
     kubectl delete service prometheus-service kibana-service elasticsearch-service --ignore-not-found=true || true
     kubectl delete configmap prometheus-config --ignore-not-found=true || true
+    kubectl delete pvc redis-pvc --ignore-not-found=true || true
 
     delete_kind_cluster "$CLUSTER_NAME" || true
+
+    # Clean up Docker images
+    docker rmi "$EXPORTER_IMAGE" "$APP_IMAGE" "gunicorn-prometheus-exporter-sidecar:test" --force 2>/dev/null || true
 }
 
 trap cleanup EXIT INT TERM
@@ -56,32 +60,56 @@ main() {
     # Step 2: Create Kind cluster
     create_kind_cluster "$CLUSTER_NAME" "$NUM_WORKERS"
 
-    # Step 3: Load images
-    load_images_to_kind "$CLUSTER_NAME" "$EXPORTER_IMAGE" "$APP_IMAGE"
+    # Step 3: Build Docker images
+    print_status "Building Docker images..."
+    docker build -t "$EXPORTER_IMAGE" .
+    docker build -t gunicorn-prometheus-exporter-sidecar:test .
+    docker build -f docker/Dockerfile.app -t "$APP_IMAGE" .
+    print_success "Docker images built successfully"
 
-    # Step 4: Prepare manifests
+    # Step 4: Load images
+    load_images_to_kind "$CLUSTER_NAME" "$EXPORTER_IMAGE" "$APP_IMAGE" "gunicorn-prometheus-exporter-sidecar:test"
+
+    # Step 5: Prepare manifests
     print_status "Preparing manifests..."
     TEMP_DIR=$(mktemp -d)
     cp "$SCRIPT_DIR/test-daemonset.yaml" "$TEMP_DIR/sidecar-daemonset.yaml"
     cp "$PROJECT_ROOT/k8s/redis-pvc.yaml" "$TEMP_DIR/"
-    cp "$PROJECT_ROOT/k8s/redis-daemonset.yaml" "$TEMP_DIR/"
+    cp "$PROJECT_ROOT/k8s/redis-deployment.yaml" "$TEMP_DIR/"
     cp "$PROJECT_ROOT/k8s/daemonset-service.yaml" "$TEMP_DIR/"
     cp "$PROJECT_ROOT/k8s/daemonset-metrics-service.yaml" "$TEMP_DIR/"
 
 
-    # Step 5: Deploy Redis DaemonSet
-    print_status "Deploying Redis DaemonSet..."
+    # Step 6: Deploy Redis Deployment (single instance for DaemonSet test)
+    print_status "Deploying Redis Deployment..."
     kubectl apply -f "$TEMP_DIR/redis-pvc.yaml"
-    kubectl apply -f "$TEMP_DIR/redis-daemonset.yaml"
+    kubectl apply -f "$TEMP_DIR/redis-deployment.yaml"
+    kubectl apply -f "$PROJECT_ROOT/k8s/redis-service.yaml"
 
-    print_status "Waiting for Redis to be ready..."
-    kubectl wait --for=condition=ready pod -l app=redis --timeout=300s
+    print_status "Waiting for Redis DaemonSet pods to be ready..."
+    # Wait for all Redis pods to be ready (DaemonSet deploys to all nodes)
+    kubectl wait --for=condition=ready pod -l app=redis --timeout=300s || {
+        print_status "Some Redis pods may not be ready, checking status..."
+        kubectl get pods -l app=redis
+        # Continue if at least one pod is ready
+        ready_pods=$(kubectl get pods -l app=redis --field-selector=status.phase=Running --no-headers | wc -l)
+        if [ "$ready_pods" -lt 1 ]; then
+            print_error "No Redis pods are running"
+            exit 1
+        fi
+        print_status "Continuing with $ready_pods Redis pods running"
+    }
+
+    # Wait for Redis service to be available
+    print_status "Waiting for Redis service to be available..."
+    kubectl wait --for=condition=ready pod -l app=redis --timeout=60s
+    sleep 10  # Give Redis time to fully initialize
 
     print_status "Verifying Redis connectivity..."
-    # For DaemonSet with hostNetwork, test connectivity directly on localhost
-    kubectl run redis-test --image=redis:7-alpine --rm -i --restart=Never -- redis-cli -h 127.0.0.1 ping
+    # Test Redis connectivity via service
+    kubectl run redis-test --image=redis:7-alpine --rm -i --restart=Never -- redis-cli -h redis-service ping
 
-    # Step 6: Deploy DaemonSet
+    # Step 7: Deploy DaemonSet
     print_status "Deploying DaemonSet..."
     kubectl apply -f "$TEMP_DIR/sidecar-daemonset.yaml"
     kubectl apply -f "$TEMP_DIR/daemonset-service.yaml"

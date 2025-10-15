@@ -270,7 +270,7 @@ def run_sidecar_mode(args: argparse.Namespace):
     # Update with command line arguments if provided
     if args.bind != "0.0.0.0":  # nosec B104
         os.environ["PROMETHEUS_BIND_ADDRESS"] = args.bind
-    if args.port != 9092:
+    if args.port != 9091:
         os.environ["PROMETHEUS_METRICS_PORT"] = str(args.port)
 
     # Check if Redis is enabled (for Kubernetes mode)
@@ -433,7 +433,7 @@ def main():
     sidecar_parser.add_argument(
         "--port",
         type=int,
-        default=int(os.getenv("PROMETHEUS_METRICS_PORT", 9092)),
+        default=int(os.getenv("PROMETHEUS_METRICS_PORT", 9091)),
         help="Port for metrics endpoint",
     )
     sidecar_parser.add_argument(
@@ -485,7 +485,7 @@ def main():
     health_parser.add_argument(
         "--port",
         type=int,
-        default=int(os.getenv("PROMETHEUS_METRICS_PORT", 9092)),
+        default=int(os.getenv("PROMETHEUS_METRICS_PORT", 9091)),
         help="Port for metrics endpoint",
     )
 

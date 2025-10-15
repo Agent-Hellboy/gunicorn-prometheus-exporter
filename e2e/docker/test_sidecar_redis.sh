@@ -31,6 +31,7 @@ cleanup() {
     docker stop test-sidecar-redis test-redis 2>/dev/null || true
     docker rm test-sidecar-redis test-redis 2>/dev/null || true
     docker network rm test-network 2>/dev/null || true
+    docker rmi gunicorn-prometheus-exporter-sidecar:test 2>/dev/null || true
 }
 
 trap cleanup EXIT INT TERM
@@ -40,6 +41,11 @@ main() {
     print_status "Sidecar with Redis Integration Test"
     print_status "=========================================="
     echo ""
+
+    # Build Docker image
+    print_status "Building Docker image..."
+    docker build -t gunicorn-prometheus-exporter-sidecar:test .
+    print_success "Docker image built successfully"
 
     # Create a network for the test
     print_status "Creating Docker network..."

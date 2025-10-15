@@ -13,7 +13,6 @@ spec:
       labels:
         app: redis
     spec:
-      hostNetwork: true
       securityContext:
         fsGroup: 999
         fsGroupChangePolicy: OnRootMismatch

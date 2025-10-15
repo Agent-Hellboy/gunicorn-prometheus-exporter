@@ -35,7 +35,12 @@ test_sidecar_image() {
     docker run --rm gunicorn-prometheus-exporter-sidecar:test sidecar --help >/dev/null 2>&1
 
     # Test sidecar health check (simple test without complex networking)
-    docker run --rm -e REDIS_ENABLED=false gunicorn-prometheus-exporter-sidecar:test health --port 9092 --timeout 5 || true
+    # Note: Health check runs indefinitely, so we just test that it starts successfully
+    docker run --rm -e REDIS_ENABLED=false gunicorn-prometheus-exporter-sidecar:test health --port 9091 &
+    HEALTH_PID=$!
+    sleep 3
+    kill $HEALTH_PID 2>/dev/null || true
+    wait $HEALTH_PID 2>/dev/null || true
 
     print_success "Sidecar image test passed"
 }

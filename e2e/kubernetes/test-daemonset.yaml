@@ -21,10 +21,19 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       hostNetwork: true
-      dnsPolicy: ClusterFirst
+      dnsPolicy: ClusterFirstWithHostNet
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+        - name: wait-for-redis
+          image: redis:7-alpine
+          command:
+            [
+              "sh",
+              "-c",
+              'until redis-cli -h redis-service ping; do echo "Waiting for Redis..."; sleep 2; done',
+            ]
       containers:
         # Main application container
         - name: app
