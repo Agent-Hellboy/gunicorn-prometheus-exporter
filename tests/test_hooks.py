@@ -1271,6 +1271,9 @@ class TestMetricsServerManagerComprehensive(unittest.TestCase):
             ) as mock_get_dir,
             patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": "/tmp/test"}),
         ):
+            # Ensure the multiprocess directory exists
+            os.makedirs("/tmp/test", exist_ok=True)
+
             cfg = MagicMock()
             cfg.prometheus_metrics_port = 9091
             cfg.redis_enabled = False
