@@ -2,7 +2,7 @@
 
 # Test script to verify Docker setup for YAML configuration testing
 
-set -e
+set -Eeuo pipefail
 
 # Colors for output
 RED='\033[0;31m'

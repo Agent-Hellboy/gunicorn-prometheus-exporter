@@ -2,7 +2,7 @@
 
 # Common Kind cluster setup for Kubernetes tests
 
-set -e
+set -Eeuo pipefail
 
 # Colors for output
 GREEN='\033[0;32m'

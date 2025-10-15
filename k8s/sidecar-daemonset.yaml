@@ -21,7 +21,7 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       hostNetwork: true
-      dnsPolicy: ClusterFirst
+      dnsPolicy: ClusterFirstWithHostNet
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
@@ -116,7 +116,6 @@ spec:
           ports:
             - name: metrics
               containerPort: 9091
-              hostPort: 9091
               protocol: TCP
           env:
             - name: PROMETHEUS_METRICS_PORT

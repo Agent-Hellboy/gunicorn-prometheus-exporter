@@ -7,7 +7,7 @@
 # - Service communication
 # - Comprehensive metrics collection
 
-set -e
+set -Eeuo pipefail
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -34,12 +34,21 @@ print_warning() {
 
 # Docker compose helper function
 docker_compose() {
-    if docker_compose version > /dev/null 2>&1; then
-        docker_compose "$@"
+    if docker compose version > /dev/null 2>&1; then
+        docker compose "$@"
     else
         docker-compose "$@"
     fi
 }
+
+# Cleanup function
+cleanup() {
+    print_status "Cleaning up Docker Compose services..."
+ --remove-orphans || true
+}
+
+# Set up cleanup trap
+trap cleanup EXIT INT TERM
 
 main() {
     print_status "=========================================="
@@ -51,21 +60,65 @@ main() {
     print_status "Starting Docker Compose services..."
     cd "$(dirname "$0")/../.."
 
-    docker_compose up -d --build
+    # Clean up any existing containers
+ --remove-orphans || true
 
-    # Wait for services to be ready
-    print_status "Waiting for services to be ready..."
-    sleep 45
-
-    # Test application health
-    print_status "Testing application health..."
-    if ! curl -f http://localhost:8000/health; then
-        print_error "Application health check failed"
-        docker_compose logs gunicorn-app
-        docker_compose down
+    # Start services
+    if ! docker_compose up -d --build; then
+        print_error "Failed to start Docker Compose services"
+        docker_compose logs
         exit 1
     fi
-    print_success "Application is healthy"
+
+    # Wait for services to be ready with proper health checks
+    print_status "Waiting for services to be ready..."
+
+    # Wait for Redis
+    print_status "Waiting for Redis..."
+    for i in {1..30}; do
+        if docker_compose exec -T redis redis-cli ping > /dev/null 2>&1; then
+            print_success "Redis is ready"
+            break
+        fi
+        if [ $i -eq 30 ]; then
+            print_error "Redis failed to start"
+            docker_compose logs redis
+            exit 1
+        fi
+        sleep 2
+    done
+
+    # Wait for app
+    print_status "Waiting for application..."
+    for i in {1..30}; do
+        if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+            print_success "Application is ready"
+            break
+        fi
+        if [ $i -eq 30 ]; then
+            print_error "Application failed to start"
+            docker_compose logs app
+            exit 1
+        fi
+        sleep 2
+    done
+
+    # Wait for sidecar
+    print_status "Waiting for sidecar..."
+    for i in {1..30}; do
+        if curl -f http://localhost:9091/metrics > /dev/null 2>&1; then
+            print_success "Sidecar is ready"
+            break
+        fi
+        if [ $i -eq 30 ]; then
+            print_error "Sidecar failed to start"
+            docker_compose logs sidecar
+            exit 1
+        fi
+        sleep 2
+    done
+
+    # Application is already verified to be healthy above
 
     # Generate test requests
     print_status "Generating test requests..."
@@ -76,7 +129,7 @@ main() {
 
     # Trigger worker restart to test master lifecycle metrics
     print_status "🔄 Triggering worker restart to test master lifecycle metrics..."
-    docker exec gunicorn-app pkill -HUP -f gunicorn || true  # Send SIGHUP to Gunicorn master
+    docker_compose exec -T app pkill -HUP -f gunicorn || true  # Send SIGHUP to Gunicorn master
     sleep 5  # Wait for restart to complete
 
     # Generate additional requests after restart
@@ -95,8 +148,7 @@ main() {
 
     if [ -z "$metrics_response" ]; then
         print_error "No metrics response from sidecar"
-        docker logs gunicorn-sidecar
-        docker_compose down
+        docker_compose logs sidecar
         exit 1
     fi
 
@@ -121,7 +173,6 @@ main() {
             print_success "✓ $metric ($count instances)"
         else
             print_error "✗ $metric MISSING (required)"
-            docker_compose down
             exit 1
         fi
     done
@@ -148,7 +199,6 @@ main() {
             print_success "✓ $metric ($count instances)"
         else
             print_error "✗ $metric MISSING"
-            docker_compose down
             exit 1
         fi
     done
@@ -171,7 +221,6 @@ main() {
             print_success "✓ $metric ($count instances)"
         else
             print_error "✗ $metric MISSING (required)"
-            docker_compose down
             exit 1
         fi
     done
@@ -195,7 +244,6 @@ main() {
         print_success "✓ gunicorn_master_worker_restart_total ($restart_total_count instances, $total_restarts total restarts)"
     else
         print_error "✗ gunicorn_master_worker_restart_total MISSING"
-        docker_compose down
         exit 1
     fi
 
@@ -233,7 +281,6 @@ main() {
             print_success "✓ $metric ($count instances)"
         else
             print_error "✗ $metric MISSING (required)"
-            docker_compose down
             exit 1
         fi
     done
@@ -267,7 +314,6 @@ main() {
         print_error "❌ Insufficient core metrics found"
         echo "   • Worker metrics: $total_worker_metrics (minimum 10 required)"
         echo "   • Sidecar metrics: $total_sidecar_metrics (minimum 4 required)"
-        docker_compose down
         exit 1
     fi
 
@@ -363,7 +409,6 @@ main() {
         print_success "✅ MASTER METRICS VALIDATION PASSED"
     else
         print_error "❌ Prometheus server health check failed"
-        docker_compose down
         exit 1
     fi
 
@@ -403,7 +448,6 @@ main() {
         print_success "✅ GRAFANA VALIDATION PASSED"
     else
         print_error "❌ Grafana health check failed"
-        docker_compose down
         exit 1
     fi
 
@@ -429,26 +473,22 @@ main() {
 
     # Validate Redis storage (metrics stored in Redis, not files)
     print_status "🔍 Validating Redis-based metrics storage..."
-    redis_keys=$(docker exec gunicorn-redis redis-cli --scan --pattern "gunicorn:*" | wc -l)
+    redis_keys=$(docker_compose exec -T redis redis-cli --scan --pattern "gunicorn:*" | wc -l)
     if [ "$redis_keys" -gt 10 ]; then
         print_success "✓ Redis contains $redis_keys gunicorn metrics keys (Redis storage working)"
     else
         print_error "✗ Insufficient Redis keys found ($redis_keys, expected 10+)"
-        docker_compose down
         exit 1
     fi
 
     # Validate no file storage is used (Redis mode should not create files)
     print_status "🔍 Verifying no file-based storage (Redis-only mode)..."
-    file_count=$(docker exec gunicorn-app find /tmp/prometheus_multiproc -name "*.db" 2>/dev/null | wc -l || echo "0")
+    file_count=$(docker_compose exec -T app find /tmp/prometheus_multiproc -name "*.db" 2>/dev/null | wc -l || echo "0")
     if [ "$file_count" -eq 0 ]; then
         print_success "✓ No Prometheus multiprocess files found (correct for Redis-only mode)"
     else
         print_success "⚠ Found $file_count multiprocess files (Redis + file hybrid mode)"
     fi
-
-    # Stop services
-    docker_compose down
 
     echo ""
     echo "==================================="

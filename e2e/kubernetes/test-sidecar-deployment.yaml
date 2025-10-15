@@ -44,10 +44,6 @@ spec:
           env:
             - name: GUNICORN_WORKERS
               value: "4"
-            - name: PROMETHEUS_BIND_ADDRESS
-              value: "0.0.0.0"
-            - name: PROMETHEUS_METRICS_PORT
-              value: "9091"
             - name: REDIS_ENABLED
               value: "true"
             - name: REDIS_HOST
@@ -101,7 +97,6 @@ spec:
             - containerPort: 9091
               name: metrics
               protocol: TCP
-              hostPort: 9091
           env:
             - name: PROMETHEUS_METRICS_PORT
               value: "9091"

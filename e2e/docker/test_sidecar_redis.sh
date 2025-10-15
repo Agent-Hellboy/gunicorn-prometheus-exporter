@@ -6,7 +6,7 @@
 # - Network communication between containers
 # - Redis metric storage
 
-set -e
+set -Eeuo pipefail
 
 # Colors for output
 GREEN='\033[0;32m'

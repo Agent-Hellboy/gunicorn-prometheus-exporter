@@ -14,7 +14,7 @@
 #   --ci: CI mode (timeout protection, auto cleanup)
 #   --force: Kill existing processes on ports 8088 and 9093
 
-set -e  # Exit on any error
+set -Eeuo pipefail  # Exit on any error, undefined vars, pipe failures
 
 # Colors for output
 RED='\033[0;31m'

@@ -8,7 +8,7 @@
 # - Comprehensive metrics validation
 # - Application and sidecar communication
 
-set -e  # Exit on any error
+set -Eeuo pipefail  # Exit on any error, undefined vars, pipe failures
 
 # Get script directory and change to project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
