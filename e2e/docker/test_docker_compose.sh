@@ -32,6 +32,15 @@ print_warning() {
     echo -e "${YELLOW}⚠️${NC} $1"
 }
 
+# Docker compose helper function
+docker_compose() {
+    if docker_compose version > /dev/null 2>&1; then
+        docker_compose "$@"
+    else
+        docker-compose "$@"
+    fi
+}
+
 main() {
     print_status "=========================================="
     print_status "Docker Compose Full Stack Test (Redis + Prometheus + Grafana)"
@@ -40,8 +49,9 @@ main() {
 
     # Start services in background
     print_status "Starting Docker Compose services..."
-    cd /Users/proshan/gunicorn-prometheus-exporter
-    docker compose up -d --build
+    cd "$(dirname "$0")/../.."
+
+    docker_compose up -d --build
 
     # Wait for services to be ready
     print_status "Waiting for services to be ready..."
@@ -51,8 +61,8 @@ main() {
     print_status "Testing application health..."
     if ! curl -f http://localhost:8000/health; then
         print_error "Application health check failed"
-        docker compose logs gunicorn-app
-        docker compose down
+        docker_compose logs gunicorn-app
+        docker_compose down
         exit 1
     fi
     print_success "Application is healthy"
@@ -86,7 +96,7 @@ main() {
     if [ -z "$metrics_response" ]; then
         print_error "No metrics response from sidecar"
         docker logs gunicorn-sidecar
-        docker compose down
+        docker_compose down
         exit 1
     fi
 
@@ -111,7 +121,7 @@ main() {
             print_success "✓ $metric ($count instances)"
         else
             print_error "✗ $metric MISSING (required)"
-            docker compose down
+            docker_compose down
             exit 1
         fi
     done
@@ -138,7 +148,7 @@ main() {
             print_success "✓ $metric ($count instances)"
         else
             print_error "✗ $metric MISSING"
-            docker compose down
+            docker_compose down
             exit 1
         fi
     done
@@ -161,7 +171,7 @@ main() {
             print_success "✓ $metric ($count instances)"
         else
             print_error "✗ $metric MISSING (required)"
-            docker compose down
+            docker_compose down
             exit 1
         fi
     done
@@ -185,7 +195,7 @@ main() {
         print_success "✓ gunicorn_master_worker_restart_total ($restart_total_count instances, $total_restarts total restarts)"
     else
         print_error "✗ gunicorn_master_worker_restart_total MISSING"
-        docker compose down
+        docker_compose down
         exit 1
     fi
 
@@ -223,7 +233,7 @@ main() {
             print_success "✓ $metric ($count instances)"
         else
             print_error "✗ $metric MISSING (required)"
-            docker compose down
+            docker_compose down
             exit 1
         fi
     done
@@ -257,7 +267,7 @@ main() {
         print_error "❌ Insufficient core metrics found"
         echo "   • Worker metrics: $total_worker_metrics (minimum 10 required)"
         echo "   • Sidecar metrics: $total_sidecar_metrics (minimum 4 required)"
-        docker compose down
+        docker_compose down
         exit 1
     fi
 
@@ -353,7 +363,7 @@ main() {
         print_success "✅ MASTER METRICS VALIDATION PASSED"
     else
         print_error "❌ Prometheus server health check failed"
-        docker compose down
+        docker_compose down
         exit 1
     fi
 
@@ -393,7 +403,7 @@ main() {
         print_success "✅ GRAFANA VALIDATION PASSED"
     else
         print_error "❌ Grafana health check failed"
-        docker compose down
+        docker_compose down
         exit 1
     fi
 
@@ -424,7 +434,7 @@ main() {
         print_success "✓ Redis contains $redis_keys gunicorn metrics keys (Redis storage working)"
     else
         print_error "✗ Insufficient Redis keys found ($redis_keys, expected 10+)"
-        docker compose down
+        docker_compose down
         exit 1
     fi
 
@@ -438,7 +448,7 @@ main() {
     fi
 
     # Stop services
-    docker compose down
+    docker_compose down
 
     echo ""
     echo "==================================="

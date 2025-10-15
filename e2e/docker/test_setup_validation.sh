@@ -43,13 +43,56 @@ fi
 
 print_status "PASS" "Docker is available and running"
 
-# Check if docker-compose is available
-if ! command -v docker-compose > /dev/null 2>&1; then
-    print_status "FAIL" "docker-compose not found. Please install docker-compose."
-    exit 1
-fi
+# Check if docker compose is available, install if needed
+if ! docker compose version > /dev/null 2>&1; then
+    print_status "INFO" "docker compose not found. Attempting to install..."
 
-print_status "PASS" "docker-compose is available"
+    # Try to install docker-compose-plugin (modern approach)
+    if command -v apt-get > /dev/null 2>&1; then
+        # Ubuntu/Debian
+        print_status "INFO" "Installing docker-compose-plugin via apt..."
+        sudo apt-get update -qq
+        sudo apt-get install -y docker-compose-plugin
+    elif command -v yum > /dev/null 2>&1; then
+        # CentOS/RHEL
+        print_status "INFO" "Installing docker-compose-plugin via yum..."
+        sudo yum install -y docker-compose-plugin
+    elif command -v dnf > /dev/null 2>&1; then
+        # Fedora
+        print_status "INFO" "Installing docker-compose-plugin via dnf..."
+        sudo dnf install -y docker-compose-plugin
+    elif command -v apk > /dev/null 2>&1; then
+        # Alpine Linux
+        print_status "INFO" "Installing docker-compose via apk..."
+        sudo apk add --no-cache docker-compose
+    elif command -v brew > /dev/null 2>&1; then
+        # macOS
+        print_status "INFO" "Installing docker-compose via brew..."
+        brew install docker-compose
+    else
+        # Fallback: try standalone docker-compose
+        print_status "INFO" "Trying standalone docker-compose installation..."
+        if command -v curl > /dev/null 2>&1; then
+            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+        else
+            print_status "FAIL" "Cannot install docker compose. Please install Docker with compose support manually."
+            exit 1
+        fi
+    fi
+
+    # Verify installation
+    if docker compose version > /dev/null 2>&1; then
+        print_status "PASS" "docker compose installed successfully"
+    elif docker-compose version > /dev/null 2>&1; then
+        print_status "PASS" "docker-compose installed successfully"
+    else
+        print_status "FAIL" "docker compose installation failed"
+        exit 1
+    fi
+else
+    print_status "PASS" "docker compose is available"
+fi
 
 # Check if basic project files exist
 basic_files=(
@@ -78,13 +121,15 @@ else
     exit 1
 fi
 
-# Test docker-compose syntax
-print_status "INFO" "Testing docker-compose syntax..."
+# Test docker compose syntax
+print_status "INFO" "Testing docker compose syntax..."
 cd "$PROJECT_ROOT"
 if docker compose config > /dev/null 2>&1; then
+    print_status "PASS" "docker compose configuration is valid"
+elif docker-compose config > /dev/null 2>&1; then
     print_status "PASS" "docker-compose configuration is valid"
 else
-    print_status "FAIL" "docker-compose configuration is invalid"
+    print_status "FAIL" "docker compose configuration is invalid"
     exit 1
 fi
 

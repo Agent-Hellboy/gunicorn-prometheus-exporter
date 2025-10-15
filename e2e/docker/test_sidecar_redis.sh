@@ -44,6 +44,7 @@ main() {
 
     # Build Docker image
     print_status "Building Docker image..."
+    cd "$(dirname "$0")/../.."
     docker build -t gunicorn-prometheus-exporter-sidecar:test .
     print_success "Docker image built successfully"
 

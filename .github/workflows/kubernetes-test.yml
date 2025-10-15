@@ -20,6 +20,47 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Install required dependencies
+        run: |
+          echo "Installing required dependencies..."
+          sudo apt-get update -qq
+          sudo apt-get install -y docker-compose-plugin curl jq redis-tools python3-pip netcat-openbsd
+
+          # Install Python packages
+          pip3 install PyYAML
+
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+          # Install kind
+          curl -Lo ./kind "https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64"
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+          # Verify Docker Compose installation
+          if docker compose version > /dev/null 2>&1; then
+            echo "✅ Docker Compose plugin installed successfully"
+            docker compose version
+          elif docker-compose version > /dev/null 2>&1; then
+            echo "✅ Docker Compose standalone installed successfully"
+            docker-compose version
+          else
+            echo "❌ Docker Compose installation failed"
+            exit 1
+          fi
+
+          # Verify other tools
+          curl --version | head -1
+          jq --version
+          redis-cli --version
+          nc -h | head -1
+          python3 --version
+          python3 -c "import yaml; print('PyYAML version:', yaml.__version__)"
+          kind version
+          kubectl version --client
+          echo "✅ All dependencies installed successfully"
+
       - name: Build images locally
         run: |
           echo "Building sidecar/DaemonSet exporter image locally..."

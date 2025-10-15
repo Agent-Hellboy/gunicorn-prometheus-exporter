@@ -2,6 +2,8 @@
 
 # Common Kind cluster setup for Kubernetes tests
 
+set -e
+
 # Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
