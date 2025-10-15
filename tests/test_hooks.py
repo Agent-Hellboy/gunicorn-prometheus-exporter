@@ -1268,6 +1268,7 @@ class TestMetricsServerManagerComprehensive(unittest.TestCase):
             patch(
                 "gunicorn_prometheus_exporter.utils.get_multiprocess_dir"
             ) as mock_get_dir,
+            patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": "/tmp/test"}),
         ):
             cfg = MagicMock()
             cfg.prometheus_metrics_port = 9091
