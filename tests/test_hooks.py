@@ -1264,6 +1264,7 @@ class TestMetricsServerManagerComprehensive(unittest.TestCase):
         manager = MetricsServerManager(mock_logger)
 
         with (
+            patch("gunicorn_prometheus_exporter.config.initialize_config"),
             patch("gunicorn_prometheus_exporter.hooks.get_config") as mock_get_config,
             patch(
                 "gunicorn_prometheus_exporter.utils.get_multiprocess_dir"
