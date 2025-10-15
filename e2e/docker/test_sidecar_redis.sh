@@ -57,11 +57,13 @@ main() {
     docker run -d \
         --name test-sidecar-redis \
         --network test-network \
-        -p 9092:9091 \
+        -p 9092:9092 \
         -e REDIS_ENABLED=true \
         -e REDIS_HOST=test-redis \
         -e REDIS_PORT=6379 \
-        gunicorn-prometheus-exporter:test
+        -e PROMETHEUS_METRICS_PORT=9092 \
+        -e PROMETHEUS_BIND_ADDRESS=0.0.0.0 \
+        gunicorn-prometheus-exporter-sidecar:test
 
     # Wait for sidecar to start
     sleep 10

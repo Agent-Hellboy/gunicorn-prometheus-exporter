@@ -98,13 +98,13 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           ports:
-            - containerPort: 9092
+            - containerPort: 9091
               name: metrics
               protocol: TCP
-              hostPort: 9092
+              hostPort: 9091
           env:
             - name: PROMETHEUS_METRICS_PORT
-              value: "9092"
+              value: "9091"
             - name: PROMETHEUS_BIND_ADDRESS
               value: "0.0.0.0"
             - name: REDIS_ENABLED
@@ -120,6 +120,9 @@ spec:
             - name: SIDECAR_UPDATE_INTERVAL
               value: "30"
             - name: YAML_CONFIG_PATH
+              value: ""
+            # Disable multiprocess directory for Redis-only mode
+            - name: PROMETHEUS_MULTIPROC_DIR
               value: ""
           resources:
             requests:
@@ -144,5 +147,11 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          volumeMounts:
+            - name: prometheus-multiproc
+              mountPath: /tmp/prometheus_multiproc
+      volumes:
+        - name: prometheus-multiproc
+          emptyDir: {}
       restartPolicy: Always
       terminationGracePeriodSeconds: 30

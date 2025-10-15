@@ -36,10 +36,21 @@ import time
 
 from pathlib import Path
 
-from prometheus_client import CollectorRegistry, Gauge, start_http_server
-from prometheus_client.multiprocess import MultiProcessCollector
 
-from gunicorn_prometheus_exporter.config.settings import ExporterConfig
+# Set sidecar mode environment variable BEFORE importing gunicorn_prometheus_exporter
+# This ensures the configuration manager knows we're in sidecar mode
+os.environ["SIDECAR_MODE"] = "true"
+
+# Set required environment variables for sidecar mode BEFORE any imports
+os.environ["PROMETHEUS_BIND_ADDRESS"] = "0.0.0.0"  # nosec B104
+os.environ["PROMETHEUS_METRICS_PORT"] = "9091"
+os.environ["GUNICORN_WORKERS"] = "1"  # Dummy value for sidecar mode
+os.environ["PROMETHEUS_MULTIPROC_DIR"] = "/tmp/prometheus_multiproc"  # nosec B108
+
+from prometheus_client import CollectorRegistry, Gauge, start_http_server  # noqa: E402
+from prometheus_client.multiprocess import MultiProcessCollector  # noqa: E402
+
+from gunicorn_prometheus_exporter.config.settings import ExporterConfig  # noqa: E402
 
 
 # Configure logging
@@ -223,6 +234,8 @@ def setup_metrics_server(
                 logger.warning("Redis collector not available")
         except Exception as e:
             logger.error(f"Failed to setup Redis metrics: {e}")
+    else:
+        logger.info("Redis not enabled, skipping Redis metrics setup")
 
     # Add sidecar-specific metrics
     sidecar_metrics = SidecarMetrics(registry)
@@ -251,36 +264,14 @@ def signal_handler(signum, frame):
     sys.exit(0)
 
 
-def main():
-    """Main sidecar function."""
-    parser = argparse.ArgumentParser(description="Gunicorn Prometheus Exporter Sidecar")
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=int(os.getenv("PROMETHEUS_METRICS_PORT", 9091)),
-        help="Port for metrics endpoint",
-    )
-    parser.add_argument(
-        "--bind",
-        default=os.getenv("PROMETHEUS_BIND_ADDRESS", "0.0.0.0"),  # nosec B104
-        help="Bind address for metrics server",
-    )
-    parser.add_argument(
-        "--multiproc-dir",
-        default=os.getenv("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc"),  # nosec B108
-        help="Directory containing multiprocess files",
-    )
-    parser.add_argument(
-        "--update-interval",
-        type=int,
-        default=30,
-        help="Interval for updating sidecar metrics (seconds)",
-    )
-
-    args = parser.parse_args()
-
-    # Set sidecar mode environment variable
-    os.environ[ExporterConfig.ENV_SIDECAR_MODE] = "true"
+def run_sidecar_mode(args: argparse.Namespace):
+    """Run the sidecar mode."""
+    # Environment variables are already set at module level
+    # Update with command line arguments if provided
+    if args.bind != "0.0.0.0":  # nosec B104
+        os.environ["PROMETHEUS_BIND_ADDRESS"] = args.bind
+    if args.port != 9092:
+        os.environ["PROMETHEUS_METRICS_PORT"] = str(args.port)
 
     # Check if Redis is enabled (for Kubernetes mode)
     redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() in ("true", "1", "yes")
@@ -288,17 +279,18 @@ def main():
     # Set up signal handlers
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
+
+    # Create multiprocess directory only if Redis is not enabled
     if not redis_enabled:
         multiproc_path = Path(args.multiproc_dir)
         if not multiproc_path.exists():
-            logger.warning(
-                f"Multiprocess directory does not exist: {args.multiproc_dir}"
-            )
-            logger.info("Creating multiprocess directory...")
+            logger.info(f"Creating multiprocess directory: {args.multiproc_dir}")
             multiproc_path.mkdir(parents=True, exist_ok=True)
+        else:
+            logger.info(f"Multiprocess directory exists: {args.multiproc_dir}")
     else:
         logger.info(
-            "Kubernetes Redis mode - filesystem operations disabled for security"
+            "Kubernetes Redis mode - skipping multiprocess directory creation for security"
         )
 
     # Set up metrics server
@@ -332,6 +324,182 @@ def main():
         sys.exit(1)
     finally:
         signal_handler(signal.SIGTERM, None)
+
+
+def run_standalone_mode(args: argparse.Namespace):
+    """Run the standalone mode."""
+    # Set sidecar mode environment variable
+    os.environ[ExporterConfig.ENV_SIDECAR_MODE] = "false"
+
+    # Set up signal handlers
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Set up metrics server
+    try:
+        registry, sidecar_metrics = setup_metrics_server(
+            args.port, args.bind, args.multiproc_dir
+        )
+        logger.info("Standalone metrics server started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start metrics server: {e}")
+        sys.exit(1)
+
+    # Main loop
+    logger.info(
+        "Standalone metrics server running, updating metrics every {} seconds".format(
+            args.update_interval
+        )
+    )
+    try:
+        while True:
+            # Update sidecar-specific metrics (if any, though not applicable here)
+            # sidecar_metrics.update_metrics(args.multiproc_dir) # No multiproc_dir in standalone
+
+            # Sleep until next update
+            time.sleep(args.update_interval)
+
+    except KeyboardInterrupt:
+        logger.info("Received keyboard interrupt, shutting down...")
+    except Exception as e:
+        logger.error(f"Unexpected error in main loop: {e}")
+        sys.exit(1)
+    finally:
+        signal_handler(signal.SIGTERM, None)
+
+
+def run_health_mode(args: argparse.Namespace):
+    """Run the health check mode."""
+    # Set sidecar mode environment variable to true for health check
+    os.environ[ExporterConfig.ENV_SIDECAR_MODE] = "true"
+
+    # Set required environment variables for health check
+    os.environ["PROMETHEUS_BIND_ADDRESS"] = "0.0.0.0"  # nosec B104
+    os.environ["PROMETHEUS_METRICS_PORT"] = str(args.port)
+    os.environ["GUNICORN_WORKERS"] = "1"  # Dummy value
+    os.environ["PROMETHEUS_MULTIPROC_DIR"] = "/tmp/prometheus_multiproc"  # nosec B108
+
+    # Set up signal handlers
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Create dummy multiprocess directory for health check
+    multiproc_path = Path("/tmp/prometheus_multiproc")  # nosec B108
+    multiproc_path.mkdir(parents=True, exist_ok=True)
+
+    # Set up metrics server
+    try:
+        registry, sidecar_metrics = setup_metrics_server(
+            args.port,
+            "0.0.0.0",
+            "/tmp/prometheus_multiproc",  # nosec B104, B108
+        )
+        logger.info("Health check completed successfully")
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        sys.exit(1)
+
+    # Main loop
+    logger.info(
+        "Health check running, metrics server available on {}:{}".format(
+            "0.0.0.0",
+            args.port,  # nosec B104
+        )
+    )
+    try:
+        while True:
+            # No metrics to update in health check mode
+            time.sleep(1)  # Keep it alive
+
+    except KeyboardInterrupt:
+        logger.info("Received keyboard interrupt, shutting down...")
+    except Exception as e:
+        logger.error(f"Unexpected error in main loop: {e}")
+        sys.exit(1)
+    finally:
+        signal_handler(signal.SIGTERM, None)
+
+
+def main():
+    """Main sidecar function."""
+    parser = argparse.ArgumentParser(description="Gunicorn Prometheus Exporter Sidecar")
+
+    subparsers = parser.add_subparsers(dest="mode", help="Operating mode")
+
+    # Sidecar mode parser
+    sidecar_parser = subparsers.add_parser(
+        "sidecar", help="Run as sidecar container (default)"
+    )
+    sidecar_parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("PROMETHEUS_METRICS_PORT", 9092)),
+        help="Port for metrics endpoint",
+    )
+    sidecar_parser.add_argument(
+        "--bind",
+        default=os.getenv("PROMETHEUS_BIND_ADDRESS", "0.0.0.0"),  # nosec B104
+        help="Bind address for metrics server",
+    )
+    sidecar_parser.add_argument(
+        "--multiproc-dir",
+        default=os.getenv("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc"),  # nosec B108
+        help="Directory containing multiprocess files",
+    )
+    sidecar_parser.add_argument(
+        "--update-interval",
+        type=int,
+        default=int(os.getenv("SIDECAR_UPDATE_INTERVAL", 30)),
+        help="Interval for updating sidecar metrics (seconds)",
+    )
+
+    # Standalone mode parser
+    standalone_parser = subparsers.add_parser(
+        "standalone", help="Run standalone metrics server"
+    )
+    standalone_parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("PROMETHEUS_METRICS_PORT", 9091)),
+        help="Port for metrics endpoint",
+    )
+    standalone_parser.add_argument(
+        "--bind",
+        default=os.getenv("PROMETHEUS_BIND_ADDRESS", "0.0.0.0"),  # nosec B104
+        help="Bind address for metrics server",
+    )
+    standalone_parser.add_argument(
+        "--multiproc-dir",
+        default=os.getenv("PROMETHEUS_MULTIPROC_DIR", "/tmp/prometheus_multiproc"),  # nosec B108
+        help="Directory containing multiprocess files",
+    )
+    standalone_parser.add_argument(
+        "--update-interval",
+        type=int,
+        default=int(os.getenv("SIDECAR_UPDATE_INTERVAL", 10)),
+        help="Interval for updating metrics (seconds)",
+    )
+
+    # Health check parser
+    health_parser = subparsers.add_parser("health", help="Run health check")
+    health_parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("PROMETHEUS_METRICS_PORT", 9092)),
+        help="Port for metrics endpoint",
+    )
+
+    args = parser.parse_args()
+
+    if args.mode == "sidecar":
+        run_sidecar_mode(args)
+    elif args.mode == "standalone":
+        run_standalone_mode(args)
+    elif args.mode == "health":
+        run_health_mode(args)
+    else:
+        parser.print_help()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

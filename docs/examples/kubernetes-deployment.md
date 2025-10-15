@@ -37,7 +37,7 @@ docker pull princekrroshan01/gunicorn-app:0.2.2
 
 **Production Note**: Always use specific version tags (e.g., `0.2.2`) instead of `:latest` for reproducibility and stability. If the published image tag is not yet available, build the images locally with the commands above before deploying.
 
-> *Redis recommendation*: Redis storage is required for multi-worker deployments. The manifests enable it by default (`REDIS_ENABLED=true`). Only disable Redis when running a single worker for local demos.
+> *Redis requirement*: Redis storage is **required** for all containerized deployments (Docker Compose and Kubernetes). The manifests enable Redis-only mode by default (`REDIS_ENABLED=true` and `PROMETHEUS_MULTIPROC_DIR=""`). Multiprocess files are incompatible with containerized environments due to read-only filesystems and lack of shared storage between pods.
 
 Images are automatically built and published for:
 - `linux/amd64` (x86_64)

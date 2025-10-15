@@ -120,7 +120,7 @@ docker pull princekrroshan01/gunicorn-app:0.2.2
 - Automated CI/CD with GitHub Actions
 - Complete monitoring stack included
 
-> *Production recommendation*: Use Redis-backed storage (`REDIS_ENABLED=true`) for all multi-worker or multi-pod deployments. The provided Docker Compose and Kubernetes manifests enable Redis by default.
+> *Production requirement*: Redis-backed storage (`REDIS_ENABLED=true` and `PROMETHEUS_MULTIPROC_DIR=""`) is **required** for all containerized deployments. The provided Docker Compose and Kubernetes manifests use Redis-only mode by default. Multiprocess files are incompatible with containerized environments.
 
 See [Docker README](../docker/README.md) and [Kubernetes Guide](../k8s/README.md) for deployment details.
 

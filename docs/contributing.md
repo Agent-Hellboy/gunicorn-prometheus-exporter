@@ -190,20 +190,24 @@ This project relies heavily on containerised workflows and infrastructure automa
 
 ### Local Container Tooling
 
-- **Docker images**: The sidecar and sample app live under `Dockerfile` and `docker/Dockerfile.app`. Rebuild them with `docker build -f docker/Dockerfile.sidecar -t gunicorn-prometheus-exporter-sidecar:test .` and `docker build -f docker/Dockerfile.app -t gunicorn-app:test .` before running integration tests.
+- **Docker images**: The sidecar and sample app live under `Dockerfile.sidecar` and `docker/Dockerfile.app`. Rebuild them with `docker build -f docker/Dockerfile.sidecar -t gunicorn-prometheus-exporter-sidecar:test .` and `docker build -f docker/Dockerfile.app -t gunicorn-app:test .` before running integration tests.
 - **Docker Compose stack**: `docker-compose.yml` wires Redis, Gunicorn, the exporter, Prometheus, and Grafana. Use `docker compose up -d --build` for end-to-end smoke tests and `docker compose down` for cleanup.
 - **Shared memory requirements**: Gunicorn expects `/dev/shm` = 1 GiB. Compose already sets `shm_size: 1gb`; if you run `docker run` manually, append `--shm-size=1g`.
 
 ### Kubernetes Hands-on
 
 - **kind (Kubernetes in Docker)**: The CI workflow spins up a throwaway cluster. Install it locally with `brew install kind` and create a cluster via `kind create cluster --name test-cluster --wait 300s`.
-- **kubectl essentials**: You will apply manifests from `k8s/`, wait for pods, and port-forward services. Common commands:
+- **kubectl essentials**: You will apply manifests from `e2e/kubernetes/`, wait for pods, and port-forward services. Common commands:
   ```bash
-  kubectl apply -f k8s/sidecar-deployment.yaml
+  # For DaemonSet deployment
+  kubectl apply -f e2e/kubernetes/test-daemonset.yaml
+  kubectl wait --for=condition=ready pod -l app=gunicorn-prometheus-exporter,component=daemonset --timeout=300s
+  # For Deployment with Sidecar
+  kubectl apply -f e2e/kubernetes/test-sidecar-deployment.yaml
   kubectl wait --for=condition=ready pod -l app=gunicorn-app --timeout=300s
-  kubectl port-forward service/gunicorn-metrics-service 9091:9091
+  kubectl port-forward service/gunicorn-metrics-service 9092:9092
   ```
-- **Temporary manifest rewrites**: In CI we copy `k8s/*.yaml` into `/tmp/k8s-test/` and `sed` the image tags to `gunicorn-app:test` and `gunicorn-prometheus-exporter-sidecar:test`. Mirror this when testing locally so the cluster uses your freshly built images.
+- **Separate Test Manifests**: Test-specific Kubernetes manifests are located in `e2e/kubernetes/` (e.g., `test-daemonset.yaml`, `test-sidecar-deployment.yaml`). These manifests are pre-configured with local test image tags (`:test`) and do not require runtime modification.
 - **Cleanup discipline**: Delete port-forward processes (`pkill -f "kubectl port-forward"`) and clusters (`kind delete cluster --name test-cluster`) to avoid resource leaks.
 
 ### Observability Stack
@@ -324,15 +328,16 @@ make integration-test-yaml-config
 ### Running E2E Tests
 
 ```bash
-cd e2e
+cd e2e/kubernetes/
 
 # Docker deployment tests
-make docker-test
+./test_docker_compose.sh
 
-# Or run specific E2E tests
-bash docker/test_docker_compose.sh
-bash docker/test_sidecar_redis.sh
-bash kubernetes/test_daemonset_deployment.sh
+# Sidecar deployment tests
+./test_sidecar_deployment.sh
+
+# DaemonSet deployment tests
+./test_daemonset_deployment.sh
 ```
 
 ### Writing Tests

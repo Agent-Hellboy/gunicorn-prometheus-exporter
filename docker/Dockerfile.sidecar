@@ -27,7 +27,7 @@ COPY docker/entrypoint.sh .
 RUN chmod +x /app/entrypoint.sh
 
 # Expose metrics port
-EXPOSE 9092
+EXPOSE 9091
 
 # Use the sidecar entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]

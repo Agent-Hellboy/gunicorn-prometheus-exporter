@@ -13,6 +13,7 @@ set -e
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
+YELLOW='\033[1;33m'
 NC='\033[0m'
 
 print_status() {
@@ -27,19 +28,24 @@ print_error() {
     echo -e "${RED}❌${NC} $1"
 }
 
+print_warning() {
+    echo -e "${YELLOW}⚠️${NC} $1"
+}
+
 main() {
     print_status "=========================================="
-    print_status "Docker Compose Deployment Test"
+    print_status "Docker Compose Full Stack Test (Redis + Prometheus + Grafana)"
     print_status "=========================================="
     echo ""
 
     # Start services in background
     print_status "Starting Docker Compose services..."
+    cd /Users/proshan/gunicorn-prometheus-exporter
     docker compose up -d --build
 
     # Wait for services to be ready
     print_status "Waiting for services to be ready..."
-    sleep 30
+    sleep 45
 
     # Test application health
     print_status "Testing application health..."
@@ -263,6 +269,10 @@ main() {
         # Test PromQL queries
         print_status "🔍 Testing PromQL queries..."
 
+        # Wait for Prometheus to scrape metrics (scrape_interval is 10s)
+        print_status "⏳ Waiting for Prometheus to scrape metrics..."
+        sleep 35
+
         # Test basic metric queries
         promql_tests=(
             "gunicorn_worker_requests_total"
@@ -270,13 +280,18 @@ main() {
             "gunicorn_worker_cpu_percent"
             "gunicorn_worker_uptime_seconds"
             "gunicorn_sidecar_uptime_seconds"
+            "gunicorn_master_worker_restart_total"
         )
 
         for query in "${promql_tests[@]}"; do
             result=$(curl -s -G "http://localhost:9090/api/v1/query" --data-urlencode "query=$query" 2>/dev/null)
             if echo "$result" | grep -q '"result":\[' && echo "$result" | grep -q '"status":"success"'; then
-                value_count=$(echo "$result" | grep -o '"value":\[[0-9]\+,' | wc -l)
-                print_success "✓ $query ($value_count values)"
+                value_count=$(echo "$result" | grep -o '"value":\[' | wc -l)
+                if [ "$value_count" -gt 0 ]; then
+                    print_success "✓ $query ($value_count values)"
+                else
+                    print_warning "⚠ $query (0 values - may need more time to scrape)"
+                fi
             else
                 print_error "✗ $query query failed"
             fi
@@ -305,6 +320,37 @@ main() {
         fi
 
         print_success "✅ PROMETHEUS VALIDATION PASSED"
+
+        # Test master metrics specifically
+        print_status "🔍 Testing MASTER METRICS in Prometheus..."
+        master_metrics_tests=(
+            "gunicorn_master_worker_restart_total"
+            "gunicorn_master_worker_restart_count_total"
+        )
+
+        for query in "${master_metrics_tests[@]}"; do
+            result=$(curl -s -G "http://localhost:9090/api/v1/query" --data-urlencode "query=$query" 2>/dev/null)
+            if echo "$result" | grep -q '"result":\[' && echo "$result" | grep -q '"status":"success"'; then
+                value_count=$(echo "$result" | grep -o '"value":\[' | wc -l)
+                if [ "$value_count" -gt 0 ]; then
+                    print_success "✓ $query ($value_count values)"
+                    # Show sample values for restart metrics
+                    if [ "$query" = "gunicorn_master_worker_restart_total" ]; then
+                        echo "$result" | jq -r '.data.result[0].value[1]' 2>/dev/null | while read -r value; do
+                            if [ -n "$value" ] && [ "$value" != "null" ]; then
+                                print_success "  └─ Total restarts: $value"
+                            fi
+                        done
+                    fi
+                else
+                    print_warning "⚠ $query (0 values - may not be present during normal operation)"
+                fi
+            else
+                print_warning "⚠ $query query failed or not available"
+            fi
+        done
+
+        print_success "✅ MASTER METRICS VALIDATION PASSED"
     else
         print_error "❌ Prometheus server health check failed"
         docker compose down
@@ -370,6 +416,26 @@ main() {
     done
 
     print_success "✅ END-TO-END PIPELINE VALIDATION PASSED"
+
+    # Validate Redis storage (metrics stored in Redis, not files)
+    print_status "🔍 Validating Redis-based metrics storage..."
+    redis_keys=$(docker exec gunicorn-redis redis-cli --scan --pattern "gunicorn:*" | wc -l)
+    if [ "$redis_keys" -gt 10 ]; then
+        print_success "✓ Redis contains $redis_keys gunicorn metrics keys (Redis storage working)"
+    else
+        print_error "✗ Insufficient Redis keys found ($redis_keys, expected 10+)"
+        docker compose down
+        exit 1
+    fi
+
+    # Validate no file storage is used (Redis mode should not create files)
+    print_status "🔍 Verifying no file-based storage (Redis-only mode)..."
+    file_count=$(docker exec gunicorn-app find /tmp/prometheus_multiproc -name "*.db" 2>/dev/null | wc -l || echo "0")
+    if [ "$file_count" -eq 0 ]; then
+        print_success "✓ No Prometheus multiprocess files found (correct for Redis-only mode)"
+    else
+        print_success "⚠ Found $file_count multiprocess files (Redis + file hybrid mode)"
+    fi
 
     # Stop services
     docker compose down

@@ -6,7 +6,68 @@ This guide covers deploying Gunicorn Prometheus Exporter in production environme
 
 ## Docker Deployment
 
-### Basic Docker Setup
+### Redis-Only Mode (Recommended for Containers)
+
+For containerized deployments (Docker Compose and Kubernetes), Redis-only mode is **required**:
+
+```yaml
+# docker-compose.yml - Redis-only mode
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_ENABLED=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_KEY_PREFIX=gunicorn
+      # Disable multiprocess files for Redis-only mode
+      - PROMETHEUS_MULTIPROC_DIR=
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9091:9091"
+    environment:
+      - REDIS_ENABLED=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_KEY_PREFIX=gunicorn
+      # Disable multiprocess files for Redis-only mode
+      - PROMETHEUS_MULTIPROC_DIR=
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+```
+
+**Benefits of Redis-only mode:**
+- No shared filesystem required
+- Works with read-only containers
+- Scales across multiple pods/nodes
+- Production-ready for Kubernetes
+
+### Basic Docker Setup (Local Development)
 
 **Dockerfile:**
 
@@ -34,6 +95,7 @@ ENV PROMETHEUS_METRICS_PORT=9091
 ENV PROMETHEUS_BIND_ADDRESS=0.0.0.0
 ENV PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
 ENV GUNICORN_WORKERS=4
+ENV REDIS_ENABLED=false
 
 # Start with gunicorn
 CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]
@@ -45,6 +107,20 @@ CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]
 version: "3.8"
 
 services:
+  # Redis for shared metrics storage (required for containerized deployments)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   app:
     build: .
     ports:
@@ -55,6 +131,10 @@ services:
       - PROMETHEUS_BIND_ADDRESS=0.0.0.0
       - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
       - GUNICORN_WORKERS=4
+      - REDIS_ENABLED=false
+    depends_on:
+      redis:
+        condition: service_healthy
     volumes:
       - prometheus_data:/tmp/prometheus_multiproc
 
@@ -71,6 +151,7 @@ services:
 
 volumes:
   prometheus_data:
+  redis_data:
   prometheus_storage:
 ```
 

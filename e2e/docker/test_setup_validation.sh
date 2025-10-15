@@ -71,7 +71,7 @@ done
 # Test Docker build
 print_status "INFO" "Testing main Dockerfile build..."
 cd "$PROJECT_ROOT"
-if docker build -t gunicorn-prometheus-exporter:test . > /dev/null 2>&1; then
+if docker build -t gunicorn-prometheus-exporter-sidecar:test . > /dev/null 2>&1; then
     print_status "PASS" "Main Docker image builds successfully"
 else
     print_status "FAIL" "Main Docker image build failed"
@@ -90,7 +90,7 @@ fi
 
 # Test basic container run
 print_status "INFO" "Testing basic container execution..."
-if docker run --rm gunicorn-prometheus-exporter:test --help > /dev/null 2>&1; then
+if docker run --rm gunicorn-prometheus-exporter-sidecar:test help > /dev/null 2>&1; then
     print_status "PASS" "Container runs successfully"
 else
     print_status "FAIL" "Container execution failed"
@@ -98,7 +98,7 @@ else
 fi
 
 # Cleanup test image
-docker rmi gunicorn-prometheus-exporter:test > /dev/null 2>&1 || true
+docker rmi gunicorn-prometheus-exporter-sidecar:test > /dev/null 2>&1 || true
 
 print_status "PASS" "All Docker environment tests passed!"
 print_status "INFO" "Docker environment is ready for E2E testing"

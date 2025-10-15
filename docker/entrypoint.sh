@@ -4,6 +4,8 @@ set -e
 # Gunicorn Prometheus Exporter Sidecar Entrypoint
 # This script handles the container startup and provides different modes
 
+echo "DEBUG: entrypoint.sh started with arguments: $@"
+
 # Default values
 DEFAULT_MODE="sidecar"
 DEFAULT_PORT=9091
@@ -41,6 +43,7 @@ usage() {
 
 # Function to run sidecar mode
 run_sidecar() {
+    echo "DEBUG: Entering run_sidecar function with arguments: $@"
     echo "Starting Gunicorn Prometheus Exporter in sidecar mode..."
 
     # Set default values from environment or use defaults
@@ -78,21 +81,24 @@ run_sidecar() {
 
     # Start the sidecar
     if [ "${REDIS_ENABLED:-false}" = "false" ]; then
-        exec python3 /app/sidecar.py \
+        echo "DEBUG: Executing python3 /app/sidecar.py with multiproc-dir. Arguments: sidecar --port \"$PORT\" --bind \"$BIND\" --multiproc-dir \"$MULTIPROC_DIR\" --update-interval \"$UPDATE_INTERVAL\" $@"
+        exec python3 /app/sidecar.py sidecar \
             --port "$PORT" \
             --bind "$BIND" \
             --multiproc-dir "$MULTIPROC_DIR" \
-            --update-interval "$UPDATE_INTERVAL"
+            --update-interval "$UPDATE_INTERVAL" $@ # Pass additional arguments
     else
-        exec python3 /app/sidecar.py \
+        echo "DEBUG: Executing python3 /app/sidecar.py without multiproc-dir. Arguments: sidecar --port \"$PORT\" --bind \"$BIND\" --update-interval \"$UPDATE_INTERVAL\" $@"
+        exec python3 /app/sidecar.py sidecar \
             --port "$PORT" \
             --bind "$BIND" \
-            --update-interval "$UPDATE_INTERVAL"
+            --update-interval "$UPDATE_INTERVAL" $@ # Pass additional arguments
     fi
 }
 
 # Function to run standalone mode
 run_standalone() {
+    echo "DEBUG: Entering run_standalone function with arguments: $@"
     echo "Starting Gunicorn Prometheus Exporter in standalone mode..."
 
     # Parse additional arguments for standalone mode
@@ -107,11 +113,12 @@ run_standalone() {
     echo "Metrics available at: http://$BIND:$PORT/metrics"
 
     # Start the sidecar in standalone mode
-    exec python3 /app/sidecar.py \
+    echo "DEBUG: Executing python3 /app/sidecar.py for standalone mode. Arguments: standalone --port \"$PORT\" --bind \"$BIND\" --multiproc-dir \"$MULTIPROC_DIR\" --update-interval 10 $@"
+    exec python3 /app/sidecar.py standalone \
         --port "$PORT" \
         --bind "$BIND" \
         --multiproc-dir "$MULTIPROC_DIR" \
-        --update-interval 10
+        --update-interval 10 $@ # Pass additional arguments
 }
 
 # Function to run health check
@@ -152,14 +159,18 @@ wait_for_dependencies() {
 # Main script logic
 MODE=${1:-$DEFAULT_MODE}
 
+echo "DEBUG: Mode determined as: $MODE. Remaining arguments before shift: $@"
+shift # Shift past the mode argument
+echo "DEBUG: Remaining arguments after shift: $@"
+
 case "$MODE" in
     "sidecar")
         wait_for_dependencies
-        run_sidecar
+        run_sidecar "$@"
         ;;
     "standalone")
         wait_for_dependencies
-        run_standalone
+        run_standalone "$@"
         ;;
     "health")
         run_health

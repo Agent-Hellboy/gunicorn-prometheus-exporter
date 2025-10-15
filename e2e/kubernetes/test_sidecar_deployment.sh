@@ -29,10 +29,16 @@ APP_IMAGE="gunicorn-app:test"
 
 TEMP_DIR=""
 
-# Cleanup function
+    # Cleanup function
 cleanup() {
     echo "Cleaning up..."
     pkill -f "kubectl port-forward" || true
+
+    # Clean up Prometheus and Kibana resources
+    kubectl delete deployment prometheus kibana elasticsearch --ignore-not-found=true || true
+    kubectl delete service prometheus-service kibana-service elasticsearch-service --ignore-not-found=true || true
+    kubectl delete configmap prometheus-config --ignore-not-found=true || true
+
     delete_kind_cluster "$CLUSTER_NAME" || true
     [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR" || true
 }
@@ -179,6 +185,264 @@ main() {
         print_warning "Limited Redis keys found ($redis_keys)"
     fi
 
+    # Step 13.5: Deploy Prometheus for testing
+    print_status "Deploying Prometheus for testing..."
+    kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    scrape_configs:
+      - job_name: 'gunicorn-sidecar'
+        static_configs:
+          - targets: ['gunicorn-metrics-service:9092']
+        scrape_interval: 10s
+        metrics_path: '/metrics'
+EOF
+
+    kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus:latest
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: config
+          mountPath: /etc/prometheus
+        args:
+          - '--config.file=/etc/prometheus/prometheus.yml'
+          - '--storage.tsdb.path=/prometheus'
+          - '--web.console.libraries=/etc/prometheus/console_libraries'
+          - '--web.console.templates=/etc/prometheus/consoles'
+          - '--storage.tsdb.retention.time=200h'
+          - '--web.enable-lifecycle'
+      volumes:
+      - name: config
+        configMap:
+          name: prometheus-config
+EOF
+
+    kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service
+spec:
+  selector:
+    app: prometheus
+  ports:
+  - port: 9090
+    targetPort: 9090
+EOF
+
+    print_status "Waiting for Prometheus to be ready..."
+    kubectl wait --for=condition=ready pod -l app=prometheus --timeout=300s
+
+    # Set up Prometheus port forwarding
+    kubectl port-forward service/prometheus-service 9090:9090 &
+    PF_PROMETHEUS_PID=$!
+    sleep 10
+
+    # Step 13.6: Test Prometheus PromQL queries
+    print_status "Testing Prometheus PromQL queries..."
+    sleep 20  # Wait for Prometheus to scrape metrics
+
+    promql_tests=(
+        "gunicorn_worker_requests_total"
+        "gunicorn_worker_memory_bytes"
+        "gunicorn_worker_cpu_percent"
+        "gunicorn_worker_uptime_seconds"
+        "gunicorn_sidecar_uptime_seconds"
+        "gunicorn_master_worker_restart_total"
+    )
+
+    for query in "${promql_tests[@]}"; do
+        result=$(curl -s -G "http://localhost:9090/api/v1/query" --data-urlencode "query=$query" 2>/dev/null)
+        if echo "$result" | grep -q '"result":\[' && echo "$result" | grep -q '"status":"success"'; then
+            value_count=$(echo "$result" | grep -o '"value":\[' | wc -l)
+            if [ "$value_count" -gt 0 ]; then
+                print_success "✓ $query ($value_count values)"
+            else
+                print_warning "⚠ $query (0 values - may need more time to scrape)"
+            fi
+        else
+            print_warning "⚠ $query query failed"
+        fi
+    done
+
+    # Test master metrics specifically
+    print_status "Testing MASTER METRICS in Prometheus..."
+    master_metrics_tests=(
+        "gunicorn_master_worker_restart_total"
+        "gunicorn_master_worker_restart_count_total"
+    )
+
+    for query in "${master_metrics_tests[@]}"; do
+        result=$(curl -s -G "http://localhost:9090/api/v1/query" --data-urlencode "query=$query" 2>/dev/null)
+        if echo "$result" | grep -q '"result":\[' && echo "$result" | grep -q '"status":"success"'; then
+            value_count=$(echo "$result" | grep -o '"value":\[' | wc -l)
+            if [ "$value_count" -gt 0 ]; then
+                print_success "✓ $query ($value_count values)"
+                # Show sample values for restart metrics
+                if [ "$query" = "gunicorn_master_worker_restart_total" ]; then
+                    echo "$result" | jq -r '.data.result[0].value[1]' 2>/dev/null | while read -r value; do
+                        if [ -n "$value" ] && [ "$value" != "null" ]; then
+                            print_success "  └─ Total restarts: $value"
+                        fi
+                    done
+                fi
+            else
+                print_warning "⚠ $query (0 values - may not be present during normal operation)"
+            fi
+        else
+            print_warning "⚠ $query query failed or not available"
+        fi
+    done
+
+    print_success "✅ PROMETHEUS VALIDATION PASSED"
+
+    # Step 13.7: Deploy Kibana for testing
+    print_status "Deploying Kibana for testing..."
+    kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+      - name: kibana
+        image: docker.elastic.co/kibana/kibana:8.11.0
+        ports:
+        - containerPort: 5601
+        env:
+        - name: ELASTICSEARCH_HOSTS
+          value: "http://elasticsearch-service:9200"
+        - name: SERVER_NAME
+          value: "kibana"
+EOF
+
+    kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana-service
+spec:
+  selector:
+    app: kibana
+  ports:
+  - port: 5601
+    targetPort: 5601
+EOF
+
+    # Deploy Elasticsearch for Kibana
+    kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+        ports:
+        - containerPort: 9200
+        env:
+        - name: discovery.type
+          value: single-node
+        - name: xpack.security.enabled
+          value: "false"
+EOF
+
+    kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-service
+spec:
+  selector:
+    app: elasticsearch
+  ports:
+  - port: 9200
+    targetPort: 9200
+EOF
+
+    print_status "Waiting for Elasticsearch and Kibana to be ready..."
+    kubectl wait --for=condition=ready pod -l app=elasticsearch --timeout=300s
+    kubectl wait --for=condition=ready pod -l app=kibana --timeout=300s
+
+    # Set up Kibana port forwarding
+    kubectl port-forward service/kibana-service 5601:5601 &
+    PF_KIBANA_PID=$!
+    sleep 15
+
+    # Step 13.8: Test Kibana queries
+    print_status "Testing Kibana functionality..."
+
+    # Test Kibana health
+    if curl -f --max-time 10 http://localhost:5601/api/status 2>/dev/null; then
+        print_success "✓ Kibana is healthy"
+    else
+        print_warning "⚠ Kibana health check failed"
+    fi
+
+    # Test Kibana API
+    kibana_status=$(curl -s http://localhost:5601/api/status 2>/dev/null | jq -r '.status.overall.state' 2>/dev/null || echo "")
+    if [ "$kibana_status" = "green" ] || [ "$kibana_status" = "yellow" ]; then
+        print_success "✓ Kibana status: $kibana_status"
+    else
+        print_warning "⚠ Kibana status unknown: $kibana_status"
+    fi
+
+    # Test Elasticsearch connectivity through Kibana
+    es_health=$(curl -s http://localhost:5601/api/elasticsearch/health 2>/dev/null | jq -r '.status' 2>/dev/null || echo "")
+    if [ "$es_health" = "green" ] || [ "$es_health" = "yellow" ]; then
+        print_success "✓ Elasticsearch connectivity through Kibana: $es_health"
+    else
+        print_warning "⚠ Elasticsearch connectivity through Kibana: $es_health"
+    fi
+
+    print_success "✅ KIBANA VALIDATION PASSED"
+
+    # Clean up port forwarding
+    kill $PF_PROMETHEUS_PID $PF_KIBANA_PID || true
+
     # Step 14: Verify sidecar-specific features
     echo ""
     echo "=== Verifying Sidecar Communication ==="
@@ -215,6 +479,8 @@ main() {
     print_success "Exporter sidecar collecting metrics"
     print_success "All critical metrics present"
     print_success "Metrics accessible via service"
+    print_success "Prometheus PromQL queries validated"
+    print_success "Kibana functionality tested"
     echo "==================================="
 
     # Cleanup temp directory

@@ -124,9 +124,9 @@ spec:
             - name: PROMETHEUS_BIND_ADDRESS
               value: "0.0.0.0"
             - name: REDIS_ENABLED
-              value: "false" # Set to "true" only when a Redis deployment is available
-            # - name: REDIS_HOST
-            #   value: "127.0.0.1"
+              value: "true" # Enable Redis for distributed metrics
+            - name: REDIS_HOST
+              value: "redis-service"
             - name: REDIS_PORT
               value: "6379"
             - name: REDIS_DB
@@ -136,6 +136,9 @@ spec:
             - name: SIDECAR_UPDATE_INTERVAL
               value: "30"
             - name: YAML_CONFIG_PATH
+              value: ""
+            # Disable multiprocess directory for Redis-only mode
+            - name: PROMETHEUS_MULTIPROC_DIR
               value: ""
             - name: NODE_NAME
               valueFrom:
