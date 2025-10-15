@@ -112,7 +112,7 @@ main() {
     print_status "Setting up port forwarding..."
     kubectl port-forward service/gunicorn-app-service 8000:8000 &
     PF_APP_PID=$!
-    kubectl port-forward service/gunicorn-metrics-service 9091:9091 &
+    kubectl port-forward service/gunicorn-metrics-service 9092:9092 &
     PF_METRICS_PID=$!
 
     sleep 15
@@ -142,7 +142,7 @@ main() {
     print_status "Fetching metrics..."
     print_status "DEBUG: Checking Redis connectivity from pod..."
     kubectl exec -it deployment/gunicorn-app-with-sidecar -- sh -c "echo 'Testing Redis connectivity...' && nc -z redis-service 6379 && echo 'Redis reachable' || echo 'Redis NOT reachable'" || true
-    metrics_response=$(curl -f --max-time 10 http://localhost:9091/metrics 2>/dev/null)
+    metrics_response=$(curl -f --max-time 10 http://localhost:9092/metrics 2>/dev/null)
 
     if [ -z "$metrics_response" ]; then
         print_error "No metrics response from sidecar metrics endpoint"

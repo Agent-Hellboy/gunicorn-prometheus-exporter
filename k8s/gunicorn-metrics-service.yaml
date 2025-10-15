@@ -8,8 +8,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 9091
-      targetPort: 9091
+    - port: 9092
+      targetPort: 9092
       protocol: TCP
       name: metrics
   selector:

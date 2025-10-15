@@ -64,7 +64,13 @@ class ExporterConfig:
 
     def _setup_multiproc_dir(self):
         """Set up the Prometheus multiprocess directory."""
-        if not os.environ.get(self.ENV_PROMETHEUS_MULTIPROC_DIR):
+        # Skip setting multiprocess directory when Redis is enabled
+        redis_enabled = os.environ.get(self.ENV_REDIS_ENABLED, "").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+        if not redis_enabled and not os.environ.get(self.ENV_PROMETHEUS_MULTIPROC_DIR):
             os.environ[
                 self.ENV_PROMETHEUS_MULTIPROC_DIR
             ] = self.PROMETHEUS_MULTIPROC_DIR
@@ -72,6 +78,16 @@ class ExporterConfig:
     @property
     def prometheus_multiproc_dir(self) -> str:
         """Get the Prometheus multiprocess directory path."""
+        # When Redis is enabled, return /tmp since we don't use multiprocess
+        # files but need a valid path
+        redis_enabled = os.environ.get(self.ENV_REDIS_ENABLED, "").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+        if redis_enabled:
+            return "/tmp"  # Valid path for Redis mode, not used for sensitive operations
+            # nosec B108
         return os.environ.get(
             self.ENV_PROMETHEUS_MULTIPROC_DIR, self.PROMETHEUS_MULTIPROC_DIR
         )

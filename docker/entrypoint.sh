@@ -54,7 +54,8 @@ run_sidecar() {
         # Create multiprocess directory if it doesn't exist
         mkdir -p "$MULTIPROC_DIR"
     else
-        # In Redis mode, don't use multiprocess directory
+        # In Redis mode, disable multiprocess directory entirely
+        export PROMETHEUS_MULTIPROC_DIR=""
         MULTIPROC_DIR=""
     fi
 

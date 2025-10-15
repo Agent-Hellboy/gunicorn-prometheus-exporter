@@ -14,8 +14,12 @@ WORKDIR /app
 COPY docker/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install gunicorn-prometheus-exporter
-RUN pip install --no-cache-dir "gunicorn-prometheus-exporter[all]"
+# Install gunicorn-prometheus-exporter from source
+COPY src/ ./src/
+COPY pyproject.toml .
+COPY README.md .
+COPY LICENSE .
+RUN pip install --no-cache-dir -e .[all]
 
 # Copy application code
 COPY docker/app.py .

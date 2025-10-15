@@ -131,8 +131,13 @@ class ConfigManager:
         """Validate required configuration settings (delegates to ExporterConfig)."""
         config = self._config
 
-        # Skip multiprocess directory creation when Redis is enabled
-        if not config.redis_enabled:
+        # Skip multiprocess directory creation and validation when Redis is enabled
+        redis_enabled = os.environ.get("REDIS_ENABLED", "").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
+        if not redis_enabled and config.prometheus_multiproc_dir:
             # Keep directory readiness check for multiprocess mode
             try:
                 os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
@@ -141,6 +146,10 @@ class ConfigManager:
                     f"Cannot create multiprocess directory: {e}"
                 )
                 return
+        else:
+            # When Redis is enabled, skip directory validation entirely
+            # The multiprocess directory is not needed in Redis mode
+            pass
 
         # Delegate full validation (port ranges, workers, timeouts, etc.)
         if not config.validate():
