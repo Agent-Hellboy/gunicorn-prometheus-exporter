@@ -105,20 +105,36 @@ test_entrypoint_modes() {
     print_status "Testing entrypoint modes..."
 
     # Test sidecar mode
-    docker run --rm gunicorn-prometheus-exporter-sidecar:test sidecar --help 2>&1 | head -5 >/dev/null
-    print_success "Sidecar mode works"
+    if docker run --rm gunicorn-prometheus-exporter-sidecar:test sidecar --help >/dev/null 2>&1; then
+        print_success "Sidecar mode works"
+    else
+        print_error "Sidecar mode failed"
+        exit 1
+    fi
 
     # Test standalone mode
-    docker run --rm gunicorn-prometheus-exporter-sidecar:test standalone --help 2>&1 | head -5 >/dev/null
-    print_success "Standalone mode works"
+    if docker run --rm gunicorn-prometheus-exporter-sidecar:test standalone --help >/dev/null 2>&1; then
+        print_success "Standalone mode works"
+    else
+        print_error "Standalone mode failed"
+        exit 1
+    fi
 
     # Test health mode
-    docker run --rm gunicorn-prometheus-exporter-sidecar:test health --help 2>&1 | head -5 >/dev/null
-    print_success "Health mode works"
+    if docker run --rm gunicorn-prometheus-exporter-sidecar:test health --help >/dev/null 2>&1; then
+        print_success "Health mode works"
+    else
+        print_error "Health mode failed"
+        exit 1
+    fi
 
     # Test help mode
-    docker run --rm gunicorn-prometheus-exporter-sidecar:test help 2>&1 | head -5 >/dev/null
-    print_success "Help mode works"
+    if docker run --rm gunicorn-prometheus-exporter-sidecar:test help --help >/dev/null 2>&1; then
+        print_success "Help mode works"
+    else
+        print_error "Help mode failed"
+        exit 1
+    fi
 
     print_success "All entrypoint modes test passed"
 }
