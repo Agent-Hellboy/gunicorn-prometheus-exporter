@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # Redis for shared metrics storage (optional)
   redis:
