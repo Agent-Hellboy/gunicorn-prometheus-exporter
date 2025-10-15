@@ -147,8 +147,12 @@ class TestEntrypointScript:
         with open(entrypoint_path, "r") as f:
             content = f.read()
 
-        # Check for error handling
-        assert "set -e" in content or "set -o errexit" in content
+        # Check for error handling (strict bash options)
+        assert (
+            "set -Eeuo pipefail" in content
+            or "set -e" in content
+            or "set -o errexit" in content
+        )
         assert "exit" in content
         assert "echo" in content  # For logging
 
