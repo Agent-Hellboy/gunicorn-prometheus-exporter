@@ -8,14 +8,16 @@ import os
 from gunicorn_prometheus_exporter import load_yaml_config
 
 
-# Load YAML configuration (only if path is provided)
-yaml_config_path = os.getenv(
-    "YAML_CONFIG_PATH", "gunicorn-prometheus-exporter-basic.yml"
-)
+# Load YAML configuration (use default if not provided)
+yaml_config_path = os.getenv("YAML_CONFIG_PATH")
 if yaml_config_path:
     load_yaml_config(yaml_config_path)
+else:
+    # Load default configuration for proper hook initialization
+    load_yaml_config("gunicorn-prometheus-exporter-basic.yml")
 
-# Import hooks after loading YAML config
+# Import hooks and worker class after loading YAML config
+from gunicorn_prometheus_exporter import PrometheusWorker  # noqa: E402
 from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
     default_on_exit,
     default_on_starting,
@@ -32,7 +34,7 @@ workers = int(os.getenv("GUNICORN_WORKERS", 2))
 
 # Always use PrometheusWorker for worker-level metrics collection
 # The storage backend (Redis vs multiprocess files) is handled by hooks and sidecar
-worker_class = "gunicorn_prometheus_exporter.PrometheusWorker"
+worker_class = PrometheusWorker
 
 worker_connections = 1000
 timeout = 30
