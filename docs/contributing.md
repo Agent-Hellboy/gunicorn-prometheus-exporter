@@ -190,9 +190,9 @@ This project relies heavily on containerised workflows and infrastructure automa
 
 ### Local Container Tooling
 
-- **Docker images**: The sidecar and sample app live under `Dockerfile` and `docker/Dockerfile.app`. Rebuild them with `docker build -t gunicorn-prometheus-exporter:test .` and `docker build -f docker/Dockerfile.app -t gunicorn-app:test .` before running integration tests.
+- **Docker images**: The sidecar and sample app live under `Dockerfile` and `docker/Dockerfile.app`. Rebuild them with `docker build -f docker/Dockerfile.sidecar -t gunicorn-prometheus-exporter-sidecar:test .` and `docker build -f docker/Dockerfile.app -t gunicorn-app:test .` before running integration tests.
 - **Docker Compose stack**: `docker-compose.yml` wires Redis, Gunicorn, the exporter, Prometheus, and Grafana. Use `docker compose up -d --build` for end-to-end smoke tests and `docker compose down` for cleanup.
-- **Shared memory requirements**: Gunicorn expects `/dev/shm` ≥ 1 GiB. Compose already sets `shm_size: 1gb`; if you run `docker run` manually, append `--shm-size=1g`.
+- **Shared memory requirements**: Gunicorn expects `/dev/shm` = 1 GiB. Compose already sets `shm_size: 1gb`; if you run `docker run` manually, append `--shm-size=1g`.
 
 ### Kubernetes Hands-on
 
@@ -203,7 +203,7 @@ This project relies heavily on containerised workflows and infrastructure automa
   kubectl wait --for=condition=ready pod -l app=gunicorn-app --timeout=300s
   kubectl port-forward service/gunicorn-metrics-service 9091:9091
   ```
-- **Temporary manifest rewrites**: In CI we copy `k8s/*.yaml` into `/tmp/k8s-test/` and `sed` the image tags to `gunicorn-app:test` and `gunicorn-prometheus-exporter:test`. Mirror this when testing locally so the cluster uses your freshly built images.
+- **Temporary manifest rewrites**: In CI we copy `k8s/*.yaml` into `/tmp/k8s-test/` and `sed` the image tags to `gunicorn-app:test` and `gunicorn-prometheus-exporter-sidecar:test`. Mirror this when testing locally so the cluster uses your freshly built images.
 - **Cleanup discipline**: Delete port-forward processes (`pkill -f "kubectl port-forward"`) and clusters (`kind delete cluster --name test-cluster`) to avoid resource leaks.
 
 ### Observability Stack

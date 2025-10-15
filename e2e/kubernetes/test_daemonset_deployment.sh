@@ -56,13 +56,15 @@ main() {
     # Step 4: Prepare manifests
     print_status "Preparing manifests..."
     TEMP_DIR=$(mktemp -d)
-    cp -r k8s/*.yaml "$TEMP_DIR/"
+    cp "$SCRIPT_DIR/test-daemonset.yaml" "$TEMP_DIR/sidecar-daemonset.yaml"
+    cp "$PROJECT_ROOT/k8s/redis-pvc.yaml" "$TEMP_DIR/"
+    cp "$PROJECT_ROOT/k8s/redis-daemonset.yaml" "$TEMP_DIR/"
+    cp "$PROJECT_ROOT/k8s/daemonset-service.yaml" "$TEMP_DIR/"
+    cp "$PROJECT_ROOT/k8s/daemonset-metrics-service.yaml" "$TEMP_DIR/"
 
-    # Update image references
-    sed -i -E "s|princekrroshan01/gunicorn-app:[^\"[:space:]]*|$APP_IMAGE|g" "$TEMP_DIR/sidecar-daemonset.yaml"
-    sed -i -E "s|princekrroshan01/gunicorn-prometheus-exporter:[^\"[:space:]]*|$EXPORTER_IMAGE|g" "$TEMP_DIR/sidecar-daemonset.yaml"
+    # No need to update image references with sed, as test-daemonset.yaml already has the correct tags.
 
-    # Step 5: Deploy Redis
+    # Step 5: Deploy Redis DaemonSet
     print_status "Deploying Redis DaemonSet..."
     kubectl apply -f "$TEMP_DIR/redis-pvc.yaml"
     kubectl apply -f "$TEMP_DIR/redis-daemonset.yaml"

@@ -8,21 +8,21 @@ import os
 from gunicorn_prometheus_exporter import load_yaml_config
 
 
-# Load YAML configuration (only if path is provided)
-yaml_config_path = os.getenv(
-    "YAML_CONFIG_PATH", "gunicorn-prometheus-exporter-basic.yml"
-)
+# Load YAML configuration (use default if not provided)
+yaml_config_path = os.getenv("YAML_CONFIG_PATH")
 if yaml_config_path:
     load_yaml_config(yaml_config_path)
+else:
+    # Load default configuration for proper hook initialization
+    load_yaml_config("gunicorn-prometheus-exporter-basic.yml")
 
-# Import hooks after loading YAML config
+# Import hooks and worker class after loading YAML config
 from gunicorn_prometheus_exporter.hooks import (  # noqa: E402
     default_on_exit,
     default_on_starting,
     default_post_fork,
-    default_when_ready,
     default_worker_int,
-    redis_when_ready,
+    redis_sidecar_when_ready,
 )
 
 
@@ -47,12 +47,8 @@ loglevel = "info"
 proc_name = "gunicorn-prometheus-exporter-app"
 
 # Use Prometheus exporter hooks
-# Choose appropriate when_ready hook based on storage backend
-redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() in ("true", "1", "yes")
-if redis_enabled:
-    when_ready = redis_when_ready  # Redis storage setup
-else:
-    when_ready = default_when_ready  # Multiprocess file storage
+# In sidecar mode, always use redis_sidecar_when_ready (Redis storage setup without metrics server)
+when_ready = redis_sidecar_when_ready
 
 on_starting = default_on_starting
 worker_int = default_worker_int

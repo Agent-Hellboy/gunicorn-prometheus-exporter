@@ -42,6 +42,9 @@ class ExporterConfig:
     ENV_REDIS_TTL_SECONDS = "REDIS_TTL_SECONDS"
     ENV_REDIS_TTL_DISABLED = "REDIS_TTL_DISABLED"
 
+    # Sidecar environment variables
+    ENV_SIDECAR_MODE = "SIDECAR_MODE"
+
     # Cleanup environment variables
     ENV_CLEANUP_DB_FILES = "CLEANUP_DB_FILES"
 
@@ -52,14 +55,19 @@ class ExporterConfig:
     ENV_PROMETHEUS_SSL_CLIENT_CAPATH = "PROMETHEUS_SSL_CLIENT_CAPATH"
     ENV_PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED = "PROMETHEUS_SSL_CLIENT_AUTH_REQUIRED"
 
-    def __init__(self):
+    def __init__(self, is_sidecar: bool = False):
         """Initialize configuration with environment variables and defaults.
+
+        Args:
+            is_sidecar: If True, operate in sidecar mode
+            (skip Gunicorn-specific configs).
 
         Note: This modifies os.environ during initialization to set up
         the multiprocess directory if not already set. If you need to
         set environment variables after importing this module, do so
         before creating an ExporterConfig instance.
         """
+        self._is_sidecar = is_sidecar
         self._setup_multiproc_dir()
 
     def _setup_multiproc_dir(self):
@@ -144,6 +152,11 @@ class ExporterConfig:
         return int(
             os.environ.get(self.ENV_GUNICORN_KEEPALIVE, str(self.GUNICORN_KEEPALIVE))
         )
+
+    @property
+    def is_sidecar(self) -> bool:
+        """Check if running in sidecar mode."""
+        return self._is_sidecar
 
     # Redis properties
     @property
@@ -261,6 +274,9 @@ class ExporterConfig:
 
     def get_gunicorn_config(self) -> dict:
         """Get Gunicorn configuration dictionary."""
+        if self.is_sidecar:
+            # Gunicorn is not running in sidecar mode, so no Gunicorn config needed
+            return {}
         return {
             "bind": "127.0.0.1:8084",
             "workers": self.gunicorn_workers,
@@ -282,31 +298,47 @@ class ExporterConfig:
             "multiproc_dir": self.prometheus_multiproc_dir,
         }
 
-    def validate(self) -> bool:
-        """Validate the configuration."""
-        try:
-            # Check required environment variables for production
-            required_vars = [
-                (self.ENV_PROMETHEUS_BIND_ADDRESS, "Bind address for metrics server"),
-                (self.ENV_PROMETHEUS_METRICS_PORT, "Port for metrics server"),
-                (self.ENV_GUNICORN_WORKERS, "Number of Gunicorn workers"),
-            ]
+    def _get_required_gunicorn_vars(self, redis_enabled: bool) -> list[tuple[str, str]]:
+        """Helper to get required Gunicorn environment variables."""
+        if redis_enabled:
+            return []
+        return [
+            (self.ENV_PROMETHEUS_BIND_ADDRESS, "Bind address for metrics server"),
+            (self.ENV_PROMETHEUS_METRICS_PORT, "Port for metrics server"),
+            (self.ENV_GUNICORN_WORKERS, "Number of Gunicorn workers"),
+        ]
 
-            missing_vars = []
-            for var_name, description in required_vars:
-                if not os.environ.get(var_name):
-                    missing_vars.append(f"{var_name} ({description})")
+    def _log_suggested_env_vars(self, required_vars: list[tuple[str, str]]) -> None:
+        """Helper to log suggested environment variables for setting in production."""
+        logger.error("\n Set these variables before running in production:")
+        # Only suggest setting variables if they are actually required
+        if self.ENV_PROMETHEUS_BIND_ADDRESS in [v[0] for v in required_vars]:
+            logger.error("   export %s=0.0.0.0", self.ENV_PROMETHEUS_BIND_ADDRESS)
+        if self.ENV_PROMETHEUS_METRICS_PORT in [v[0] for v in required_vars]:
+            logger.error("   export %s=9091", self.ENV_PROMETHEUS_METRICS_PORT)
+        if self.ENV_GUNICORN_WORKERS in [v[0] for v in required_vars]:
+            logger.error("   export %s=4", self.ENV_GUNICORN_WORKERS)
 
-            if missing_vars:
-                logger.error("Required environment variables not set:")
-                for var in missing_vars:
-                    logger.error("   - %s", var)
-                logger.error("\n Set these variables before running in production:")
-                logger.error("   export %s=0.0.0.0", self.ENV_PROMETHEUS_BIND_ADDRESS)
-                logger.error("   export %s=9091", self.ENV_PROMETHEUS_METRICS_PORT)
-                logger.error("   export %s=4", self.ENV_GUNICORN_WORKERS)
-                return False
+    def _check_missing_environment_variables(
+        self, required_vars: list[tuple[str, str]]
+    ) -> bool:
+        """Helper to check and log missing environment variables."""
+        missing_vars = []
+        for var_name, description in required_vars:
+            if not os.environ.get(var_name):
+                missing_vars.append(f"{var_name} ({description})")
 
+        if missing_vars:
+            logger.error("Required environment variables not set:")
+            for var in missing_vars:
+                logger.error("   - %s", var)
+            self._log_suggested_env_vars(required_vars)
+            return False
+        return True
+
+    def _validate_non_redis_settings(self, redis_enabled: bool) -> None:
+        """Helper to validate non-Redis specific settings."""
+        if not redis_enabled:
             # Validate multiprocess directory
             if not os.path.exists(self.prometheus_multiproc_dir):
                 os.makedirs(self.prometheus_multiproc_dir, exist_ok=True)
@@ -315,7 +347,7 @@ class ExporterConfig:
             if not (1024 <= self.prometheus_metrics_port <= 65535):
                 raise ValueError(
                     f"Port {self.prometheus_metrics_port} is not in valid range "
-                    f"(1024-65535)"
+                    "(1024-65535)"
                 )
 
             # Validate worker count
@@ -329,6 +361,29 @@ class ExporterConfig:
                 raise ValueError(
                     f"Timeout {self.gunicorn_timeout} must be at least 1 second"
                 )
+
+    def validate(self) -> bool:
+        """Validate the configuration."""
+        try:
+            redis_enabled = os.environ.get(self.ENV_REDIS_ENABLED, "").lower() in (
+                "true",
+                "1",
+                "yes",
+            )
+
+            # If in sidecar mode, skip Gunicorn-specific validations entirely
+            # (Detailed explanation in previous commits for this block)
+            if self.is_sidecar:
+                logger.info(
+                    "Sidecar mode: Skipping Gunicorn-specific configuration validation."
+                )
+                return True
+
+            required_vars = self._get_required_gunicorn_vars(redis_enabled)
+            if not self._check_missing_environment_variables(required_vars):
+                return False
+
+            self._validate_non_redis_settings(redis_enabled)
 
             return True
 

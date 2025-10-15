@@ -24,7 +24,7 @@ source "$COMMON_DIR/validate_metrics.sh"
 # Configuration
 CLUSTER_NAME="sidecar-test"
 NUM_WORKERS=0  # Just control-plane for sidecar test
-EXPORTER_IMAGE="gunicorn-prometheus-exporter:test"
+EXPORTER_IMAGE="gunicorn-prometheus-exporter-sidecar:test"
 APP_IMAGE="gunicorn-app:test"
 
 TEMP_DIR=""
@@ -58,11 +58,15 @@ main() {
     # Step 4: Prepare manifests
     print_status "Preparing manifests..."
     TEMP_DIR=$(mktemp -d)
-    cp -r k8s/*.yaml "$TEMP_DIR/"
+    cp "$SCRIPT_DIR/test-sidecar-deployment.yaml" "$TEMP_DIR/sidecar-deployment.yaml"
+    cp "$PROJECT_ROOT/k8s/redis-pvc.yaml" "$TEMP_DIR/"
+    cp "$PROJECT_ROOT/k8s/redis-deployment.yaml" "$TEMP_DIR/"
+    cp "$PROJECT_ROOT/k8s/redis-service.yaml" "$TEMP_DIR/"
+    cp "$PROJECT_ROOT/k8s/gunicorn-app-service.yaml" "$TEMP_DIR/"
+    cp "$PROJECT_ROOT/k8s/gunicorn-metrics-service.yaml" "$TEMP_DIR/"
+    cp "$PROJECT_ROOT/k8s/gunicorn-app-netpol.yaml" "$TEMP_DIR/"
 
-    # Update image references
-    sed -i -E "s|princekrroshan01/gunicorn-app:[^\"[:space:]]*|$APP_IMAGE|g" "$TEMP_DIR/sidecar-deployment.yaml"
-    sed -i -E "s|princekrroshan01/gunicorn-prometheus-exporter:[^\"[:space:]]*|$EXPORTER_IMAGE|g" "$TEMP_DIR/sidecar-deployment.yaml"
+    # No need to update image references with sed, as test-sidecar-deployment.yaml already has the correct tags.
 
     # Step 5: Deploy Redis
     print_status "Deploying Redis..."
@@ -140,8 +144,8 @@ main() {
 
     # Step 11: Fetch and validate metrics
     print_status "Fetching metrics..."
-    print_status "DEBUG: Checking Redis connectivity from pod..."
-    kubectl exec -it deployment/gunicorn-app-with-sidecar -- sh -c "echo 'Testing Redis connectivity...' && nc -z redis-service 6379 && echo 'Redis reachable' || echo 'Redis NOT reachable'" || true
+    print_status "DEBUG: Checking Redis connectivity from sidecar pod..."
+    kubectl exec -it deployment/gunicorn-app-with-sidecar -c prometheus-exporter -- sh -c "echo 'Testing Redis connectivity...' && nc -z redis-service 6379 && echo 'Redis reachable' || echo 'Redis NOT reachable'" || true
     metrics_response=$(curl -f --max-time 10 http://localhost:9092/metrics 2>/dev/null)
 
     if [ -z "$metrics_response" ]; then

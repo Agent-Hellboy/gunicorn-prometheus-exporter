@@ -39,6 +39,8 @@ from pathlib import Path
 from prometheus_client import CollectorRegistry, Gauge, start_http_server
 from prometheus_client.multiprocess import MultiProcessCollector
 
+from gunicorn_prometheus_exporter.config.settings import ExporterConfig
+
 
 # Configure logging
 logging.basicConfig(
@@ -276,6 +278,9 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # Set sidecar mode environment variable
+    os.environ[ExporterConfig.ENV_SIDECAR_MODE] = "true"
 
     # Check if Redis is enabled (for Kubernetes mode)
     redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() in ("true", "1", "yes")

@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gunicorn-app-with-sidecar
+  labels:
+    app: gunicorn-app
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gunicorn-app
+  template:
+    metadata:
+      labels:
+        app: gunicorn-app
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        # Main application container
+        - name: app
+          image: gunicorn-app:test
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - containerPort: 8000
+              name: http
+              protocol: TCP
+          env:
+            - name: GUNICORN_WORKERS
+              value: "4"
+            - name: PROMETHEUS_BIND_ADDRESS
+              value: "0.0.0.0"
+            - name: PROMETHEUS_METRICS_PORT
+              value: "9091"
+            - name: REDIS_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_DB
+              value: "0"
+            - name: REDIS_KEY_PREFIX
+              value: "gunicorn"
+            - name: YAML_CONFIG_PATH
+              value: ""
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+        # Prometheus exporter sidecar
+        - name: prometheus-exporter
+          image: gunicorn-prometheus-exporter-sidecar:test
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - containerPort: 9092
+              name: metrics
+              protocol: TCP
+              hostPort: 9092
+          env:
+            - name: PROMETHEUS_METRICS_PORT
+              value: "9092"
+            - name: PROMETHEUS_BIND_ADDRESS
+              value: "0.0.0.0"
+            - name: REDIS_ENABLED
+              value: "true"
+            - name: REDIS_HOST
+              value: "redis-service"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_DB
+              value: "0"
+            - name: REDIS_KEY_PREFIX
+              value: "gunicorn"
+            - name: SIDECAR_UPDATE_INTERVAL
+              value: "30"
+            - name: YAML_CONFIG_PATH
+              value: ""
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9092
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9092
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30

@@ -84,7 +84,11 @@ class ConfigManager:
                     os.environ[key] = str(value)
 
                 # Create configuration instance
-                self._config = ExporterConfig()
+                # Pass is_sidecar argument based on environment variable
+                is_sidecar_mode = os.environ.get(
+                    ExporterConfig.ENV_SIDECAR_MODE, "false"
+                ).lower() in ("true", "1", "yes")
+                self._config = ExporterConfig(is_sidecar=is_sidecar_mode)
                 self._initialization_time = time.time()
 
                 # Validate configuration
@@ -131,25 +135,18 @@ class ConfigManager:
         """Validate required configuration settings (delegates to ExporterConfig)."""
         config = self._config
 
-        # Skip multiprocess directory creation and validation when Redis is enabled
-        redis_enabled = os.environ.get("REDIS_ENABLED", "").lower() in (
-            "true",
-            "1",
-            "yes",
-        )
-        if not redis_enabled and config.prometheus_multiproc_dir:
-            # Keep directory readiness check for multiprocess mode
+        # If in sidecar mode, skip all Gunicorn-related validations
+        if config.is_sidecar:
+            logger.info(
+                "Sidecar mode: Skipping Gunicorn-related required settings validation."
+            )
+            # In sidecar mode, ensure only Prometheus settings are validated.
             try:
-                os.makedirs(config.prometheus_multiproc_dir, exist_ok=True)
-            except Exception as e:
-                self._validation_errors.append(
-                    f"Cannot create multiprocess directory: {e}"
-                )
-                return
-        else:
-            # When Redis is enabled, skip directory validation entirely
-            # The multiprocess directory is not needed in Redis mode
-            pass
+                _ = config.prometheus_metrics_port
+                _ = config.prometheus_bind_address
+            except ValueError as e:
+                self._validation_errors.append(f"Prometheus configuration invalid: {e}")
+            return
 
         # Delegate full validation (port ranges, workers, timeouts, etc.)
         if not config.validate():
@@ -347,10 +344,13 @@ class ConfigManager:
                     return health
 
                 # Test multiprocess directory
-                try:
-                    os.makedirs(self._config.prometheus_multiproc_dir, exist_ok=True)
-                except Exception as e:
-                    health["errors"].append(f"Multiprocess directory error: {e}")
+                if not self._config.redis_enabled:
+                    try:
+                        os.makedirs(
+                            self._config.prometheus_multiproc_dir, exist_ok=True
+                        )
+                    except Exception as e:
+                        health["errors"].append(f"Multiprocess directory error: {e}")
 
                 # Test Redis connection if enabled
                 if self._config.redis_enabled:
