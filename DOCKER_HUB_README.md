@@ -449,4 +449,4 @@ If you find this project useful, please consider giving it a star on [GitHub](ht
 
 ---
 
-*Built for the Python community*
+*Built with love for the Python community*

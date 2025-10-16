@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.3] - 2025-10-16
+
+### Added
+
+- **Enhanced Docker Hub Documentation**: Comprehensive Redis-backed sidecar architecture documentation with working examples
+- **Complete Kubernetes Manifests**: Added Redis Deployment and Service manifests to Docker Hub README for out-of-the-box deployments
+- **Prometheus Service Discovery**: Proper Kubernetes service discovery configuration with pod annotation support
+
+### Fixed
+
+- **Prometheus Port Relabeling**: Fixed port annotation relabeling rule to properly map prometheus.io/port to container port
+- **Redis Manifests**: Resolved missing Redis deployment manifests in Kubernetes examples (PR #106 review)
+- **Documentation Typo**: Fixed closing tagline in Docker Hub README ("Built with love for the Python community")
+
+### Changed
+
+- **Docker Hub README**: Updated from 255 to 458 lines with complete Redis-backed sidecar architecture
+- **DOCKER_HUB_README.md**: Now includes complete working examples for Docker Compose and Kubernetes deployments
+- **Architecture Documentation**: Enhanced ASCII diagrams showing multi-pod Redis-backed metrics collection
+
 ## [0.2.2] - 2025-10-14
 
 ### Added
