@@ -28,7 +28,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.2
+          image: princekrroshan01/gunicorn-app:0.2.3
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -101,7 +101,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.3
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000

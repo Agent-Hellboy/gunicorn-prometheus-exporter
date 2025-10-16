@@ -22,7 +22,7 @@ All notable changes to this project will be documented in this file.
 - **DOCKER_HUB_README.md**: Now includes complete working examples for Docker Compose and Kubernetes deployments
 - **Architecture Documentation**: Enhanced ASCII diagrams showing multi-pod Redis-backed metrics collection
 
-## [0.2.2] - 2025-10-14
+## [0.2.3] - 2025-10-14
 
 ### Added
 

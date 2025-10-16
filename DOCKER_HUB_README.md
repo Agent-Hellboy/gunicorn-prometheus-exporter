@@ -1,7 +1,7 @@
 # Gunicorn Prometheus Exporter
 
 [![Docker Pulls](https://badgen.net/docker/pulls/princekrroshan01/gunicorn-prometheus-exporter)](https://hub.docker.com/r/princekrroshan01/gunicorn-prometheus-exporter)
-[![Docker Image Size](https://badgen.net/docker/size/princekrroshan01/gunicorn-prometheus-exporter/0.2.2/amd64)](https://hub.docker.com/r/princekrroshan01/gunicorn-prometheus-exporter)
+[![Docker Image Size](https://badgen.net/docker/size/princekrroshan01/gunicorn-prometheus-exporter/0.2.3/amd64)](https://hub.docker.com/r/princekrroshan01/gunicorn-prometheus-exporter)
 [![Docker Stars](https://badgen.net/docker/stars/princekrroshan01/gunicorn-prometheus-exporter)](https://hub.docker.com/r/princekrroshan01/gunicorn-prometheus-exporter)
 
 Production-ready Prometheus metrics exporter for Gunicorn applications, designed to run as a sidecar container with Redis-backed distributed metrics storage.
@@ -12,7 +12,7 @@ Production-ready Prometheus metrics exporter for Gunicorn applications, designed
 
 ```bash
 # Sidecar exporter (latest)
-docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.2
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.3
 
 # Sample Flask application (for testing)
 docker pull princekrroshan01/gunicorn-app:latest
@@ -37,7 +37,7 @@ services:
       - REDIS_PORT=6379
 
   sidecar:
-    image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
+    image: princekrroshan01/gunicorn-prometheus-exporter:0.2.3
     ports:
       - "9091:9091"
     environment:
@@ -91,7 +91,7 @@ spec:
 
         # Container 2: Sidecar Exporter
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.2
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.3
           ports:
             - containerPort: 9091
               name: metrics
@@ -402,7 +402,7 @@ annotations:
 
 ## Related Images
 
-- `princekrroshan01/gunicorn-prometheus-exporter:0.2.2` - Sidecar exporter
+- `princekrroshan01/gunicorn-prometheus-exporter:0.2.3` - Sidecar exporter
 - `princekrroshan01/gunicorn-app:latest` - Sample Flask application
 
 ## Troubleshooting
