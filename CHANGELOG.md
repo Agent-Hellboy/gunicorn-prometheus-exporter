@@ -2,13 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.2.3] - 2025-10-16
+## [0.2.4] - 2025-10-16
 
 ### Added
 
 - **Enhanced Docker Hub Documentation**: Comprehensive Redis-backed sidecar architecture documentation with working examples
 - **Complete Kubernetes Manifests**: Added Redis Deployment and Service manifests to Docker Hub README for out-of-the-box deployments
 - **Prometheus Service Discovery**: Proper Kubernetes service discovery configuration with pod annotation support
+- **Docker Hub Auto-Update Workflow**: GitHub Actions automatically updates Docker Hub description from DOCKER_HUB_README.md on each release
 
 ### Fixed
 
@@ -21,26 +22,7 @@ All notable changes to this project will be documented in this file.
 - **Docker Hub README**: Updated from 255 to 458 lines with complete Redis-backed sidecar architecture
 - **DOCKER_HUB_README.md**: Now includes complete working examples for Docker Compose and Kubernetes deployments
 - **Architecture Documentation**: Enhanced ASCII diagrams showing multi-pod Redis-backed metrics collection
-
-## [0.2.3] - 2025-10-14
-
-### Added
-
-- **Kubernetes Redis Mode**: Complete rewrite of sidecar.py for proper Kubernetes compatibility
-- **Redis-Only Architecture**: Sidecar now exclusively uses Redis storage in Kubernetes deployments
-- **Integration Test Renames**: Renamed test files to include 'integration' in names for clarity
-
-### Fixed
-
-- **Kubernetes Deployment Issues**: Fixed read-only filesystem errors by disabling multiprocess collector in Redis mode
-- **Sidecar Architecture**: Proper separation between Redis mode (Kubernetes) and multiprocess mode (local development)
-- **Documentation Updates**: Updated all docs to reflect Redis as primary Kubernetes storage mechanism
-
-### Changed
-
-- **Test File Names**: `test_basic.sh` → `test_file_storage_integration.sh`, `test_redis_integ.sh` → `test_redis_integration.sh`, `test_yaml_config.sh` → `test_yaml_config_integration.sh`
-- **Sidecar Documentation**: Clarified that multiprocess mode is only for local development, Redis mode for Kubernetes
-- **Test Architecture**: Established clear boundaries between unit tests, integration tests, and e2e tests with proper naming conventions and directory structure
+- **Release Workflow**: Automated Docker Hub description updates eliminate manual documentation maintenance
 
 ## [0.2.1] - 2025-10-02
 

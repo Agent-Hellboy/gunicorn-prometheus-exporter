@@ -141,10 +141,10 @@ The published container lives at `princekrroshan01/gunicorn-prometheus-exporter`
 
 ```bash
 # Pull the latest stable exporter image
-docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.3
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.4
 
 # Run the exporter standalone
-docker run --rm -p 9091:9091 princekrroshan01/gunicorn-prometheus-exporter:0.2.3
+docker run --rm -p 9091:9091 princekrroshan01/gunicorn-prometheus-exporter:0.2.4
 ```
 
 The container exposes metrics on `0.0.0.0:9091` by default. Override behaviour via environment variables such as `PROMETHEUS_METRICS_PORT`, `PROMETHEUS_BIND_ADDRESS`, and `PROMETHEUS_MULTIPROC_DIR`.
@@ -630,7 +630,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.3
+          image: princekrroshan01/gunicorn-app:0.2.4
           ports:
             - containerPort: 8200
               name: http
@@ -645,7 +645,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.3
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.4
           ports:
             - containerPort: 9091
               name: metrics
@@ -693,7 +693,7 @@ spec:
       hostNetwork: true
       containers:
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.3
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.4
           ports:
             - containerPort: 9091
               name: metrics

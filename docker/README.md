@@ -63,7 +63,7 @@ docker run -d \
   --name gunicorn-sidecar \
   -p 9091:9091 \
   -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
-  gunicorn-prometheus-exporter:0.2.3
+  gunicorn-prometheus-exporter:0.2.4
 ```
 
 ### Application Image
@@ -72,7 +72,7 @@ The sample application image is built from `docker/Dockerfile.app`:
 
 ```bash
 # Build the application image
-docker build -f docker/Dockerfile.app -t gunicorn-app:0.2.3 .
+docker build -f docker/Dockerfile.app -t gunicorn-app:0.2.4 .
 
 # Run with increased shared memory (required for Gunicorn workers using /dev/shm)
 docker run -d \
@@ -81,7 +81,7 @@ docker run -d \
   -p 8000:8000 \
   -e PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc \
   -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
-  gunicorn-app:0.2.3
+  gunicorn-app:0.2.4
 ```
 
 **Important**: Gunicorn uses `/dev/shm` for worker temporary files. The default Docker shared memory is only 64MB, which may be insufficient for production workloads. Always set `--shm-size` (Docker) or `shm_size` (Docker Compose) to at least 1GB.
@@ -128,7 +128,7 @@ docker run -d \
   --name gunicorn-sidecar \
   -p 9091:9091 \
   -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
-  gunicorn-prometheus-exporter:0.2.3 sidecar
+  gunicorn-prometheus-exporter:0.2.4 sidecar
 ```
 
 ### 2. Standalone Mode
@@ -140,7 +140,7 @@ docker run -d \
   --name gunicorn-standalone \
   -p 9091:9091 \
   -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
-  gunicorn-prometheus-exporter:0.2.3 standalone
+  gunicorn-prometheus-exporter:0.2.4 standalone
 ```
 
 ### 3. Health Check Mode
@@ -149,7 +149,7 @@ Run health check:
 
 ```bash
 docker run --rm \
-  gunicorn-prometheus-exporter:0.2.3 health
+  gunicorn-prometheus-exporter:0.2.4 health
 ```
 
 ## Kubernetes Deployment
@@ -178,7 +178,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.3
+          image: princekrroshan01/gunicorn-app:0.2.4
           ports:
             - containerPort: 8000
               name: http
@@ -193,7 +193,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.3
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.4
           ports:
             - containerPort: 9091
               name: metrics
@@ -232,7 +232,7 @@ spec:
       containers:
         # Main application container
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.3
+          image: princekrroshan01/gunicorn-app:0.2.4
           ports:
             - containerPort: 8000
               name: http
@@ -246,7 +246,7 @@ spec:
 
         # Prometheus exporter sidecar
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.3
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.4
           ports:
             - containerPort: 9091
               name: metrics
@@ -269,7 +269,7 @@ docker build -t gunicorn-prometheus-exporter:latest .
 
 # Tag for Docker Hub
 docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:latest
-docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:0.2.3
+docker tag gunicorn-prometheus-exporter:latest princekrroshan01/gunicorn-prometheus-exporter:0.2.4
 ```
 
 ### 2. Push to Docker Hub
@@ -280,7 +280,7 @@ docker login
 
 # Push the images
 docker push princekrroshan01/gunicorn-prometheus-exporter:latest
-docker push princekrroshan01/gunicorn-prometheus-exporter:0.2.3
+docker push princekrroshan01/gunicorn-prometheus-exporter:0.2.4
 ```
 
 ### 3. Automated Builds
@@ -338,7 +338,7 @@ Run the sidecar in debug mode:
 ```bash
 docker run -it --rm \
   -v /tmp/prometheus_multiproc:/tmp/prometheus_multiproc \
-  gunicorn-prometheus-exporter:0.2.3 \
+  gunicorn-prometheus-exporter:0.2.4 \
   python3 /app/sidecar.py --port 9091 --bind 0.0.0.0
 ```
 

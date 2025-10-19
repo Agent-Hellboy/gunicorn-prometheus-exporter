@@ -25,17 +25,17 @@ This guide covers deploying the exporter as a sidecar container in Kubernetes, i
 
 ```bash
 # Sidecar exporter image (use specific version for production)
-docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.3
+docker pull princekrroshan01/gunicorn-prometheus-exporter:0.2.4
 
 # Sample Flask application (for testing)
-docker pull princekrroshan01/gunicorn-app:0.2.3
+docker pull princekrroshan01/gunicorn-app:0.2.4
 
 # Or build locally if the release has not been published yet:
-# docker build -t princekrroshan01/gunicorn-prometheus-exporter:0.2.3 .
-# docker build -f docker/Dockerfile.app -t princekrroshan01/gunicorn-app:0.2.3 .
+# docker build -t princekrroshan01/gunicorn-prometheus-exporter:0.2.4 .
+# docker build -f docker/Dockerfile.app -t princekrroshan01/gunicorn-app:0.2.4 .
 ```
 
-**Production Note**: Always use specific version tags (e.g., `0.2.3`) instead of `:latest` for reproducibility and stability. If the published image tag is not yet available, build the images locally with the commands above before deploying.
+**Production Note**: Always use specific version tags (e.g., `0.2.4`) instead of `:latest` for reproducibility and stability. If the published image tag is not yet available, build the images locally with the commands above before deploying.
 
 > *Redis requirement*: Redis storage is **required** for all containerized deployments (Docker Compose and Kubernetes). The manifests enable Redis-only mode by default (`REDIS_ENABLED=true` and `PROMETHEUS_MULTIPROC_DIR=""`). Multiprocess files are incompatible with containerized environments due to read-only filesystems and lack of shared storage between pods.
 
@@ -140,7 +140,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: princekrroshan01/gunicorn-app:0.2.3
+          image: princekrroshan01/gunicorn-app:0.2.4
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -166,7 +166,7 @@ spec:
               cpu: "500m"
 
         - name: prometheus-exporter
-          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.3
+          image: princekrroshan01/gunicorn-prometheus-exporter:0.2.4
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -307,8 +307,8 @@ All images use pinned versions for reproducible deployments:
 - `redis:7-alpine`
 - `prom/prometheus:v2.54.1`
 - `grafana/grafana:11.2.0`
-- `princekrroshan01/gunicorn-prometheus-exporter:0.2.3`
-- `princekrroshan01/gunicorn-app:0.2.3`
+- `princekrroshan01/gunicorn-prometheus-exporter:0.2.4`
+- `princekrroshan01/gunicorn-app:0.2.4`
 
 ## Configuration
 
