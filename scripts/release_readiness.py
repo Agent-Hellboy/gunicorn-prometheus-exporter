@@ -237,7 +237,6 @@ def main():
         "CHANGELOG.md",
         "docs/index.md",
         "docs/development.md",
-        "docs/contributing.md",
         "docs/testing.md",
         "docs/examples/kubernetes-deployment.md",
         "docs/examples/deployment-guide.md",
