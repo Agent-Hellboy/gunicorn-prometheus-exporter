@@ -7,7 +7,7 @@
 [![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://Agent-Hellboy.github.io/gunicorn-prometheus-exporter)
 [![PyPI Downloads](https://static.pepy.tech/badge/gunicorn-prometheus-exporter)](https://pepy.tech/projects/gunicorn-prometheus-exporter)
 
-A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities, featuring innovative Redis-based storage, YAML configuration support, and advanced signal handling. This Gunicorn worker plugin exports Prometheus metrics to monitor worker performance, including memory usage, CPU usage, request durations, and error tracking (trying to replace <https://docs.gunicorn.org/en/stable/instrumentation.html> with extra info). It also aims to replace request-level tracking, such as the number of requests made to a particular endpoint, for any framework (e.g., Flask, Django, and others) that conforms to the WSGI specification.
+A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with support for multiple worker types and advanced monitoring capabilities by hacking into gunicorn's internal to capture metrics at the webserver layer, featuring innovative Redis-based storage (implemented as part of the Prometheus spec), YAML configuration support, and capturing  signals as a metric. This Gunicorn worker plugin exports Prometheus metrics to monitor worker performance, including memory usage, CPU usage, request durations, and error tracking (trying to replace <https://docs.gunicorn.org/en/stable/instrumentation.html> with extra info). It also aims to replace request-level tracking, such as the number of requests made to a particular endpoint, for any framework (e.g., Flask, Django, and others) that conforms to the WSGI specification.
 
 ## WSGI Protocol Limitations & Error Handling
 
@@ -15,9 +15,9 @@ A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with suppo
 
 One of the fundamental limitations of the WSGI protocol is that **Python frameworks consume errors and exceptions internally**. Most frameworks (Flask, Django, Pyramid, etc.) handle exceptions within their own middleware and error handling systems, making it difficult to capture comprehensive error metrics at the WSGI level.
 
-This creates a challenge for monitoring tools like ours , we can only capture errors that bubble up to the WSGI layer, while many framework-specific errors are handled internally and never reach the WSGI interface.
+This creates a challenge for monitoring tools like ours; we can only capture errors that bubble up to the WSGI layer, while many framework-specific errors are handled internally and never reach the WSGI interface.
 
-**Note**: This is a fundamental limitation of the WSGI protocol design.
+**Note**: This is a fundamental design choice of the WSGI protocol design.
 
 ### Our Approach
 
@@ -33,10 +33,10 @@ We've implemented a two-tier error tracking system:
 **Current Limitations**: Due to WSGI's design, we can only capture errors that bubble up to the WSGI layer. Framework-specific errors (like Django's 404s, Flask's route errors, etc.) are handled internally and never reach our monitoring system.
 
 **Future Enhancement**: I'm exploring ways to integrate with framework-specific error handlers to capture more comprehensive error metrics.
-And also, see [Issue #67](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues/67) for request/response payload size tracking per endpoint , this is a nice issue and LLMs can't figure it out, please try it out if you can!
+And also, see [Issue #67](https://github.com/Agent-Hellboy/gunicorn-prometheus-exporter/issues/67) for request/response payload size tracking per endpoint, this is a nice issue, and LLMs can't figure it out, please try it out if you can!
 
 
-## Redis Storage Architecture
+## Redis Storage Architecture (Prometheus spec implementation)
 
 ### Separating Storage from Compute
 
