@@ -44,34 +44,6 @@ I've extended the Prometheus Python client to support **Redis-based storage** as
 
 The Prometheus multiprocess specification's protocol-based design enables us to seamlessly replace the default file-based storage (`MmapedDict`) with our Redis implementation (`RedisStorageDict`) without breaking compatibility. This is a testament to the excellent engineering behind the Prometheus ecosystem.
 
-This architectural innovation provides several key benefits:
-
-#### **Traditional Approach (File-Based)**
-
-- Metrics stored in local files (`/tmp/prometheus_multiproc/`)
-- Storage and compute are coupled on the same server
-- Limited scalability across multiple instances
-- File I/O overhead for metrics collection
-
-#### **New Redis Storage Approach**
-
-- Metrics stored directly in Redis (`gunicorn:*:metric:*` keys)
-- **Storage and compute are completely separated**
-- Shared metrics across multiple Gunicorn instances
-- No local files created - pure Redis storage
-- Better performance and scalability
-- **Direct Redis integration** - no forwarding layer needed
-
-### **Protocol-Based Design Benefits:**
-
-The Prometheus specification's protocol-based design allows for:
-
-- **Clean Interface Contract**: `StorageDictProtocol` defines exactly what methods storage backends must implement
-- **Drop-in Replacement**: Our `RedisStorageDict` implements the same interface as `MmapedDict`
-- **Type Safety**: Protocol ensures compile-time checking of interface compliance
-- **Testing**: Easy to mock and test different storage implementations
-- **Future Extensibility**: Can easily add database, S3, or other storage backends
-
 ### **Key Benefits:**
 
 | Feature                | File-Based    | Redis Storage    |
