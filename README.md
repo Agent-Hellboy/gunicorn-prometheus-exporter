@@ -21,7 +21,7 @@ This creates a challenge for monitoring tools like ours; we can only capture err
 
 ### Our Approach
 
-We've implemented a two-tier error tracking system:
+I am trying to implement two-tier error tracking system:
 
 1. **WSGI-Level Errors**: Captured at the worker level for errors that reach the WSGI interface
 2. **Framework Integration**: Designed to work with framework-specific error handlers when available
