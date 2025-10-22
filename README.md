@@ -13,7 +13,7 @@ A comprehensive Prometheus metrics exporter for Gunicorn WSGI servers with suppo
 
 ### The Challenge with WSGI Error Tracking
 
-One of the fundamental limitations of the WSGI protocol is that **Python frameworks consume errors and exceptions internally**. Most frameworks (Flask, Django, Pyramid, etc.) handle exceptions within their own middleware and error handling systems, making it difficult to capture comprehensive error metrics at the WSGI level.
+One of the fundamental limitations of the WSGI protocol is that **Python frameworks consume errors and exceptions internally**. https://peps.python.org/pep-0333/#error-handling Most frameworks (Flask, Django, Pyramid, etc.) handle exceptions within their own middleware and error handling systems, making it difficult to capture comprehensive error metrics at the WSGI level.
 
 This creates a challenge for monitoring tools like ours; we can only capture errors that bubble up to the WSGI layer, while many framework-specific errors are handled internally and never reach the WSGI interface.
 
